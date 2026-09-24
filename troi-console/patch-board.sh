@@ -13,7 +13,7 @@ if 'src="mouse.js"' not in s:
 if 'src="board.js"' not in s:
     i = s.rfind("</body>"); s = s[:i] + '<script src="board.js"></script>\n' + s[i:]; changed.append("board script")
 ring = "function drawRing(sc) {"
-if "window.__RING" not in s and ring in s:   # the ring's look comes from board.js: what it needs, by getter (the module's own bindings stay live)
+if '["__RING", () => RING]' not in s and ring in s:   # the ring's look comes from board.js: what it needs, by getter (the module's own bindings stay live)
     s = s.replace(ring, 'for (const [k, g] of [["__RING", () => RING], ["__ringAmp", () => ringAmp], ["__ensureRingRes", () => ensureRingRes], ["__CFG", () => CFG]]) Object.defineProperty(window, k, { get: g, configurable: true });   // troi-console/board.js\n' + ring, 1); changed.append("ring hooks")
 if "(window.__ringDraw || drawRing)(sc)" not in s and "    drawRing(sc);" in s:
     s = s.replace("    drawRing(sc);", "    (window.__ringDraw || drawRing)(sc);", 1); changed.append("ring draw")

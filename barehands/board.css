@@ -14,3 +14,8 @@ body:not(.overlay):not(.keybg)::before {
 .card.imgcard img, .card.imgcard video { filter: none; }
 /* cards read well on the dark ground */
 .card, .panel { box-shadow: 0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); }
+/* the Hands button (board.js): the camera on or off, from the board itself */
+#troi-hands { position: fixed; right: 18px; top: 16px; z-index: 30; cursor: pointer; padding: 6px 12px; border-radius: 9px; border: 1px solid rgba(160,220,230,.35); color: #dff5f7; background: rgba(8,16,26,.72); font: 500 12px/1.2 Sora, "SF Pro Display", -apple-system, Helvetica, sans-serif; letter-spacing: .02em; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+#troi-hands[aria-pressed="true"] { border-color: #8cf5ff; color: #8cf5ff; }
+#troi-hands:hover { border-color: rgba(160,220,230,.7); }
+body.overlay #troi-hands, body.greenkey #troi-hands { display: none; }

@@ -13,6 +13,14 @@
         "mcp"
       ],
       "env": {}
+    },
+    "google": {
+      "type": "stdio",
+      "command": "__ROOT__/troi-console/google.sh",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
     }
   }
 }
