@@ -5,10 +5,18 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/paths.sh"; S="$ROOT/barehands/stage.html"
 M="$C/barehands/mouse.js"; [ -f "$M" ] && cp "$M" "$ROOT/barehands/mouse.js"
 B="$C/barehands/board.css"; [ -f "$B" ] && cp "$B" "$ROOT/barehands/board.css"
+J="$C/barehands/board.js"; [ -f "$J" ] && cp "$J" "$ROOT/barehands/board.js"
 python3 - "$S" <<'PY'
 import sys; p = sys.argv[1]; s = open(p).read(); changed = []
 if 'src="mouse.js"' not in s:
     i = s.rfind("</body>"); s = s[:i] + '<script src="mouse.js"></script>\n' + s[i:]; changed.append("script tag")
+if 'src="board.js"' not in s:
+    i = s.rfind("</body>"); s = s[:i] + '<script src="board.js"></script>\n' + s[i:]; changed.append("board script")
+ring = "function drawRing(sc) {"
+if "window.__RING" not in s and ring in s:   # the ring's look comes from board.js: what it needs, by getter (the module's own bindings stay live)
+    s = s.replace(ring, 'for (const [k, g] of [["__RING", () => RING], ["__ringAmp", () => ringAmp], ["__ensureRingRes", () => ensureRingRes], ["__CFG", () => CFG]]) Object.defineProperty(window, k, { get: g, configurable: true });   // troi-console/board.js\n' + ring, 1); changed.append("ring hooks")
+if "(window.__ringDraw || drawRing)(sc)" not in s and "    drawRing(sc);" in s:
+    s = s.replace("    drawRing(sc);", "    (window.__ringDraw || drawRing)(sc);", 1); changed.append("ring draw")
 if 'href="board.css"' not in s:
     i = s.find("</head>"); s = s[:i] + '<link rel="stylesheet" href="board.css">\n' + s[i:]; changed.append("stylesheet")
 hook = 'document.getElementById("boot").remove();'

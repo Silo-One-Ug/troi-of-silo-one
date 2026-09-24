@@ -17,9 +17,10 @@ putting something up.
 ## The Hands switch
 
 The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or
-"hands on" to the agent, turns hand tracking on for the board and the galaxies; the Hands button
-inside a galaxy does the same for that view. The browser asks for the camera the first time. At rest,
-with the camera off, the board shows only a ring.
+"hands on" to the agent, turns hand tracking on for the board and the galaxies; the **Hands** button
+in the corner of the board, and the one inside a galaxy, do the same and keep the console's switch in
+step. The browser asks for the camera the first time. At rest, with the camera off, the board shows
+the ring: the agent's presence, turning with its state.
 
 ## Gestures
 

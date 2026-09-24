@@ -592,12 +592,24 @@ def agent_activity(agent_id, subdir):
         return {}
 
 
+def agents_archived():
+    """The delegations the owner has archived off the chart (their ids), kept in the record's small documents."""
+    try:
+        return set(json.loads(DB.doc("agents-archived").read_text()))
+    except Exception:
+        return set()
+
+
+def agents_archive(ids):
+    cur = agents_archived() | set(ids); DB.doc("agents-archived").write_text(json.dumps(sorted(cur))); return cur
+
+
 def agents_snapshot(light=False):
     """The session's delegations, newest first: name, type, status, times; with each one's activity unless light."""
     agents_scan()
-    _, _, subdir = brain_paths(); now = time.time(); out = []
+    _, _, subdir = brain_paths(); now = time.time(); out = []; gone = agents_archived()
     for tid in reversed(_AGENTS["order"]):
-        t = dict(_AGENTS["tasks"][tid])
+        t = dict(_AGENTS["tasks"][tid]); t["archived"] = tid in gone
         if not light:
             t.update(agent_activity(t["agent_id"], subdir))
             if t["status"] == "active" and t.get("seen") and now - t["seen"] > 1800:
@@ -1634,8 +1646,8 @@ class Handler(BaseHTTPRequestHandler):
                 agents = 0
             self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p, "agents": agents})
         elif path == "/agents":
-            sid, f, _ = brain_paths()
-            self._json({"brain": brain_now(), "agents": agents_snapshot(), "session": sid, "record": bool(f and f.exists())})
+            sid, f, _ = brain_paths(); ag = agents_snapshot()
+            self._json({"brain": brain_now(), "agents": ag, "session": sid, "record": bool(f and f.exists()), "archived": sum(1 for a in ag if a["archived"])})
         elif path == "/find":
             self._json({"items": find_files(dict(urllib.parse.parse_qsl(query)).get("q", ""))})
         elif path == "/tree":
@@ -1927,7 +1939,7 @@ class Handler(BaseHTTPRequestHandler):
             dst = HOME / "barehands" / "media" / ("models" if Path(name).suffix.lower() in (".glb", ".gltf") else "misc") / name
             dst.write_bytes(self.rfile.read(n))
             return self._json({"ok": True, "path": str(dst)})
-        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star"):
+        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star", "/agents"):
             return self._json({"error": "not found"}, 404)
         # localhost page only: refuse cross-site posts
         origin = self.headers.get("Origin", "")
@@ -2005,6 +2017,14 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/ask":
             r = ask_live(text, timeout=int(body.get("timeout", 240)))
             return self._json({"ok": r is not None, "reply": r or "", "live": FIFO.exists()})
+        if self.path == "/agents":                                    # the Agents page: archive a finished delegation off the chart, or all of them
+            want = body.get("archive")
+            done = {a["id"] for a in agents_snapshot(light=True) if a["status"] != "active"}
+            ids = done if want == "finished" else ({want} & done if isinstance(want, str) else set())
+            if not ids:
+                return self._json({"ok": False, "error": "nothing to archive (only a finished agent can be)"}, 400)
+            agents_archive(ids)
+            return self._json({"ok": True, "archived": len(ids)})
         if self.path == "/agent":                                     # AG-UI: RunAgentInput in, events out
             last = next((m for m in reversed(body.get("messages") or []) if m.get("role") == "user"), None)
             text = untrusted(" ".join(str((last or {}).get("content", "")).split()))

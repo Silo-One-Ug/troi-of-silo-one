@@ -19,6 +19,8 @@ Everything the agent hears and says, live, in the same session as your voice, Te
   ([Drawing in the conversation](../40-abilities/drawing.md)). Pictures from research and headlines
   from the news land here as cards too.
 - A reload keeps the conversation: the console loads the last lines from the record when it opens.
+- Scroll up to read and the page stays where you are; a **Latest** pill (with a count of what has
+  arrived meanwhile) takes you back to the end.
 
 ## Files
 

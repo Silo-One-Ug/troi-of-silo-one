@@ -208,7 +208,7 @@ Every application as a standalone icon, grouped by category; running apps glow. 
 
 ## Hand gestures (webcam)
 
-The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or "hands on" to the agent, turns hand tracking on for the hands board and the galaxies; the Hands button inside a galaxy does the same for that view. Chrome asks for the camera the first time.
+The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or "hands on" to the agent, turns hand tracking on for the hands board and the galaxies; the Hands button in the corner of the board, and the one inside a galaxy, do the same and keep the console's switch in step. Chrome asks for the camera the first time.
 
 | Hand | Meaning |
 |---|---|

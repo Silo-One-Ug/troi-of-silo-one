@@ -18,6 +18,9 @@ they took.
   has finished. An agent that has not said a word in half an hour shows as **Quiet**.
 - **The brain's own line.** The top node shows the brain's state and the tool in its hands, as the
   bar does.
+- **Archiving.** A finished agent can be archived off the chart: the × on its node, or **Archive
+  finished** for all of them at once; **Show archived** brings them back into view. Nothing is
+  deleted: the record of the session is Claude Code's own and stays as it is.
 - **In the bar and on the phone.** The Agents icon in the bar carries a count of the agents at
   work; on the phone the page is under **More**. "Open the agents" brings it up by voice.
 

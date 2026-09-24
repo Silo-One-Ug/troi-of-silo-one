@@ -4,42 +4,49 @@
 // opens the task and what the agent is doing now. Nothing here is a control: the brain decides whom to send, and names
 // each one for the job.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BookOpen, Bot, Compass, Map as MapIcon, Orbit, Search } from "lucide-react";
+import { Archive, BookOpen, Bot, Compass, Map as MapIcon, Orbit, Search, X } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { eget } from "@/lib/edge";
+import { Button } from "./ui/button";
+import { eget, epost } from "@/lib/edge";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
-type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; doing?: string; detail?: string; said?: string; turns?: number; seen?: number };
-type D = { brain: { name: string; state: string; doing: string }; agents: A[]; session: string; record: boolean };
+type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number };
+type D = { brain: { name: string; state: string; doing: string }; agents: A[]; session: string; record: boolean; archived?: number };
 const ICON: Record<string, any> = { Explore: Search, Plan: MapIcon, "claude-code-guide": BookOpen, "general-purpose": Compass };
 const KIND: Record<string, string> = { Explore: "scout", Plan: "planner", "claude-code-guide": "guide", "general-purpose": "hand" };
 const span = (a: A, now: number) => { const s = Math.max(0, Math.round((a.ended || now) - a.started)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`; };
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-function Node({ title, sub, Icon, active, dim, badge, selected, onClick }: { title: string; sub: string; Icon: any; active?: boolean; dim?: boolean; badge?: string; selected?: boolean; onClick?: () => void }) {
+function Node({ title, sub, Icon, active, dim, badge, selected, onClick, onArchive }: { title: string; sub: string; Icon: any; active?: boolean; dim?: boolean; badge?: string; selected?: boolean; onClick?: () => void; onArchive?: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={onClick ? !!selected : undefined} disabled={!onClick}
-      className={cn("relative flex w-full items-center gap-3 rounded-full border bg-surface/70 px-3 py-2.5 text-left transition-colors md:w-auto md:min-w-[230px] md:max-w-[320px] md:px-4",
-        active ? "border-emerald-500/70 shadow-[0_0_0_1px_rgba(16,185,129,.35),0_0_28px_-8px_rgba(16,185,129,.7)]" : "border-border", selected && "bg-accent/50", dim && "opacity-60", onClick ? "hover:border-primary/40" : "cursor-default")}>
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-background"><Icon className="h-[18px] w-[18px]" /></span>
-      <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold md:text-sm">{title}</span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", active ? "bg-emerald-400" : "bg-amber-400")} /><span className="truncate">{sub}</span></span></span>
-      {badge && <Badge tone={badge === "Active" ? "ok" : badge === "Failed" ? "warn" : "note"} className="absolute -right-1 -top-2.5 h-5 px-2 text-[11px]">{badge}</Badge>}
-    </button>
+    <div className={cn("group relative w-full md:w-auto", onArchive && "pr-0")}>
+      <button type="button" onClick={onClick} aria-pressed={onClick ? !!selected : undefined} disabled={!onClick}
+        className={cn("relative flex w-full items-center gap-3 rounded-full border bg-surface/70 px-3 py-2.5 text-left transition-colors md:w-auto md:min-w-[230px] md:max-w-[320px] md:px-4",
+          active ? "border-emerald-500/70 shadow-[0_0_0_1px_rgba(16,185,129,.35),0_0_28px_-8px_rgba(16,185,129,.7)]" : "border-border", selected && "bg-accent/50", dim && "opacity-60", onClick ? "hover:border-primary/40" : "cursor-default")}>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-background"><Icon className="h-[18px] w-[18px]" /></span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold md:text-sm">{title}</span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", active ? "bg-emerald-400" : "bg-amber-400")} /><span className="truncate">{sub}</span></span></span>
+        {badge && <Badge tone={badge === "Active" ? "ok" : badge === "Failed" ? "warn" : "note"} className="absolute -right-1 -top-2.5 h-5 px-2 text-[11px]">{badge}</Badge>}
+      </button>
+      {onArchive && <button type="button" onClick={e => { e.stopPropagation(); onArchive(); }} title="Archive: off the chart (the record keeps it)" aria-label={`Archive ${title}`}
+        className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition hover:text-foreground hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"><X className="h-3 w-3" /></button>}
+    </div>
   );
 }
 
 export function Agents() {
   const [d, setD] = useState<D | null>(null); const [err, setErr] = useState(""); const [sel, setSel] = useState<string | null>(null); const [now, setNow] = useState(() => Date.now() / 1000);
   const mobile = useMobile(); const wrap = useRef<HTMLDivElement>(null); const brainRef = useRef<HTMLDivElement>(null); const refs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [lines, setLines] = useState<string[]>([]); const [box, setBox] = useState({ w: 0, h: 0 });
+  const [lines, setLines] = useState<string[]>([]); const [box, setBox] = useState({ w: 0, h: 0 }); const [showGone, setShowGone] = useState(false);
+  const archive = async (what: string) => { const r = await epost("/agents", { archive: what }); if (r.ok) { setSel(null); try { setD(await eget("/agents")); } catch {} } };
   useEffect(() => {
     let stop = false;
     const tick = async () => { if (stop) return; try { setD(await eget("/agents")); setErr(""); } catch { setErr("Troi's server is not answering: start Troi from the Desktop."); } setNow(Date.now() / 1000); setTimeout(tick, 2000); };
     tick(); return () => { stop = true; };
   }, []);
-  const agents = d?.agents || []; const active = agents.filter(a => a.status === "active"); const shown = agents.slice(0, 12);   // the newest twelve on the chart
+  const all = d?.agents || []; const agents = all.filter(a => showGone || !a.archived); const active = agents.filter(a => a.status === "active"); const finished = agents.filter(a => a.status !== "active" && !a.archived);
+  const gone = all.filter(a => a.archived).length; const shown = agents.slice(0, 12);   // the newest twelve on the chart
   // the connectors, measured, so they follow the row wherever it wraps: the brain down to a bus, the bus across, a stub down to each node on the first row
   useLayoutEffect(() => {
     if (mobile) { setLines([]); return; }
@@ -62,8 +69,11 @@ export function Agents() {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4">
       <div className="hairline p-4 sm:p-6">
-        <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm"><span className="font-semibold">At work</span>
-          <span className="text-muted-foreground">{active.length ? `${active.length} on a task` : "no one on a task"}{agents.length - active.length > 0 ? ` · ${agents.length - active.length} finished this session` : ""}</span></div>
+        <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"><span className="font-semibold">At work</span>
+          <span className="text-muted-foreground">{active.length ? `${active.length} on a task` : "no one on a task"}{finished.length > 0 ? ` · ${finished.length} finished this session` : ""}</span>
+          <span className="ml-auto flex items-center gap-2">
+            {finished.length > 0 && <Button size="sm" variant="ghost" onClick={() => archive("finished")} title="Off the chart; the record keeps them"><Archive className="h-3.5 w-3.5" />Archive finished</Button>}
+            {gone > 0 && <Button size="sm" variant="ghost" onClick={() => setShowGone(v => !v)}>{showGone ? "Hide archived" : `Show archived (${gone})`}</Button>}</span></div>
         <div ref={wrap} className="relative">
           {!mobile && <svg className="pointer-events-none absolute left-0 top-0" width={box.w} height={box.h} aria-hidden>{lines.map((p, i) => <path key={i} d={p} fill="none" stroke="hsl(var(--border))" strokeWidth={1.5} />)}</svg>}
           <div className="relative flex justify-center"><div ref={brainRef} className={mobile ? "w-full max-w-[320px]" : ""}><Node title={name} sub={brainSub} Icon={Orbit} active={!!brain && !["off", "idle"].includes(brain.state)} /></div></div>
@@ -71,8 +81,8 @@ export function Agents() {
             <div className={cn("relative flex justify-center", mobile ? "mt-5 flex-col items-center gap-y-4" : "mt-12 flex-wrap gap-x-6 gap-y-10")}>
               {shown.map(a => (
                 <div key={a.id} ref={el => { refs.current[a.id] = el; }} className={mobile ? "w-full max-w-[320px]" : ""}>
-                  <Node title={a.name} sub={`${KIND[a.type] || a.type}${a.status === "active" ? (a.doing ? " · " + a.doing : " · at work") : " · " + span(a, now)}`} Icon={ICON[a.type] || Bot} active={a.status === "active"} dim={a.status !== "active"}
-                    badge={a.status === "active" ? "Active" : a.status === "failed" ? "Failed" : a.status === "quiet" ? "Quiet" : undefined} selected={sel === a.id} onClick={() => setSel(sel === a.id ? null : a.id)} />
+                  <Node title={a.name} sub={`${KIND[a.type] || a.type}${a.status === "active" ? (a.doing ? " · " + a.doing : " · at work") : " · " + span(a, now)}${a.archived ? " · archived" : ""}`} Icon={ICON[a.type] || Bot} active={a.status === "active"} dim={a.status !== "active"}
+                    badge={a.status === "active" ? "Active" : a.status === "failed" ? "Failed" : a.status === "quiet" ? "Quiet" : undefined} selected={sel === a.id} onClick={() => setSel(sel === a.id ? null : a.id)} onArchive={a.status !== "active" && !a.archived ? () => archive(a.id) : undefined} />
                 </div>))}
             </div>)}
           {shown.length === 0 && <p className="mx-auto mt-8 max-w-md text-center text-sm text-muted-foreground">{err || (d && !d.record ? "No record of this session yet." : `No one is on a task right now. ${name} delegates when a job is big enough, a survey of files, a piece of research, a review, and names each one for the work. They appear here as it does.`)}</p>}

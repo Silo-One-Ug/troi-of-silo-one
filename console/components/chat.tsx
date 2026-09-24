@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Columns2, FileText, Folder, Mic, Paperclip, PictureInPicture2, Send, Square, X } from "lucide-react";
+import { ArrowDown, Columns2, FileText, Folder, Mic, Paperclip, PictureInPicture2, Send, Square, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
@@ -87,10 +87,17 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   const [files, setFiles] = useState<Attached[]>([]); const [uploading, setUploading] = useState(0); const [drag, setDrag] = useState(false);
   const [pick, setPick] = useState<{ start: number; q: string; items: Found[]; i: number; loading: boolean } | null>(null);   // the @ picker: where the mention starts, what is typed so far, what was found
   const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0);
+  const [below, setBelow] = useState(0); const [tail, setTail] = useState(true);        // at the end of the conversation, or reading above; lines that arrived meanwhile
+  const scroller = useRef<HTMLDivElement>(null); const atBottom = useRef(true); const seen = useRef(0);
   const pos = useRef(0), cpos = useRef(0), live = useRef<{ id: string; final: string[] } | null>(null), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
   const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  useEffect(() => {                                              // follow the conversation only while the owner is at its end
+    if (atBottom.current) { end.current?.scrollIntoView({ behavior: "smooth" }); seen.current = msgs.length; setBelow(0); }
+    else setBelow(Math.max(0, msgs.filter(m => m.role !== "note" && m.role !== "ignored").length - seen.current));
+  }, [msgs]);
+  const onScroll = () => { const el = scroller.current; if (!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 48; atBottom.current = near; setTail(near); if (near) { seen.current = msgs.length; setBelow(0); } };
+  const toBottom = () => { atBottom.current = true; setTail(true); end.current?.scrollIntoView({ behavior: "smooth" }); seen.current = msgs.length; setBelow(0); };
   useEffect(() => { onState?.(state); }, [state, onState]);
   useEffect(() => { const el = input.current; if (!el) return; if (!text) { el.style.height = ""; return; } el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + (el.offsetHeight - el.clientHeight), 160) + "px"; }, [text]);   // the field grows with the lines, up to five or so; empty, it is the one line the styles give it
   useEffect(() => { if (!rec) { setRecT(0); return; } const t = setInterval(() => setRecT(Math.floor((Date.now() - rec.start) / 1000)), 500); return () => clearInterval(t); }, [rec]);
@@ -238,7 +245,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       {/* the header is the desktop's: on a phone the top bar already says who is speaking and in what state */}
       <div className="hidden items-center gap-2 border-b border-border px-3 py-2 text-sm md:flex"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
         <button className="ml-auto text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 md:p-4">
+      <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 md:p-4">
         {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
         <AnimatePresence initial={false}>
           {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} /> : (
@@ -248,6 +255,9 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         </AnimatePresence>
         <div ref={end} />
       </div>
+      {!tail && msgs.length > 0 && (
+        <div className="pointer-events-none relative"><button type="button" onClick={toBottom} aria-label="Back to the latest" className="glass pointer-events-auto absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium shadow-lg">
+          <ArrowDown className="h-4 w-4" />{below > 0 ? `${below} new` : "Latest"}</button></div>)}
       {/* the composer: the clip, the field (with the @ picker above it), then the plane, or the microphone while the field is empty on a phone; Stop shows while a reply is under way */}
       <form className={cn("relative border-t border-border p-2.5 md:p-3", drag && "bg-accent/40")} onSubmit={e => { e.preventDefault(); send(text); }}
         onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDrag(true); } }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}>
