@@ -15,5 +15,11 @@ VAULT_REPO="$(_get "$CONFIG" vault_repo "")"
 GITHUB_ACCOUNT="$(_get "$CONFIG" github_account "ayesigapaul")"     # the gh account every Troi repo is written as
 BACKUP_ORG="$(_get "$CONFIG" backup_org "Silo-One-Ug")"             # where the backups live
 # act on GitHub as that account, whichever gh account is active (Paul-Ayesiga may be, for other work): exports GH_TOKEN,
-# which gh and "gh auth git-credential" both honour; fails when that account is not signed in to gh
-use_github_account() { local t; t="$(gh auth token -u "$GITHUB_ACCOUNT" 2>/dev/null)"; [ -n "$t" ] || return 1; export GH_TOKEN="$t"; }
+# which gh and "gh auth git-credential" both honour, and makes every commit carry that same account (its name and its
+# public email, or its GitHub noreply address), so GitHub credits the account that pushed. Fails when it is not signed in.
+use_github_account() {
+  local t who; t="$(gh auth token -u "$GITHUB_ACCOUNT" 2>/dev/null)"; [ -n "$t" ] || return 1; export GH_TOKEN="$t"
+  who="$(gh api user --jq '"\(.name // .login)\t\(.email // "\(.id)+\(.login)@users.noreply.github.com")"' 2>/dev/null)" || return 0
+  [ -n "$who" ] && export GIT_AUTHOR_NAME="${who%%$'\t'*}" GIT_AUTHOR_EMAIL="${who##*$'\t'}" GIT_COMMITTER_NAME="${who%%$'\t'*}" GIT_COMMITTER_EMAIL="${who##*$'\t'}"
+  return 0
+}
