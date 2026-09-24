@@ -7,7 +7,7 @@ A chief of staff that lives on your Mac. Troi listens (hold a key, or say its na
 You need an Apple Silicon Mac on macOS 14 or newer, [Homebrew](https://brew.sh), Google Chrome, and [Claude Code](https://claude.com/claude-code) installed and signed in.
 
 ```bash
-git clone https://github.com/ayesigapaul/troi-of-silo-one ~/troi-of-silo-one
+git clone https://github.com/Silo-One-Ug/troi-of-silo-one ~/troi-of-silo-one
 cd ~/troi-of-silo-one && ./install.sh
 ```
 
@@ -45,7 +45,7 @@ Everything Troi keeps lives in `data/`, one folder that you can back up, move or
 
 **Retention.** Camera looks, screenshots and Telegram files older than 14 days go to the macOS Trash, where you can still recover them. Their rows stay in the record, marked archived. Star a picture in the Library to keep it.
 
-**Backups.** Every night at 23:30 the vault is committed and pushed to its git remote. The record and any new files then go, as a release, to a private GitHub repo: `backup_repo` in the settings, or `<your GitHub user>/troi-of-silo-one-backups` by default, created on the first run. Backups only ever add; nothing is deleted.
+**Backups.** Every night at 23:30 two things go to private repos in the `Silo-One-Ug` organization, written as the GitHub account `ayesigapaul` whichever gh account is active (`backup_org` and `github_account` in the settings). The vault is committed and pushed to `troi-vault`, or its own remote if it has one. The record and any new files go, as a release, to `troi-of-silo-one-backups` (or `backup_repo`). Missing repos are created on the first run. Backups only ever add; nothing is deleted.
 
 ## Secrets
 

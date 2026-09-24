@@ -1435,7 +1435,8 @@ class Handler(BaseHTTPRequestHandler):
             st = SETUP.status(); d = doctor()
             st.update({"screen": d.get("screen", False), "accessibility": d.get("accessibility", False), "doctor": d.get("lines", []), "telegram": telegram_state(), "owner_full": settings().get("owner_full", ""),
                        "address": settings().get("address", ""), "call": settings().get("call", "sir"), "github_org": settings().get("github_org", ""), "backup_repo": settings().get("backup_repo", ""),
-                       "gh": subprocess.run(["gh", "auth", "status"], capture_output=True).returncode == 0 if shutil.which("gh") else False,
+                       "github_account": settings().get("github_account", "ayesigapaul"), "backup_org": settings().get("backup_org", "Silo-One-Ug"),
+                       "gh": bool(shutil.which("gh")) and subprocess.run(["gh", "auth", "token", "-u", settings().get("github_account", "ayesigapaul")], capture_output=True).returncode == 0,
                        "vault_candidates": vault_candidates(), "folder_candidates": folder_candidates(), "file_roots": settings().get("file_roots", [])})
             self._json(st)
         elif path == "/telegram":

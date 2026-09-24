@@ -24,7 +24,7 @@ The installer adds these command-line tools with Homebrew if they are missing:
 ## 2. Install
 
 ```bash
-git clone https://github.com/ayesigapaul/troi-of-silo-one ~/troi-of-silo-one
+git clone https://github.com/Silo-One-Ug/troi-of-silo-one ~/troi-of-silo-one
 cd ~/troi-of-silo-one && ./install.sh
 ```
 
@@ -95,8 +95,10 @@ Run `gh auth login`, then set the org in the welcome's **Extras** step. The puls
 
 ### Backups
 
-- **The vault.** Create a private, empty repo on GitHub, then in the vault folder run `git remote add origin <url>`, or set `vault_repo` in `data/console.json` (the nightly job adds the remote on its first run). The backup runs at 23:30 and never force-pushes.
-- **Troi's record.** With `gh` signed in, the nightly job sends the database and any new files to a private repo as a release. The repo is `backup_repo` from the welcome's **Memory** step, or `<your GitHub user>/troi-of-silo-one-backups` by default; it is created on the first run.
+Both run at 23:30 and go to private repos in the `Silo-One-Ug` organization, written as the GitHub account `ayesigapaul`. They use that account's gh token whichever account is active (`github_account` and `backup_org` in `data/console.json`). Sign it in once with `gh auth login`.
+
+- **The vault** is committed and pushed to `troi-vault` in the organization, or to the vault's own remote if it already has one (`vault_repo` in `data/console.json` sets another). The repo is created on the first run, and pushes never force.
+- **Troi's record**, the database and any new files, goes as one release a night to `troi-of-silo-one-backups`, or to `backup_repo` from the welcome's **Memory** step. Starting Troi never runs a backup; Routines › Backup › Run now does.
 
 ### Folders Troi may organise
 

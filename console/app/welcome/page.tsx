@@ -99,7 +99,7 @@ function Story({ onDone }: { onDone: () => void }) {
 }
 
 // ---------------------------------------------------------------------------------------------------------- setup
-type Status = { owner?: string; owner_full?: string; address?: string; call?: string; vault?: string; vault_ready?: boolean; vault_candidates?: string[]; folder_candidates?: string[]; file_roots?: string[]; secrets?: Record<string, boolean>; screen?: boolean; accessibility?: boolean; gh?: boolean; backup_repo?: string; github_org?: string; telegram?: { token: boolean; bot: string; paired: boolean; code: string }; face_env?: boolean; voice_env?: boolean };
+type Status = { owner?: string; owner_full?: string; address?: string; call?: string; vault?: string; vault_ready?: boolean; vault_candidates?: string[]; folder_candidates?: string[]; file_roots?: string[]; secrets?: Record<string, boolean>; screen?: boolean; accessibility?: boolean; gh?: boolean; backup_repo?: string; github_org?: string; github_account?: string; backup_org?: string; telegram?: { token: boolean; bot: string; paired: boolean; code: string }; face_env?: boolean; voice_env?: boolean };
 const STEPS = [
   { key: "you", title: "You", icon: Sparkles },
   { key: "mac", title: "This Mac", icon: MonitorSmartphone },
@@ -141,8 +141,20 @@ function Setup() {
   useEffect(() => { if (roots === null && st.folder_candidates) setRoots((st.file_roots || []).filter(r => st.folder_candidates!.includes(r))); }, [st.folder_candidates, st.file_roots, roots]);
   const toggleRoot = (r: string) => setRoots(x => (x || []).includes(r) ? (x || []).filter(y => y !== r) : [...(x || []), r]);
   const saveMac = async () => { if (roots) { const d = await epost("/setup/profile", { file_roots: roots }); if (!d.ok) { say("warn", d.error || "The folders were not saved."); return; } } mark("mac"); next(); };
-  const [m, setM] = useState<Machine | null>(null); const [checks, setChecks] = useState<Chk[]>([]); const [mic, setMic] = useState<"" | "ok" | "no">(""); const [cam, setCam] = useState<"" | "ok" | "no">(""); const [ptt, setPtt] = useState(false);
-  useEffect(() => { if (STEPS[step].key !== "mac") return; setM(machine()); setChecks(compatibility()); let stop = false; const t = async () => { if (stop) return; try { const d = await eget("/state"); if (d.state === "listening") setPtt(true); } catch {} setTimeout(t, 400); }; t(); return () => { stop = true; }; }, [step]);
+  const [m, setM] = useState<Machine | null>(null); const [checks, setChecks] = useState<Chk[]>([]); const [mic, setMic] = useState<"" | "ok" | "no">(""); const [cam, setCam] = useState<"" | "ok" | "no">(""); const [ptt, setPtt] = useState(false); const [heard, setHeard] = useState("");
+  useEffect(() => {                                                // the talk key: listening shows it works; the words show the ears do too
+    if (STEPS[step].key !== "mac") return; setM(machine()); setChecks(compatibility()); let stop = false; let pos: number | null = null;
+    const t = async () => {
+      if (stop) return;
+      try {
+        const d = await eget("/state"); if (d.state === "listening") setPtt(true);
+        if (pos === null) pos = (await eget("/history?limit=1")).pos ?? 0;
+        else { const tr = await eget(`/transcript?pos=${pos}`); pos = tr.pos; const you = (tr.items || []).filter((i: any) => i.role === "you" && !String(i.text).startsWith("(")).pop(); if (you) { setPtt(true); setHeard(String(you.text)); } }
+      } catch {}
+      setTimeout(t, 500);
+    };
+    t(); return () => { stop = true; };
+  }, [step]);
   const testMic = async () => { try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); setMic("ok"); } catch { setMic("no"); } };
   const testCam = async () => { try { const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach(t => t.stop()); setCam("ok"); } catch { setCam("no"); } };
 
@@ -237,7 +249,7 @@ function Setup() {
                   <Row ok={cam === "" ? false : cam === "ok"} title="Camera" note={cam === "ok" ? "granted (it stays off until you ask)" : "optional: a look when you ask"} action={<Button size="sm" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={testCam}><Eye className="h-4 w-4" />Allow</Button>} />
                   <Row ok={!!st.screen} title="Screen Recording (for Terminal)" note={st.screen ? "granted: Troi can read your screen when asked" : "System Settings › Privacy & Security › Screen Recording › Terminal, then reopen Terminal"} action={<Button size="sm" variant="ghost" className="text-white/70 hover:bg-white/10" onClick={refresh}>Check again</Button>} />
                   <Row ok={!!st.accessibility} title="Accessibility (for Terminal)" note={st.accessibility ? "granted: the cursor guard can read buttons" : "System Settings › Privacy & Security › Accessibility › Terminal"} />
-                  <Row ok={ptt} title="The talk key (Input Monitoring)" note={ptt ? "heard: holding Right Option works" : "hold Right Option for a second; if nothing happens, allow Terminal under Input Monitoring"} />
+                  <Row ok={ptt} title="The talk key (Input Monitoring)" note={heard ? `Troi heard: “${heard}” (it answers once the setup is done)` : ptt ? "the key works: now say something while you hold it" : "hold Right Option and say something; if nothing happens, allow Terminal under Input Monitoring"} />
                 </div>
                 <div className="grid gap-2"><div className="text-xs font-medium uppercase tracking-[0.2em] text-white/55">Folders it may organise</div><div className="text-sm text-white/50">It moves, renames and tidies only inside these (and its own vault). It never deletes: anything bound for the Trash waits for you.</div>
                   <div className="flex flex-wrap gap-2">{(st.folder_candidates || []).map(r => { const on = (roots || []).includes(r); return <button key={r} onClick={() => toggleRoot(r)} className={cn("flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition", on ? "border-white bg-white text-black" : "border-white/20 text-white/75 hover:border-white/50")}>{on ? <Check className="h-3.5 w-3.5" /> : <FolderOpen className="h-3.5 w-3.5" />}{r.startsWith("/Volumes/") ? r.slice(9) + " (drive)" : r.replace(/^\/Users\/[^/]+\//, "")}</button>; })}</div></div>
@@ -250,7 +262,7 @@ function Setup() {
                   <div className="rounded-2xl border border-white/15 bg-white/[0.05] p-5"><div className="text-lg font-medium text-white">Use one I have</div><div className="mt-2 grid gap-2">{(st.vault_candidates || []).map(c => <button key={c} onClick={() => pickVault(c)} className="truncate rounded-lg border border-white/10 px-3 py-2 text-left text-sm text-white/80 hover:border-white/40" title={c}>{c.replace(/^\/Users\/[^/]+/, "~")}</button>)}<div className="flex gap-2"><Input className={cn(input, "h-9")} value={vaultPath} onChange={e => setVaultPath(e.target.value)} placeholder="/path/to/your vault" /><Button size="sm" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={() => pickVault(vaultPath)}>Use</Button></div></div></div>
                 </div>
                 {st.vault_ready && <Note tone="ok">Vault: {st.vault}</Note>}
-                <Field label="Nightly backup of Troi's record" hint={st.gh ? "A private GitHub repo; created on the first backup if it does not exist." : "Sign in to GitHub first (gh auth login in a terminal); until then the record stays on this Mac only."}><Input className={input} value={backupRepo} onChange={e => setBackupRepo(e.target.value)} placeholder={st.backup_repo || "you/troi-of-silo-one-backups (default)"} /></Field>
+                <Field label="Nightly backups" hint={st.gh ? `Private repos in ${st.backup_org || "Silo-One-Ug"}, written as ${st.github_account || "ayesigapaul"}: the record here, the vault in troi-vault. Created on the first backup.` : `Sign ${st.github_account || "ayesigapaul"} in to GitHub first (gh auth login in a terminal); until then the backups stay on this Mac.`}><Input className={input} value={backupRepo} onChange={e => setBackupRepo(e.target.value)} placeholder={st.backup_repo || `${st.backup_org || "Silo-One-Ug"}/troi-of-silo-one-backups (default)`} /></Field>
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" disabled={!st.vault_ready} onClick={next}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "voice" && (<>

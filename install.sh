@@ -1,6 +1,6 @@
 #!/bin/bash
 # Troi of Silo One: install on this Mac. Run it once after cloning (and again any time: it only adds what is missing).
-#   git clone https://github.com/ayesigapaul/troi-of-silo-one && cd troi-of-silo-one && ./install.sh
+#   git clone https://github.com/Silo-One-Ug/troi-of-silo-one && cd troi-of-silo-one && ./install.sh
 # Then double-click "Troi" on the Desktop: the welcome takes you through the rest (your name, your keys, your vault).
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 ROOT="$(cd "$(dirname "$0")" && pwd)"; C="$ROOT/troi-console"; source "$C/paths.sh"

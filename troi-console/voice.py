@@ -419,9 +419,31 @@ def _follow_voice_choice():
 _orig_ask = ask_stream
 
 
+# ---- the welcome: until the owner has been set up, Troi hears but does not answer. The welcome shows what it heard
+# (the talk-key test); only the voice line's own warm-up and the welcome's voice test reach the brain. A Telegram
+# message gets one line back, so a freshly paired phone knows it works.
+_ONBOARDING_OK = ("Warmup ping", "(this is a voice test from the welcome")
+
+
+async def _quiet():
+    return
+    yield                                                          # an empty reply: nothing is said
+
+
+async def _one(line):
+    yield line
+
+
 def ask_stream(self, utterance):                                   # noqa: F811
     _tap(self); _follow_voice_choice()
-    if str(utterance).startswith("Warmup ping") and settings().get("living_greeting", True) and settings().get("welcomed", False):
+    u = str(utterance)
+    if not settings().get("welcomed", False) and not u.startswith(_ONBOARDING_OK):
+        log(f"[welcome] heard during the setup, not answered: {u[:80]}")
+        _TURN["result"] = True                                     # nothing was asked of the brain: no result is due, the link is fine
+        if u.startswith("(via telegram)"):
+            return _one("I'm here. Let's finish the setup on your Mac first; I'm all yours after that.")
+        return _quiet()
+    if u.startswith("Warmup ping") and settings().get("living_greeting", True) and settings().get("welcomed", False):
         return _then(_orig_ask(self, utterance), _greet_soon)
     return _orig_ask(self, utterance)
 

@@ -35,7 +35,7 @@ LAUNCH = Path.home() / "Library" / "LaunchAgents"
 
 DEFAULTS = {
     "owner": "", "owner_full": "", "address": "", "call": "sir",
-    "vault": "", "vault_repo": "", "backup_repo": "", "github_org": "",
+    "vault": "", "vault_repo": "", "backup_repo": "", "github_org": "", "github_account": "ayesigapaul", "backup_org": "Silo-One-Ug",
     "wake_word": True, "wake_names": ["troi", "troy", "troye", "troie", "troix", "troya"], "barge_in": True,
     "eyes": "off", "voice_id": "off", "voice_id_threshold": 0.78, "face_id_threshold": 0.7, "face_gate": False,
     "brief_time": "08:00", "brief_enabled": True, "report_time": "18:30", "report_enabled": True,
@@ -185,6 +185,8 @@ def services(action: str, name: str | None = None) -> list:
             _launchctl("bootout", f"gui/{uid}/{LABEL}.{s}"); r = _launchctl("bootstrap", f"gui/{uid}", str(plist))
             out.append(f"{s}: {'loaded' if r.returncode == 0 else 'not loaded (' + (r.stderr.strip() or 'error') + ')'}")
         elif action == "restart":
+            if s == "vault-backup" and not name:                 # a calendar job: restarting everything must not run the backup
+                continue
             r = _launchctl("kickstart", "-k", f"gui/{uid}/{LABEL}.{s}"); out.append(f"{s}: {'restarted' if r.returncode == 0 else 'not running'}")
         elif action == "status":
             r = _launchctl("print", f"gui/{uid}/{LABEL}.{s}"); m = re.search(r"\bstate = ([\w ]+)", r.stdout)
