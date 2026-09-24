@@ -43,6 +43,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `doctor.sh` | | The check-up, in plain words |
 | `housekeeping.sh` | | Rotate logs, send old captures to the Trash |
 | `hands.sh` | `doctor`, and every hands tool by name | The native hands from a terminal |
+| `google.sh` | `mcp`; `status`, `setup <client_secret.json>`, `enable [project]`, `signin <email>` | Your Google account as a tool server (`mcp__google__*`): Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts |
 | `setup.py` | `render`, `services status\|restart\|install\|remove` | The rendered files and the background services |
 | `keychain.py` | `list`, `set <name>` | Secrets |
 | `gh` | | GitHub (and `gcloud`, `docker`, `kubectl` where this Mac has them) |

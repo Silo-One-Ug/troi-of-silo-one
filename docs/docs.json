@@ -109,7 +109,8 @@
               "40-abilities/reminders-and-calendar",
               "40-abilities/briefs-and-reports",
               "40-abilities/code-ci-and-servers",
-              "40-abilities/drawing"
+              "40-abilities/drawing",
+              "40-abilities/google"
             ]
           },
           {
@@ -321,6 +322,10 @@
     {
       "source": "/40-abilities/files-and-apps.md",
       "destination": "/40-abilities/files-and-apps"
+    },
+    {
+      "source": "/40-abilities/google.md",
+      "destination": "/40-abilities/google"
     },
     {
       "source": "/40-abilities/meetings.md",

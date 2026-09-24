@@ -14,6 +14,7 @@ minutes.
 ## Calendar
 
 "What's on today", "when is my next meeting", "what's this week": the agent reads the Mac's Calendar
-app (add Google or other accounts under System Settings › Internet Accounts). The pulse gives a
-heads-up 15 minutes before an event, in the room or on Telegram, and offers to prep and to record
-it; the morning brief lists the day's events.
+app (add Google or other accounts under System Settings › Internet Accounts). With your Google
+account signed in ([Your Google account](google.md)), Google Calendar is also there directly. The
+pulse gives a heads-up 15 minutes before an event, in the room or on Telegram, and offers to prep
+and to record it; the morning brief lists the day's events.

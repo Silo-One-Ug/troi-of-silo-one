@@ -57,6 +57,13 @@ The installer:
 
 Run it again at any time: every step skips what is already done.
 
+## Optional pieces
+
+Telegram, voice calls, the CI watch, the server watch and your Google account each have their own
+page: [Telegram](../10-talking/telegram.md), [Calls](../10-talking/calls.md),
+[Code, CI and servers](../40-abilities/code-ci-and-servers.md),
+[Your Google account](../40-abilities/google.md).
+
 ## Updating
 
 ```bash

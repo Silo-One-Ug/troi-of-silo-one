@@ -100,6 +100,14 @@ Both run at 23:30 and go to private repos, written as the GitHub account in `git
 - **The vault** is committed and pushed to its own git remote. A vault without one gets `troi-vault` in the organization (or `vault_repo` from `data/console.json`), created on the first run. Pushes never force.
 - **Troi's record**, the database and any new files, goes as one release a night to `troi-of-silo-one-backups`, or to `backup_repo` from the welcome's **Memory** step. Starting Troi never runs a backup; Routines › Vault backup › Run now does (it backs up the record too).
 
+### Your Google account (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts)
+
+1. In [Google Cloud](https://console.cloud.google.com), pick a project. **APIs & Services › OAuth consent screen**: External, an app name, your email, yourself as a test user. **Credentials › Create credentials › OAuth client ID**: a Web application with `http://localhost:8788/oauth2callback` as an authorised redirect URI. Download the JSON.
+2. `troi-console/google.sh setup ~/Downloads/client_secret_….json`, then `troi-console/google.sh enable` (the APIs, in the gcloud project), then `troi-console/google.sh signin you@gmail.com` and approve the consent screen in the browser.
+3. Start Troi again. `troi-console/google.sh status` says where things stand. An app left "In testing" on Google's side signs out after seven days; "In production" does not.
+
+Sending an email, sharing a file or answering an invitation always waits for your go-ahead; nothing there is ever deleted.
+
 ### Folders Troi may organise
 
 Choose them in the welcome's **This Mac** step, or list them as `file_roots` in `data/console.json` and run `python3 troi-console/setup.py render`, so the agent may read them too. Troi moves, renames and tidies only inside these folders and its vault.

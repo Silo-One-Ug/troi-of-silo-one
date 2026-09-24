@@ -16,6 +16,7 @@ pgrep -f "eyes[.]py" >/dev/null && ok "eyes daemon" || warn "eyes daemon not run
 echo "permissions"
 "$C/.venv-ring/bin/python" -c "from ApplicationServices import AXIsProcessTrusted; import sys; sys.exit(0 if AXIsProcessTrusted() else 1)" 2>/dev/null && ok "Accessibility (cursor guard can read buttons)" || red "Accessibility missing for the app that launches the agent: System Settings > Privacy & Security > Accessibility"
 "$C/hands.sh" doctor 2>/dev/null | grep -q '"accessibility_trusted": true' && ok "native hands answer (hands.sh doctor)" || red "native hands cannot see the apps (Accessibility for the app that launched the agent; run $C/hands.sh doctor)"
+g="$("$C/google.sh" status --line 2>/dev/null)"; case $? in 0) ok "$g";; 2) warn "$g";; *) warn "${g:-Google account not set up (google.sh setup)}";; esac
 SC="$(mktemp -t sc-test).png"   # screencapture will not write into a folder of the agent's own; a temp file is fine
 /usr/sbin/screencapture -x -R0,0,2,2 "$SC" 2>/dev/null && [ -s "$SC" ] && ok "Screen Recording (screen sight)" || red "Screen Recording missing for the app that launches the agent (Terminal): System Settings > Privacy & Security > Screen Recording, then quit and reopen Terminal"
 command rm -f "$SC" 2>/dev/null

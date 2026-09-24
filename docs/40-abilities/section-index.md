@@ -6,8 +6,9 @@ sidebarTitle: Overview
 
 Troi is not a chatbot with a keyboard. It has a browser, native hands on every app, a camera and
 screen sight, application control, file hands, its own console and galaxies, the hands board,
-reminders, the calendar, meetings, the news, pictures, music, code sessions, CI and servers, Telegram
-and phone calls. When a request needs the world, it reaches for the tool instead of saying it cannot.
+reminders, the calendar, your Google account, meetings, the news, pictures, music, code sessions, CI
+and servers, Telegram and phone calls. When a request needs the world, it reaches for the tool
+instead of saying it cannot.
 
 | Page | What it covers |
 | --- | --- |
@@ -23,5 +24,6 @@ and phone calls. When a request needs the world, it reaches for the tool instead
 | [Briefs and reports](briefs-and-reports.md) | The morning brief and the end-of-day report |
 | [Code, CI and servers](code-ci-and-servers.md) | Coding sessions in a project, PR reviews, the CI watch, the server watch |
 | [Drawing in the conversation](drawing.md) | Charts, tables, stats, galleries, maps and players drawn from data |
+| [Your Google account](google.md) | Calendar, Gmail, Drive, Docs, Sheets, Tasks and Contacts, signed in once; what needs your go-ahead |
 
 The exact commands behind each ability are in the [toolbox](../70-reference/toolbox.md).
