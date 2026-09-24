@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shared settings for the shell tools (sourced): the agent's name, the owner's name, the vault path, the GitHub org,
+# Shared settings for the shell tools (sourced): the agent's name, the owner's name, the vault path, the GitHub orgs and users the CI watch follows,
 # and the GitHub account and organization the backups belong to.
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/paths.sh"
 _get() { python3 -c 'import json,sys
@@ -10,7 +10,12 @@ print(v if not isinstance(v, (list, dict)) else json.dumps(v))' "$@"; }
 AGENT="$(_get "$ROOT/backtalk/backtalk.json" name Troi)"
 OWNER="$(_get "$CONFIG" owner "the owner")"
 VAULT="$(_get "$CONFIG" vault "$DATA/vault")"
-GH_ORG="$(_get "$CONFIG" github_org "")"
+GH_ORGS="$(python3 -c 'import json,sys
+try: c=json.load(open(sys.argv[1]))
+except Exception: c={}
+o=[str(x).strip() for x in (c.get("github_orgs") or []) if str(x).strip()] or ([str(c["github_org"]).strip()] if c.get("github_org") else [])
+print(" ".join(dict.fromkeys(o)))' "$CONFIG")"                        # the GitHub orgs and users the CI watch follows, space-separated
+GH_ORG="${GH_ORGS%% *}"                                             # the first of them, for anything that takes one
 VAULT_REPO="$(_get "$CONFIG" vault_repo "")"
 GITHUB_ACCOUNT="$(_get "$CONFIG" github_account "ayesigapaul")"     # the gh account every Troi repo is written as
 BACKUP_ORG="$(_get "$CONFIG" backup_org "Silo-One-Ug")"             # where the backups live

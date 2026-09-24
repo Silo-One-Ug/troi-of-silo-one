@@ -194,15 +194,14 @@ function Setup() {
   const learnVoice = async () => { const d = await epost("/settings", { voice_id: "learn" }); if (d.pending) { setVoiceMsg("Protected: unlock with your PIN first."); return; } setVoiceMsg("Hold Right Option and read the passage below aloud, a few sentences at a time, until this says your voice is known."); let n = 0; const t = setInterval(async () => { n++; const c = await eget("/config").catch(() => null); if (c?.voice_print) { clearInterval(t); setVoiceMsg("Your voice is known. Voice ID is on."); } else if (n > 120) clearInterval(t); }, 1500); };
 
   // ---- extras
-  const [ex, setEx] = useState({ openai: "", gemini: "", agoraId: "", agoraCert: "", org: "" });
+  const [ex, setEx] = useState({ openai: "", gemini: "", agoraId: "", agoraCert: "" });
   const saveExtras = async () => {
     const kept: string[] = [];
     if (ex.openai && await keepKey("openai", ex.openai, "")) kept.push("OpenAI");
     if (ex.gemini && await keepKey("gemini", ex.gemini, "")) kept.push("Gemini");
     if (ex.agoraId && await keepKey("agora-appid", ex.agoraId, "")) kept.push("Agora");
     if (ex.agoraCert && await keepKey("agora-cert", ex.agoraCert, "")) kept.push("Agora certificate");
-    if (ex.org) { await epost("/setup/profile", { github_org: ex.org }); kept.push("GitHub org"); }
-    setEx({ openai: "", gemini: "", agoraId: "", agoraCert: "", org: "" }); mark("extras"); say("ok", kept.length ? "Kept: " + kept.join(", ") + "." : "Nothing to keep; you can add these later."); next();
+    setEx({ openai: "", gemini: "", agoraId: "", agoraCert: "" }); mark("extras"); say("ok", kept.length ? "Kept: " + kept.join(", ") + "." : "Nothing to keep; you can add these later."); next();
   };
 
   // ---- ready: the voice line starts over with everything written here, and introduces itself
@@ -300,13 +299,12 @@ function Setup() {
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" onClick={next}>{st.secrets?.pin ? "Continue" : "Skip for now"}<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "extras" && (<>
-                <div><h2 className="text-3xl font-semibold tracking-tight text-white">Extras</h2><p className="mt-2 text-white/60">All optional: add any of them now or later. Each key goes to the Keychain.</p></div>
+                <div><h2 className="text-3xl font-semibold tracking-tight text-white">Extras</h2><p className="mt-2 text-white/60">All optional: add any of them now or later. Each key goes to the Keychain. The GitHub builds Troi watches are set in Routines, once you are in.</p></div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Pictures · OpenAI key" hint="So Troi can make pictures from words."><Input type="password" className={input} value={ex.openai} onChange={e => setEx({ ...ex, openai: e.target.value })} placeholder={st.secrets?.openai ? "kept (leave empty to keep it)" : "sk-…"} /></Field>
                   <Field label="Pictures · Gemini key" hint="An alternative to OpenAI."><Input type="password" className={input} value={ex.gemini} onChange={e => setEx({ ...ex, gemini: e.target.value })} placeholder={st.secrets?.gemini ? "kept" : "AIza…"} /></Field>
                   <Field label="Phone calls · Agora app id" hint="So Troi can call you."><Input className={input} value={ex.agoraId} onChange={e => setEx({ ...ex, agoraId: e.target.value })} placeholder={st.secrets?.["agora-appid"] ? "kept" : "app id"} /></Field>
                   <Field label="Phone calls · Agora certificate"><Input type="password" className={input} value={ex.agoraCert} onChange={e => setEx({ ...ex, agoraCert: e.target.value })} placeholder={st.secrets?.["agora-cert"] ? "kept" : "certificate"} /></Field>
-                  <Field label="GitHub org or user" hint="Troi watches its CI and tells you when a build fails."><Input className={input} value={ex.org} onChange={e => setEx({ ...ex, org: e.target.value })} placeholder={st.github_org || "your-org"} /></Field>
                 </div>
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" onClick={saveExtras}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}

@@ -15,7 +15,8 @@ events, the reminders, the open priorities and what changed overnight.
 At `report_time` (18:30 by default; set it in Routines or as `report_time` in `data/console.json`),
 the pulse builds a report of the day:
 
-- commits in the git repositories under your file roots, and in your GitHub org (who, what, when);
+- commits in the git repositories under your file roots, and in the GitHub orgs and users the CI
+  watch follows (who, what, when);
 - CI runs, notes changed in the vault, files touched and reminders that fired;
 - a "What changed today" paragraph, written by the agent from those facts in the same shared
   session.

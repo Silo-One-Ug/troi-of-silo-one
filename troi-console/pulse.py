@@ -4,7 +4,7 @@ com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's ty
 
   reminders     the reminders document in data/troi.db, written by remind.sh; each fires once at its
                 time as "(reminder: ...)" and the agent says it out loud (to Telegram when the voice line is down)
-  CI watch      every 3 minutes, the newest run on main of each repo in the GitHub org (github_org in the
+  CI watch      every 3 minutes, the newest run on main of each repo of the GitHub orgs and users (github_orgs in the
                 settings); a run that finished since the last check is reported (failures always,
                 successes only when the previous run failed)
   server watch  every 15 minutes, servers.py checks the servers in data/servers.json; only changes are told
@@ -49,10 +49,19 @@ REMINDERS = _DB.doc("reminders")
 STATE = _DB.doc("pulse-state")
 LOG = HOME / "backtalk" / "logs" / "backtalk.log"
 VOICE_STATE = HOME / "backtalk" / ".voice_state"
-try:
-    GH_ORG = json.loads(P.CONFIG.read_text()).get("github_org", "")
-except Exception:
-    GH_ORG = ""
+def github_orgs():
+    """The GitHub orgs and users whose repos the CI watch follows: github_orgs in the settings (Routines › CI watch);
+    github_org, the old single one, still counts. Read every round, so a change applies at once."""
+    try:
+        c = json.loads(P.CONFIG.read_text())
+    except Exception:
+        return []
+    orgs = [str(o).strip() for o in (c.get("github_orgs") or []) if str(o).strip()]
+    if not orgs and c.get("github_org"):
+        orgs = [str(c["github_org"]).strip()]
+    return list(dict.fromkeys(orgs))
+
+
 GH_EVERY = 180
 PATH = "/opt/homebrew/bin:/usr/local/bin:" + os.environ.get("PATH", "")
 
@@ -132,33 +141,36 @@ def check_reminders():
 
 
 def check_github(state):
-    if not GH_ORG:
+    orgs = github_orgs()
+    if not orgs:
         return
-    repos = gh(["repo", "list", GH_ORG, "--json", "name", "-q", "[.[].name]"]) or []
     seen = state.setdefault("gh", {})
-    for repo in repos:
-        runs = gh(["run", "list", "-R", f"{GH_ORG}/{repo}", "-b", "main", "-L", "1",
-                   "--json", "databaseId,status,conclusion,name,headSha,displayTitle"]) or []
-        if not runs:
-            continue
-        r = runs[0]
-        key = str(r["databaseId"])
-        prev = seen.get(repo, {})
-        if r["status"] != "completed":
-            continue
-        if prev.get("id") == key:
-            continue                 # already reported / already seen
-        first = not prev
-        seen[repo] = {"id": key, "conclusion": r["conclusion"]}
-        if first:
-            continue                 # baseline only, no announcement on startup
-        if r["conclusion"] == "failure" or (prev.get("conclusion") == "failure" and r["conclusion"] == "success"):
-            what = "FAILED" if r["conclusion"] == "failure" else "is green again"
-            log(f"[pulse]  github: {repo} {r['name']} {what}")
-            tell(f"(github watch: on {GH_ORG}/{repo}, the workflow \"{r['name']}\" on main {what}: \"{r.get('displayTitle','')}\". "
-                 f"Tell the owner in one sentence. If it FAILED, run your CI Failure Response job from the vault: read the failing log, diagnose, "
-                 f"and if the fix is small open a PR for it, then report on Telegram; never merge without green CI and the owner's word.)",
-                 phone=f"GitHub: {repo} \u2014 {r['name']} on main {what}: {r.get('displayTitle','')}")
+    for org in orgs:
+        repos = gh(["repo", "list", org, "--json", "name", "-q", "[.[].name]"]) or []
+        for repo in repos:
+            full = f"{org}/{repo}"
+            runs = gh(["run", "list", "-R", full, "-b", "main", "-L", "1",
+                       "--json", "databaseId,status,conclusion,name,headSha,displayTitle"]) or []
+            if not runs:
+                continue
+            r = runs[0]
+            key = str(r["databaseId"])
+            prev = seen.get(full) or seen.get(repo, {})    # the state was keyed by the repo alone before there were several orgs
+            if r["status"] != "completed":
+                continue
+            if prev.get("id") == key:
+                continue                 # already reported / already seen
+            first = not prev
+            seen[full] = {"id": key, "conclusion": r["conclusion"]}
+            if first:
+                continue                 # baseline only, no announcement on startup
+            if r["conclusion"] == "failure" or (prev.get("conclusion") == "failure" and r["conclusion"] == "success"):
+                what = "FAILED" if r["conclusion"] == "failure" else "is green again"
+                log(f"[pulse]  github: {full} {r['name']} {what}")
+                tell(f"(github watch: on {full}, the workflow \"{r['name']}\" on main {what}: \"{r.get('displayTitle','')}\". "
+                     f"Tell the owner in one sentence. If it FAILED, run your CI Failure Response job from the vault: read the failing log, diagnose, "
+                     f"and if the fix is small open a PR for it, then report on Telegram; never merge without green CI and the owner's word.)",
+                     phone=f"GitHub: {full} \u2014 {r['name']} on main {what}: {r.get('displayTitle','')}")
 
 
 SERVER_EVERY = 900          # the server watch: every 15 minutes, read-only over SSH (servers.py)

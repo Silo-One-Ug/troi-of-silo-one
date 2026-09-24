@@ -25,7 +25,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `media.py` | `now`, `play [words]`, `pause`, `resume`, `stop`, `next`, `prev`, `volume N`, `louder`, `quieter`, `shuffle on\|off`, `like`, `movie on\|off` | Apple Music by voice, and movie mode |
 | `db.py` | `tail [N]`, `sessions`, `stats`, `star <id\|path>`, `retain` | The record |
 | `meeting.py` | `devices`, `start <name> [--device NAME]`, `stop`, `status`, `transcribe <file> [--lang xx] [--speakers N]`, `list` | Meetings |
-| `ci-status.sh` | | CI, PRs and releases per repo of your GitHub org |
+| `ci-status.sh` | | CI, PRs and releases per repo of the GitHub orgs and users you watch |
 | `pr.py` | `list [repo]`, `review <repo> <n> [--post] [--tests]`, `review <project> --local`, `show <repo> <n>` | A PR review, headless, in a throwaway checkout |
 | `code.sh` | `list`, `<project> [--window]` | A Claude Code session inside a project folder that still boots as the agent |
 | `servers.py` | `list`, `add <name> <ssh-host> [role]`, `check [name] [--json]` | Read-only health of the servers in `data/servers.json` |

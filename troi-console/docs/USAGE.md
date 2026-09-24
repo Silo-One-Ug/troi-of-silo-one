@@ -18,7 +18,7 @@ The first time the console opens, it goes to `/welcome`: who Troi is, in seven s
 - **Voice**: Kokoro, or ElevenLabs with your key and one of your voices.
 - **Your phone**: Telegram.
 - **Security**: the PIN, your face and your voice.
-- **Extras**: keys for pictures and calls, and the GitHub org to watch.
+- **Extras**: keys for pictures and calls.
 
 Your name and a memory are needed; everything else can wait. Until you finish, Troi hears but does not answer. The last step restarts the voice with everything you set, and Troi introduces itself.
 
@@ -137,7 +137,7 @@ The agent's server speaks [AG-UI](https://docs.ag-ui.com). `POST /agent` takes a
 
 At the report time (18:30 by default; set it in Routines or as `report_time` in `data/console.json`), the pulse builds a report of the day:
 
-- commits in the git repositories under your file roots, and in your GitHub org (who, what, when);
+- commits in the git repositories under your file roots, and in the GitHub orgs and users the CI watch follows (who, what, when);
 - CI runs, notes changed in the vault, files touched and reminders that fired;
 - a "What changed today" paragraph, written by the agent from those facts in the same shared session.
 
@@ -154,13 +154,13 @@ It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you 
 | "remind me in 20 minutes to ..." / "remind me at 3pm ..." | the pulse fires it, and the agent says it (on Telegram when the voice line is down) |
 | "review PR 3 on my-app" / "review my changes in the website" | a review in a headless session of the agent's own, in a throwaway checkout with read-only tools, following your Code Review job. The report lands in `data/blobs/reviews/` and on Telegram, and goes on the PR only when you say "post it" |
 | "work on the website" / "open the my-app project" | a Terminal window with a Claude Code session inside that project folder that is still your agent (the boot file, the guard and the vault come along); `code.sh list` shows the projects from the settings |
-| "how are the servers" / "check prod" | a read-only health check over SSH of every server in `data/servers.json`: load, disk, memory, failed services, containers, updates, reboot needed. The pulse runs it every 15 minutes and speaks only what changed |
+| "how are the servers" / "check prod" | a read-only health check over SSH of every server in `data/servers.json`: load, disk, memory, failed services, containers, updates, reboot needed. The pulse runs it every 15 minutes and speaks only what changed. A node that wants your own sign-in (a Google Cloud VM behind IAP with OS Login's 2-step, or gcloud signed out) shows as signed out, not down: the agent asks you once to sign in from your terminal, sets itself a reminder and picks the task up again later |
 | "what's on today" / "when is my next meeting" | the Mac's Calendar app (add Google or others under Internet Accounts). The pulse gives a heads-up 15 minutes before an event, the morning brief lists the day, and "record this meeting" names the recording after the event |
 | "play some jazz" / "play my gospel playlist" / "pause" / "next" / "what's this song" / "louder" | Apple Music: a playlist by name, then the library by genre, artist, album or title. When nothing matches, the app's search opens for you to tap. With `duck_music` on in the settings, music dips while the agent speaks |
 | "movie mode" / "movie mode off" | push to talk so the film can't wake the agent, sound cues off, the floating conversation hidden and the page dimmed. "Off" restores it (say "go hands free" yourself if you were hands-free) |
 | "record this meeting" / "stop recording" / "transcribe it" | a recording, from "Meeting In" (the Mac's microphone plus BlackHole, with the Mac's sound routed through "Meeting Out" until stop), or from the microphone alone without BlackHole. Then a speaker-labelled transcript with ElevenLabs Scribe in `data/blobs/meetings/`, from which the agent writes the meeting note into the vault |
 | "good morning" | the morning brief |
-| "how is CI" / "any failed builds" | CI status for your GitHub org |
+| "how is CI" / "any failed builds" | CI status across the GitHub orgs and users you watch (set under Routines › CI watch) |
 | "back up now" | the nightly backup, now: the vault, then the record |
 | "call me" | a call link on Telegram; the agent answers |
 | "show me the photo of ..." | the picture goes up on the hands board |

@@ -848,6 +848,8 @@ def apply_settings(body, cur):
         cur["wake_word"] = body["wake_word"]
     if isinstance(body.get("lan"), bool) or body.get("lan") == "tailscale":   # answer beyond this Mac (a phone's console); takes effect at the next start
         cur["lan"] = body["lan"]
+    if isinstance(body.get("github_orgs"), list):                        # the GitHub orgs and users the CI watch follows (Routines › CI watch)
+        cur["github_orgs"] = list(dict.fromkeys(o.strip() for o in body["github_orgs"] if isinstance(o, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", o.strip())))[:24]
     if isinstance(body.get("face_gate"), bool):
         cur["face_gate"] = body["face_gate"]
     if body.get("eyes") in ("off", "every", "watch", "screen"):
@@ -968,17 +970,26 @@ def reports_list():
     return out
 
 
+def github_orgs(cfg=None):
+    """The GitHub orgs and users the CI watch and the report follow: github_orgs (Routines › CI watch), or the old single github_org."""
+    cfg = settings() if cfg is None else cfg
+    orgs = [str(o).strip() for o in (cfg.get("github_orgs") or []) if str(o).strip()]
+    if not orgs and cfg.get("github_org"):
+        orgs = [str(cfg["github_org"]).strip()]
+    return list(dict.fromkeys(orgs))
+
+
 def routines():
     """Everything that runs on a clock, with its schedule, switch and last run; the reminders; the reports."""
     cfg = settings(); st = json.loads(DB.doc("pulse-state").read_text()) if DB.doc("pulse-state").exists() else {}; ld = launchd_jobs()
     gh = st.get("gh", {}) if isinstance(st, dict) else {}
     green = sum(1 for v in gh.values() if isinstance(v, dict) and v.get("conclusion") == "success")
     red = sum(1 for v in gh.values() if isinstance(v, dict) and v.get("conclusion") == "failure")
-    org = cfg.get("github_org", "")
+    orgs = github_orgs(cfg)
     jobs = [
         {"id": "brief", "name": "Morning brief", "when": cfg.get("brief_time", "08:00"), "editable": True, "enabled": cfg.get("brief_enabled", True) is not False, "last": st.get("brief_done", ""), "detail": "spoken, from the Morning Brief job in the vault"},
         {"id": "report", "name": "End-of-day report", "when": cfg.get("report_time", "18:30"), "editable": True, "enabled": cfg.get("report_enabled", True) is not False, "last": st.get("report_done", ""), "detail": "what changed today: commits, CI, notes, files; the PDF goes to Telegram"},
-        {"id": "ci", "name": "CI watch", "when": "every 3 min", "enabled": bool(org), "last": "", "detail": (f"{org}: {green} green, {red} failed" if org else "no GitHub org set (the welcome's Extras step)")},
+        {"id": "ci", "name": "CI watch", "when": "every 3 min", "enabled": bool(orgs), "last": "", "orgs": orgs, "detail": (f"{', '.join(orgs)}: {green} green, {red} failed" if orgs else "no GitHub org or user yet: add one below (it needs gh signed in)")},
         {"id": "servers", "name": "Server watch", "when": "every 15 min", "enabled": bool((_read_json(P.DATA / "servers.json") or {}).get("servers")), "last": "", "detail": (lambda sv, iss: f"{len(sv)} servers, {len(iss)} open issue(s)" + (": " + "; ".join(iss[:3]) if iss else "") if sv else "no servers yet (servers.py add <name> <ssh-host>)")((_read_json(P.DATA / "servers.json") or {}).get("servers", []), st.get("servers") or [])},
         {"id": "calendar", "name": "Calendar", "when": "every minute", "enabled": True, "last": "", "detail": "a heads-up 15 minutes before each event in Calendar.app; the brief lists the day"},
         {"id": "backup", "name": "Vault backup", "when": "23:30", "enabled": ld.get("vault-backup", {}).get("loaded", False), "last": last_log_line(P.LOGS / "backup.log"), "detail": "commits and pushes the vault, then sends the record to its backup repo; never force-pushes"},
@@ -1328,7 +1339,7 @@ class Handler(BaseHTTPRequestHandler):
                 "hand_tuning": settings().get("hands", SETTING_DEFAULTS["hands"]),
                 "wake_names": settings()["wake_names"],
                 "tts": settings().get("tts", "kokoro"), "elevenlabs_voice": settings().get("elevenlabs_voice", ""), "elevenlabs_voice_name": elevenlabs_voice_name(settings().get("elevenlabs_voice", "")), "elevenlabs_key": KC.has("elevenlabs"),
-                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""), "lan": settings().get("lan", False), "tailscale": ({"name": TAILSCALE["name"], "ip": TAILSCALE["ip"]} if TAILSCALE else None),
+                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""), "lan": settings().get("lan", False), "github_orgs": github_orgs(), "tailscale": ({"name": TAILSCALE["name"], "ip": TAILSCALE["ip"]} if TAILSCALE else None),
                 "face": f"http://127.0.0.1:{VIS.get('port', 8790)}/faces/{VIS.get('face', 'board')}/",
                 "hands": f"http://127.0.0.1:{HANDS.get('port', 8794)}/stage.html",
             })
@@ -1538,7 +1549,7 @@ class Handler(BaseHTTPRequestHandler):
             import setup as SETUP
             st = SETUP.status(); d = doctor()
             st.update({"screen": d.get("screen", False), "accessibility": d.get("accessibility", False), "doctor": d.get("lines", []), "telegram": telegram_state(), "owner_full": settings().get("owner_full", ""),
-                       "address": settings().get("address", ""), "call": settings().get("call", "sir"), "github_org": settings().get("github_org", ""), "backup_repo": settings().get("backup_repo", ""),
+                       "address": settings().get("address", ""), "call": settings().get("call", "sir"), "github_org": settings().get("github_org", ""), "github_orgs": github_orgs(), "backup_repo": settings().get("backup_repo", ""),
                        "github_account": settings().get("github_account", "ayesigapaul"), "backup_org": settings().get("backup_org", "Silo-One-Ug"),
                        "gh": bool(shutil.which("gh")) and subprocess.run(["gh", "auth", "token", "-u", settings().get("github_account", "ayesigapaul")], capture_output=True).returncode == 0,
                        "vault_candidates": vault_candidates(), "folder_candidates": folder_candidates(), "file_roots": settings().get("file_roots", [])})

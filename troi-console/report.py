@@ -7,7 +7,7 @@
   report.py --no-narrative  facts only (no call to the brain)
 
 Facts: commits today in every git repo under the browsable folders (who, what, when), commits and
-CI runs today in the GitHub org from the settings, notes changed in the vault, reminders that fired,
+CI runs today in the GitHub orgs and users the CI watch follows, notes changed in the vault, reminders that fired,
 files touched, and how much talking went on. The brain writes the narrative (the same shared
 session, so it knows the day). Output: data/blobs/reports/<date>.html, .pdf and .json; the console's Reports
 page lists them; the PDF goes to Telegram. Runs on the system python, standard library only.
@@ -93,32 +93,36 @@ def local_commits(day, roots):
     return repos
 
 
-def github_activity(day, org):
-    if not org:
-        return {"org": "", "repos": [], "runs": []}
+def github_activity(day, orgs):
+    """Commits and CI runs of the day in every org and user the CI watch follows. "org" stays the label the report shows."""
+    orgs = [o for o in (orgs if isinstance(orgs, list) else [orgs]) if o]
+    if not orgs:
+        return {"org": "", "orgs": [], "repos": [], "runs": []}
     start = f"{day}T00:00:00Z"; end = f"{day}T23:59:59Z"
-    names_ = []
-    try:
-        names_ = json.loads(run(["gh", "repo", "list", org, "--json", "name", "-q", "[.[].name]", "-L", "60"], timeout=40) or "[]")
-    except Exception:
-        pass
     repos, runs = [], []
-    for name in names_:
+    for org in orgs:
+      names_ = []
+      try:
+        names_ = json.loads(run(["gh", "repo", "list", org, "--json", "name", "-q", "[.[].name]", "-L", "60"], timeout=40) or "[]")
+      except Exception:
+        pass
+      for name_ in names_:
+        name = f"{org}/{name_}" if len(orgs) > 1 else name_
         try:
-            cs = json.loads(run(["gh", "api", f"/repos/{org}/{name}/commits?since={start}&until={end}&per_page=50"], timeout=40) or "[]")
+            cs = json.loads(run(["gh", "api", f"/repos/{org}/{name_}/commits?since={start}&until={end}&per_page=50"], timeout=40) or "[]")
         except Exception:
             cs = []
         if isinstance(cs, list) and cs:
             repos.append({"name": name, "commits": [{"sha": c.get("sha", "")[:7], "author": (c.get("commit", {}).get("author", {}) or {}).get("name", "") or (c.get("author") or {}).get("login", ""),
                                                        "time": (c.get("commit", {}).get("author", {}) or {}).get("date", "")[11:16], "subject": (c.get("commit", {}).get("message", "") or "").split("\n")[0][:120]} for c in cs]})
         try:
-            rs = json.loads(run(["gh", "run", "list", "-R", f"{org}/{name}", "-L", "10", "--created", day, "--json", "name,conclusion,status,headBranch,displayTitle"], timeout=40) or "[]")
+            rs = json.loads(run(["gh", "run", "list", "-R", f"{org}/{name_}", "-L", "10", "--created", day, "--json", "name,conclusion,status,headBranch,displayTitle"], timeout=40) or "[]")
         except Exception:
             rs = []
         for r in rs if isinstance(rs, list) else []:
             runs.append({"repo": name, "workflow": r.get("name", ""), "branch": r.get("headBranch", ""), "conclusion": r.get("conclusion") or r.get("status", ""), "title": (r.get("displayTitle") or "")[:90]})
     repos.sort(key=lambda r: -len(r["commits"]))
-    return {"org": org, "repos": repos, "runs": runs}
+    return {"org": ", ".join(orgs), "orgs": orgs, "repos": repos, "runs": runs}
 
 
 def vault_changes(day, vault):
@@ -191,7 +195,7 @@ def gather(day):
     vault = cfg.get("vault", "")
     agent, owner = names()
     return {"date": day, "agent": agent, "owner": owner, "built": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "local": local_commits(day, roots), "github": github_activity(day, cfg.get("github_org", "")),
+            "local": local_commits(day, roots), "github": github_activity(day, [str(o).strip() for o in (cfg.get("github_orgs") or []) if str(o).strip()] or ([cfg["github_org"]] if cfg.get("github_org") else [])),
             "vault": vault_changes(day, vault), "files": files_touched(day, roots, vault), "log": day_log(day, agent)}
 
 
@@ -296,7 +300,7 @@ def render(facts, story):
     if gh["org"]:
         parts.append(f"<h2>On GitHub · {esc(gh['org'])}</h2>")
         if not gh["repos"] and not runs:
-            parts.append('<p class="none">Nothing landed in the org today.</p>')
+            parts.append('<p class="none">Nothing landed there today.</p>')
         for r in gh["repos"]:
             parts.append(f'<div class="repo">{esc(r["name"])}</div><table><tr><th>time</th><th>who</th><th>commit</th></tr>' + "".join(f'<tr><td class="t">{esc(c["time"])}</td><td class="a">{esc(c["author"])}</td><td>{esc(c["subject"])} <span class="dim">{esc(c["sha"])}</span></td></tr>' for c in r["commits"]) + "</table>")
         if runs:

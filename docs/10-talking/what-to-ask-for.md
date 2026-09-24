@@ -18,7 +18,7 @@ that explains the ability.
 | "record this meeting" / "stop recording" / "transcribe it" | A recording, then a speaker-labelled transcript and a meeting note ([Meetings](../40-abilities/meetings.md)) |
 | "good morning" | The morning brief ([Briefs and reports](../40-abilities/briefs-and-reports.md)) |
 | "send me today's report" / "what changed today" | The end-of-day report, now |
-| "how is CI" / "any failed builds" | CI status for your GitHub org ([Code, CI and servers](../40-abilities/code-ci-and-servers.md)) |
+| "how is CI" / "any failed builds" | CI status across the GitHub orgs and users you watch ([Code, CI and servers](../40-abilities/code-ci-and-servers.md)) |
 | "review PR 3 on my-app" / "review my changes in the website" | A code review in a headless session of the agent's own, posted to the PR only when you say "post it" |
 | "work on the website" / "open the my-app project" | A Terminal window with a Claude Code session inside that project that is still your agent |
 | "how are the servers" / "check prod" | A read-only health check over SSH of every server it knows |

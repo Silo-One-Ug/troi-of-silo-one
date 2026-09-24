@@ -8,7 +8,10 @@
                                            or JSON with an "issues" list for the pulse.
 
 Everything is read-only (ssh -o BatchMode=yes, key auth only; a server that asks for a password just
-shows as unreachable). Fixes are the agent's Server Maintenance job, one at a time, with the owner's go.
+shows as unreachable). A node behind OS Login's 2-step or an IAP tunnel that wants the owner's own sign-in
+(no live control socket to ride, or gcloud signed out) shows as SIGNED OUT: not an issue for the pulse, and
+the agent asks the owner to sign in and tries again later. Fixes are the agent's Server Maintenance job, one
+at a time, with the owner's go.
 Thresholds live in data/servers.json "thresholds": disk_pct (80), load_per_core (1.5), mem_pct (90).
 """
 import json
@@ -46,12 +49,25 @@ def save(d):
     CONF.write_text(json.dumps(d, indent=2))
 
 
+def signed_out(stderr):
+    """A refusal that is the owner's sign-in, not the server: OS Login's 2-step (keyboard-interactive) with no live control
+    socket to ride, or gcloud asking to be signed in again (the IAP tunnels run through it)."""
+    s = stderr.lower()
+    return "keyboard-interactive" in s or "gcloud auth login" in s or "reauthentication" in s or "not logged in" in s
+
+
 def probe(server, timeout=40):
     host = server["host"]
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new",
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new",
                         host, "sh", "-s"], input=PROBE, capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0 and "host=" not in r.stdout:
-        return {"name": server["name"], "host": host, "reachable": False, "error": (r.stderr.strip().splitlines() or ["ssh failed"])[-1][:160]}
+        err = (r.stderr.strip().splitlines() or ["ssh failed"])[-1][:160]
+        d = {"name": server["name"], "host": host, "role": server.get("role", ""), "reachable": False, "error": err}
+        if signed_out(r.stderr):
+            d["signed_out"] = True
+            d["error"] = (f"signed out: it takes your own sign-in (`ssh {host}` in your terminal, once; the session then stays open for hours)"
+                          if "keyboard-interactive" in r.stderr.lower() else "gcloud is signed out: `gcloud auth login` in your terminal, then it works again")
+        return d
     d = {"name": server["name"], "host": host, "role": server.get("role", ""), "reachable": True, "disks": [], "docker": [], "failed": []}
     for line in r.stdout.splitlines():
         if "=" not in line: continue
@@ -73,6 +89,7 @@ def probe(server, timeout=40):
 
 def issues(d, th):
     out = []
+    if d.get("signed_out"): return []                       # the owner's sign-in, not a server problem: nothing for the pulse to announce
     if not d.get("reachable"): return [f"unreachable ({d.get('error', '')})"]
     for disk in d["disks"]:
         if disk["pct"] >= th["disk_pct"]: out.append(f"disk {disk['mount']} {disk['pct']}% full ({disk['avail_mb']} MB left)")
@@ -96,8 +113,11 @@ def check(names=None, as_json=False):
         results = list(ex.map(lambda s: probe(s), servers))
     for d in results: d["issues"] = issues(d, th)
     if as_json:
-        print(json.dumps({"servers": results, "issues": [f"{d['name']}: {i}" for d in results for i in d["issues"]]})); return
+        print(json.dumps({"servers": results, "issues": [f"{d['name']}: {i}" for d in results for i in d["issues"]],
+                          "signed_out": [d["name"] for d in results if d.get("signed_out")]})); return
     for d in sorted(results, key=lambda x: (x["reachable"], -len(x["issues"]))):
+        if d.get("signed_out"):
+            print(f"{d['name']:<18} SIGNED OUT   {d.get('error', '')}"); continue
         if not d["reachable"]:
             print(f"{d['name']:<18} UNREACHABLE  {d.get('error', '')}"); continue
         worst = max((x["pct"] for x in d["disks"]), default=0)

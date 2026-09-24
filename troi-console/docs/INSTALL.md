@@ -66,7 +66,7 @@ Double-click **Troi** on the Desktop, or type `troi` in a terminal. The agent's 
 5. **Voice.** Kokoro (local and free) or ElevenLabs (your key goes to the Keychain; pick one of your voices).
 6. **Your phone.** A Telegram bot token, then the pairing code you send to your bot.
 7. **Security.** A PIN (kept in the Keychain), then your face and your voice.
-8. **Extras.** Keys for making pictures (OpenAI or Gemini), for calls (Agora), and the GitHub org whose builds Troi watches.
+8. **Extras.** Keys for making pictures (OpenAI or Gemini) and for calls (Agora). The GitHub builds Troi watches are set later, in Routines.
 9. **Ready.** Troi restarts its voice with everything you set and introduces itself.
 
 Then hold **Right Option** and speak. Ctrl-C in the Terminal window stops everything; the background services keep running.
@@ -91,7 +91,7 @@ Text, photos and voice notes work both ways. Send "approve" or "reject" to decid
 
 ### GitHub CI watch
 
-Run `gh auth login`, then set the org in the welcome's **Extras** step and restart the pulse (`python3 troi-console/setup.py services restart pulse`). The pulse checks the newest run on `main` of every repo every three minutes: failures are spoken by the agent, or sent to Telegram when the voice line is down.
+Run `gh auth login`, then add the GitHub orgs and users to follow under Routines › **CI watch** (as many as you like; they are `github_orgs` in `data/console.json`). The pulse checks the newest run on `main` of every repo of each of them every three minutes: failures are spoken by the agent, or sent to Telegram when the voice line is down.
 
 ### Backups
 

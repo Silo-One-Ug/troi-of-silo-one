@@ -64,7 +64,7 @@ file uses (`file_roots`, `vault`), run `python3 troi-console/setup.py render`.
 
 | Key | What it is |
 | --- | --- |
-| `github_org` | The org whose builds the pulse watches |
+| `github_orgs` | The GitHub orgs and users whose builds the pulse watches, set under Routines › CI watch (`github_org`, the old single one, still counts) |
 | `github_account` | The account the backups are written as |
 | `backup_org` | The organization the backup repositories live under |
 | `backup_repo` | The repository for the record's nightly release (default `troi-of-silo-one-backups`) |
