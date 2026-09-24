@@ -5,6 +5,14 @@
       "command": "__ROOT__/troi-console/browser-mcp.sh",
       "args": [],
       "env": {}
+    },
+    "hands": {
+      "type": "stdio",
+      "command": "__ROOT__/troi-console/hands.sh",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
     }
   }
 }

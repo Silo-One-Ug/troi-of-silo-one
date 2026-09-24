@@ -68,7 +68,9 @@ The same rules as the cursor, from the same code (`cursor.py`):
   `click`, `perform` (any action that activates something; Confirm on a window or sheet checks its default button),
   `set` on a checkbox, switch or pop-up, and a bare Return, Enter or Space: the key checks the focused control or,
   for Return and Enter, the default button of the front window or of a sheet on it, so a Return cannot confirm
-  "Empty Trash". Text typed with a line break is checked the same way (a text area just takes the newline).
+  "Empty Trash". Text typed with a line break is checked the same way (a text area just takes the newline). When the
+  front app shows nothing to check at all (an Electron app whose tree is off, even after switching it on), Return and
+  Enter are refused rather than sent blind, with the alternative named: press the button by name, or `set` the field.
   `cursor.sh key` and `cursor.sh type` ask `hands.sh key-check` and refuse when they cannot see what the key would press;
 - password fields (secure text fields, or fields whose name says password/passcode/PIN) are never written to;
 - destructive shortcuts (`cmd+q`, `cmd+w`, `cmd+delete`, `cmd+alt+esc`…) are refused;

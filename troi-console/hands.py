@@ -191,15 +191,31 @@ def trusted():
         return False
 
 
+def front_pid():
+    """The frontmost app's pid, fresh every time. NSWorkspace.frontmostApplication is a cached, run-loop-driven value that
+    goes stale in a resident process; the accessibility system's focused application is not."""
+    app, e = _get(AXUIElementCreateSystemWide(), "AXFocusedApplication")
+    if app is not None:
+        e, pid = AXUIElementGetPid(app, None)
+        if e == 0 and pid:
+            return int(pid)
+    ws = AppKit.NSWorkspace.sharedWorkspace()
+    for a in ws.runningApplications():
+        if a.activationPolicy() == 0 and a.isActive():
+            return int(a.processIdentifier())
+    f = ws.frontmostApplication()
+    return int(f.processIdentifier()) if f else 0
+
+
 def running():
     """GUI apps, front first: dicts with name, bundle, pid, active, hidden."""
-    ws = AppKit.NSWorkspace.sharedWorkspace(); front = ws.frontmostApplication()
+    ws = AppKit.NSWorkspace.sharedWorkspace(); front = front_pid()
     out = []
     for a in ws.runningApplications():
         if a.activationPolicy() != 0:
             continue
         out.append({"name": str(a.localizedName() or ""), "bundle": str(a.bundleIdentifier() or ""), "pid": int(a.processIdentifier()),
-                    "active": bool(front and a.processIdentifier() == front.processIdentifier()), "hidden": bool(a.isHidden()), "_app": a})
+                    "active": int(a.processIdentifier()) == front, "hidden": bool(a.isHidden()), "_app": a})
     out.sort(key=lambda d: (not d["active"], d["name"].lower()))
     return out
 
@@ -431,35 +447,55 @@ def guard(el, role, what):
 
 def _what_key_presses(name):
     """What a bare Return, Enter or Space would activate right now: the focused control when it is one, else (Return and
-    Enter only) the default button of the front window or of a sheet on it. None when nothing would be pressed."""
+    Enter only) the default button of the front window or of a sheet on it. Returns (element, role, seen): element None
+    when nothing would be pressed; seen False when the front app shows nothing at all (an Electron app whose tree is off),
+    which the callers treat as "do not send it blind"."""
     fe = focused_element()
     if fe is not None:
         r = _s(_get(fe, "AXRole")[0])
         if r in ("AXButton", "AXMenuItem", "AXCheckBox", "AXRadioButton", "AXLink", "AXPopUpButton"):
-            return fe, r
+            return fe, r, True
         if name == "space" or r == "AXTextArea":                   # space types in a field; a text area takes Return as a newline
-            return None, ""
+            return None, "", True
     if name == "space":
-        return None, ""
+        return None, "", True
     app, _ = _get(AXUIElementCreateSystemWide(), "AXFocusedApplication")
-    win = _get(app, "AXFocusedWindow")[0] if app is not None else None
+    if app is None:
+        return None, "", False
+    win = _get(app, "AXFocusedWindow")[0]
+    if win is None:                                                 # an Electron or Chromium app: switch its tree on, then look again
+        e, pid = AXUIElementGetPid(app, None)
+        a = next((x for x in running() if e == 0 and x["pid"] == pid), None)
+        if a is not None:
+            try: windows(a)
+            except HandsError: pass
+            win = _get(app, "AXFocusedWindow")[0]
     if win is None:
-        return None, ""
+        return None, "", False
     b = _get(win, "AXDefaultButton")[0]
     if b is not None:
-        return b, "AXButton"
+        return b, "AXButton", True
     for ch in (_get(win, "AXChildren")[0] or []):                  # a confirmation sheet hangs off the window
         if _s(_get(ch, "AXRole")[0]) == "AXSheet":
             b = _get(ch, "AXDefaultButton")[0]
             if b is not None:
-                return b, "AXButton"
-    return None, ""
+                return b, "AXButton", True
+    return None, "", True
+
+
+BLIND_KEY = ("I cannot see what {key} would press here (the front app does not expose its focused control), so it is not sent blind: "
+             "press the button by name with press or perform, or put the text in with set")
 
 
 def key_guard(name, why):
-    """The guard for keys that press things: a Return in a dialog whose default button is risky files a request instead."""
-    el, r = _what_key_presses(name)
-    return guard(el, r, why) if el is not None else None
+    """The guard for keys that press things: a Return in a dialog whose default button is risky files a request instead,
+    and a Return or Enter into an app that shows nothing is refused rather than sent blind."""
+    el, r, seen = _what_key_presses(name)
+    if el is not None:
+        return guard(el, r, why)
+    if not seen and name in ("return", "enter"):
+        log(f"{why}: refused, nothing visible to check"); raise HandsError(BLIND_KEY.format(key=name))
+    return None
 
 
 # ---- actions ---------------------------------------------------------------------------------------------------
@@ -719,11 +755,17 @@ def wait_for(a, text, role="", timeout=10.0):
 
 def focus(a):
     app = a["_app"]; app.activateWithOptions_(1 << 1)                 # NSApplicationActivateIgnoringOtherApps
-    for _ in range(20):
+    in_front = lambda: front_pid() == a["pid"]
+    for _ in range(10):
         time.sleep(0.05)
-        if app.isActive(): break
-    log(f"focus {a['name']}: {app.isActive()}")
-    return {"ok": bool(app.isActive()), "did": f"{a['name']} is in front" if app.isActive() else f"{a['name']} did not come to the front", "front_window": (windows(a) or [{}])[0].get("title", "")}
+        if in_front(): break
+    if not in_front() and a["bundle"]:                                 # macOS can refuse a background caller; Launch Services does not
+        subprocess.run(["open", "-b", a["bundle"]], capture_output=True, timeout=10)
+        for _ in range(20):
+            time.sleep(0.05)
+            if in_front(): break
+    ok = in_front(); log(f"focus {a['name']}: {ok}")
+    return {"ok": ok, "did": f"{a['name']} is in front" if ok else f"{a['name']} did not come to the front", "front_window": (windows(a) or [{}])[0].get("title", "")}
 
 
 def app_path(name):
@@ -843,10 +885,14 @@ def main(argv):
         elif cmd == "set": _out(set_value(resolve(rest[0]), rest[1], " ".join(rest[2:])))
         elif cmd == "perform": _out(perform_checked(REG.el(rest[0]), rest[1]))
         elif cmd == "key-check":                                    # for cursor.py: would this bare key press something risky?
-            el, r = _what_key_presses(rest[0] if rest else "return")
-            fr = (_frame(el) or {}) if el is not None else {}
-            _out({"ok": True, "role": r, "label": _label(el, r) if el is not None else "", "risky": bool(el is not None and RISKY.search(_label(el, r) or "")),
-                  "x": int(fr.get("x", 0) + fr.get("w", 0) / 2), "y": int(fr.get("y", 0) + fr.get("h", 0) / 2)})
+            name = rest[0] if rest else "return"
+            el, r, seen = _what_key_presses(name)
+            if el is None and not seen and name in ("return", "enter"):   # one answer only: cursor.py reads the last line
+                _out({"ok": False, "error": BLIND_KEY.format(key=name)})
+            else:
+                fr = (_frame(el) or {}) if el is not None else {}
+                _out({"ok": True, "role": r, "label": _label(el, r) if el is not None else "", "risky": bool(el is not None and RISKY.search(_label(el, r) or "")),
+                      "x": int(fr.get("x", 0) + fr.get("w", 0) / 2), "y": int(fr.get("y", 0) + fr.get("h", 0) / 2)})
         elif cmd == "menu": _out(menu(resolve(rest[0]), " ".join(rest[1:])))
         elif cmd == "type": _out(type_text(" ".join(rest)))
         elif cmd == "key": _out(key(rest[0]))

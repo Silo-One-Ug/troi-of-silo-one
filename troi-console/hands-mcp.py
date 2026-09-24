@@ -96,7 +96,8 @@ def type_text(text: str) -> str:
 
 
 @srv.tool(name="key", description="One keystroke: return, tab, esc, space, delete, up/down/left/right, home, end, f1-f12, a letter or digit, with cmd/shift/alt/ctrl, e.g. 'cmd+s'. "
-                                 "Destructive shortcuts (cmd+q, cmd+w, cmd+delete…) are refused.")
+                                 "Destructive shortcuts (cmd+q, cmd+w, cmd+delete…) are refused. A bare return/enter is checked against what it would press "
+                                 "(a risky default button is filed for approval) and refused when the front app shows nothing to check; press the button by name instead.")
 def key(combo: str) -> str:
     return _run(H.key, combo)
 
