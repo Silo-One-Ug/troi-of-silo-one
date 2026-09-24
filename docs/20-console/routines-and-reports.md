@@ -22,7 +22,8 @@ Everything that runs on a clock, with its last run:
 
 **Run now** is there for the report, the brief, compaction, the backup, housekeeping and CI. Below
 them are the reminders, with Cancel. The CI watch's card is where its GitHub orgs and users are set:
-type a name and press Watch; × stops watching one. It needs `gh` signed in. "What's scheduled" or "open the routines" brings the page up.
+type a name and press Watch; × stops watching one. It needs `gh` signed in. "What's scheduled" or
+"open the routines" brings the page up.
 
 The pulse (`troi-console/pulse.py`) runs the clock. It is a background service, so the reminders,
 the watches and the nightly jobs run whether or not Troi is started; what it has to say goes to the
@@ -31,7 +32,7 @@ agent when the voice line is up and to Telegram when it is down.
 ## Reports
 
 The end-of-day reports, each shown as it is, with its PDF, and a button that builds today's now. A
-report holds the day's commits in the git repositories under your file roots and in the GitHub
-orgs and users the CI watch follows (who, what, when), CI runs, notes changed in the vault, files touched, reminders that fired, and a
-"What changed today" paragraph written by the agent. See
+report holds the day's commits in the git repositories under your file roots and in the GitHub orgs
+and users the CI watch follows (who, what, when), CI runs, notes changed in the vault, files
+touched, reminders that fired, and a "What changed today" paragraph written by the agent. See
 [Briefs and reports](../40-abilities/briefs-and-reports.md).
