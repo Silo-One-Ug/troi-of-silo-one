@@ -40,13 +40,18 @@ Troi's next start:
 with nothing opened to the internet. It is the way to reach Troi from the phone.
 
 1. Install Tailscale on the Mac and on the phone, and sign both in to the same account (the same
-   tailnet). On the Mac, the app's menu shows the Mac's name on the tailnet, such as
-   `my-mac.tail1234.ts.net`; MagicDNS makes that name resolve on the phone.
+   tailnet). On the Mac, the app's menu shows the Mac's Tailscale address, such as
+   `100.101.102.103`, and its name on the tailnet.
 2. Start Troi, so its server sees Tailscale, then in Modes › **Your phone** pick **Tailscale** and
    enter your PIN. The hint under the switch shows the exact address to open.
 3. Start Troi again (Ctrl-C in its Terminal window, then the Desktop shortcut).
-4. On the phone, with Tailscale on, open `http://<the Mac's tailnet name>:3100` in Safari and add
-   it to the Home Screen.
+4. On the phone, with Tailscale on, open `http://<the Mac's Tailscale address>:3100` in Safari and
+   add it to the Home Screen.
+
+Use the address, not the `.ts.net` name: browsers insist on https for every `ts.net` name (the
+domain is on the HSTS preload list) and the console speaks plain http, so the name ends in "failed
+to establish a secure connection". The address stays the same for as long as the Mac is on the
+tailnet.
 
 In this mode the agent's server accepts connections from this Mac and from Tailscale addresses
 only (`100.64.0.0/10` and Tailscale's IPv6 range); a phone on the same Wi-Fi without Tailscale is

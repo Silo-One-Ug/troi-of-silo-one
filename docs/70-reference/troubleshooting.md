@@ -25,6 +25,7 @@ Keychain), with the exact place to do it.
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |
 | The phone cannot reach the console | Modes › Your phone is **This Mac only** until you change it, and a change takes effect at Troi's next start. With **Tailscale**, the phone's Tailscale must be on and signed in to the same account; with **This network**, the phone must be on the same Wi-Fi. See [On your phone](../20-console/on-your-phone.md). |
+| Safari on the phone says it could not establish a secure connection | You opened the Mac's `.ts.net` name; browsers force https on it. Open the Mac's Tailscale address instead (`http://100.x.y.z:3100`, shown under the switch in Modes). |
 | A welcome step's Continue does nothing | The console cannot reach the agent's server. Start Troi from the Desktop and reload; `lsof -nP -iTCP:8796` shows whether its port is held by something else. |
 | Voice calls say they need `call_page` | A phone allows its microphone only on an https page: host `console/public/call.html` on one and set `call_page` in the settings ([Calls](../10-talking/calls.md)). |
 | The nightly backup shows "not running" | Normal between runs. `troi-console/backup-vault.sh` runs one now. |
