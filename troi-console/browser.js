@@ -1,6 +1,6 @@
-// browser.js — the bridge between the agent's Chrome and the console's Browser pane.
-// The agent's browser is a Chrome of its own (its own profile, a debugging port) that the
-// Playwright tools drive over CDP. This script connects to the same Chrome and:
+// browser.js — the bridge between the agent's browser and the console's Browser pane.
+// The agent's browser is Arc (shared with the owner) or a Chrome of its own, on a debugging port, that the
+// Playwright tools drive over CDP (browser-mcp.sh picks it). This script connects to the same browser and:
 //   - while the console is watching (data/cache/.browser-watch is fresh), writes a JPEG of the
 //     current page to cache/browser.jpg a few times a second, plus cache/browser.json
 //     (url, title, viewport), so the pane can show the page as it changes;
@@ -12,7 +12,10 @@ const path = require("path");
 const { chromium } = require(path.join(__dirname, "node_modules", "playwright-core"));
 
 const CDP = process.env.TROI_CDP || "http://127.0.0.1:9223";
+const APP = process.env.TROI_BROWSER_APP || "Google Chrome";          // which app the console's "Window" button brings forward
 const CACHE = path.join(process.env.TROI_DATA || path.join(__dirname, "..", "data"), "cache");
+// the console and the agent's own pages live in the same browser when it is Arc: never mirror them, never take them as the working page
+const ours = u => /^https?:\/\/(localhost|127\.0\.0\.1):(3100|8796|8794|8790)\b/.test(u || "");
 const WATCH = path.join(CACHE, ".browser-watch");
 const SHOT = path.join(CACHE, "browser.jpg");
 const INFO = path.join(CACHE, "browser.json");
@@ -32,21 +35,22 @@ async function connect() {
 async function main() {
   const browser = await connect();
   let ctx = browser.contexts()[0] || await browser.newContext();
-  let current = null;
-  const adopt = p => { current = p; p.on("close", () => { if (current === p) current = null; }); };
+  let current = null, gone = false;
+  const adopt = p => { if (ours(p.url())) return; current = p; p.on("close", () => { if (current === p) current = null; }); };
   ctx.on("page", adopt);
-  const pages = ctx.pages(); if (pages.length) adopt(pages[pages.length - 1]);
-  browser.on("disconnected", () => { fs.writeFileSync(INFO, JSON.stringify({ url: "", title: "", gone: true, t: Date.now() })); process.exit(0); });
+  const pages = ctx.pages().filter(p => !ours(p.url())); if (pages.length) adopt(pages[pages.length - 1]);
+  // the browser quit (Arc closed by the owner, say): note it for the pane and connect again when it is back
+  browser.on("disconnected", () => { gone = true; try { fs.writeFileSync(INFO, JSON.stringify({ url: "", title: "", app: APP, gone: true, t: Date.now() })); } catch (e) {} });
 
   async function page() {
     if (current && !current.isClosed()) return current;
-    const ps = ctx.pages().filter(p => !p.isClosed());
+    const ps = ctx.pages().filter(p => !p.isClosed() && !ours(p.url()));
     if (ps.length) { adopt(ps[ps.length - 1]); return current; }
-    adopt(await ctx.newPage()); await current.goto("about:blank"); return current;
+    current = await ctx.newPage(); current.on("close", () => { current = null; }); await current.goto("about:blank"); return current;
   }
-  // the page the agent is working in is the one that changed last
-  ctx.on("page", p => p.on("framenavigated", f => { if (f === p.mainFrame()) current = p; }));
-  ctx.pages().forEach(p => p.on("framenavigated", f => { if (f === p.mainFrame()) current = p; }));
+  // the page the agent is working in is the one that changed last (never the console's own tab)
+  const follow = p => p.on("framenavigated", f => { if (f === p.mainFrame() && !ours(p.url())) current = p; });
+  ctx.on("page", follow); ctx.pages().forEach(follow);
 
   const logline = t => fs.appendFileSync(path.join(CACHE, "browser.log"), new Date().toISOString() + " " + t + "\n");
   async function run(cmd) {
@@ -69,7 +73,7 @@ async function main() {
   }
 
   let busy = false, lastShot = 0;
-  for (;;) {
+  while (!gone) {
     // commands first: the pane's clicks and keys
     try {
       if (fs.existsSync(CMDS)) {
@@ -85,11 +89,16 @@ async function main() {
         const vp = await p.evaluate(() => ({ w: innerWidth, h: innerHeight })).catch(() => ({ w: 1280, h: 900 }));
         const buf = await p.screenshot({ type: "jpeg", quality: 55, timeout: 4000 });
         fs.writeFileSync(SHOT + ".tmp", buf); fs.renameSync(SHOT + ".tmp", SHOT);
-        fs.writeFileSync(INFO, JSON.stringify({ url: p.url(), title: await p.title().catch(() => ""), w: vp.w, h: vp.h, t: Date.now() }));
+        fs.writeFileSync(INFO, JSON.stringify({ url: p.url(), title: await p.title().catch(() => ""), app: APP, w: vp.w, h: vp.h, t: Date.now() }));
       } catch (e) {}
       busy = false; lastShot = Date.now();
     }
     await sleep(60);
   }
 }
-main().catch(e => { fs.appendFileSync(path.join(CACHE, "browser.log"), new Date().toISOString() + " fatal: " + (e.message || e) + "\n"); process.exit(1); });
+(async () => {                                                        // for as long as the agent runs: reconnect whenever the browser comes back
+  for (;;) {
+    try { await main(); } catch (e) { fs.appendFileSync(path.join(CACHE, "browser.log"), new Date().toISOString() + " bridge: " + (e.message || e) + "\n"); }
+    await sleep(2000);
+  }
+})();

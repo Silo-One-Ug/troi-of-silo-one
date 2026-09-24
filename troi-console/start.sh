@@ -69,7 +69,7 @@ PIDS+=($!)
 
 ("$HERE/browser-mcp.sh" bridge >/dev/null 2>&1) &
 PIDS+=($!)
-echo "  browser: the agent's own Chrome (port 9223), mirrored in the console's Browser pane"
+echo "  browser: $("$HERE/browser-mcp.sh" which) on port 9223, mirrored in the console's Browser page"
 echo "  eyes:    ready (camera stays off until you switch it on in the console)"
 
 echo "  pulse:   reminders, GitHub watch, morning brief (always-on service)"
@@ -78,9 +78,11 @@ echo "  pulse:   reminders, GitHub watch, morning brief (always-on service)"
 exec 3<>"$FIFO"   # read-write, so the pipe never reports end-of-file
 
 URL="${TROI_CONSOLE_URL:-http://localhost:3100/}"
-# exactly ONE console tab: two board pages would split the board between them
-(sleep 2; osascript -e 'tell application "Google Chrome" to close (every tab of every window whose URL contains "127.0.0.1:8796" or URL contains "localhost:3100" or URL contains "127.0.0.1:8794" or URL contains "127.0.0.1:8790")' >/dev/null 2>&1
- if [ -d "/Applications/Google Chrome.app" ]; then open -a "Google Chrome" "$URL"; else open "$URL"; fi) &
+# exactly ONE console tab: two board pages would split the board between them. The console opens in the agent's browser
+# (Arc when it is installed, else Chrome), once that browser is up with its port, so the tab lands in the right instance
+(BAPP="$("$HERE/browser-mcp.sh" which)"; for i in $(seq 1 80); do curl -s -m 1 http://127.0.0.1:9223/json/version >/dev/null && break; sleep 0.5; done
+ osascript -e "tell application \"$BAPP\" to close (every tab of every window whose URL contains \"127.0.0.1:8796\" or URL contains \"localhost:3100\" or URL contains \"127.0.0.1:8794\" or URL contains \"127.0.0.1:8790\")" >/dev/null 2>&1
+ if [ -d "/Applications/$BAPP.app" ]; then open -a "$BAPP" "$URL"; else open "$URL"; fi) &
 echo "  console: $URL   (the agent API: http://127.0.0.1:8796/)"
 echo "  voice:   starting (Ctrl-C here stops everything)"
 

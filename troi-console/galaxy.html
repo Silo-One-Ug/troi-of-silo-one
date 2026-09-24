@@ -13,6 +13,8 @@
                font: 13px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Inter, sans-serif; }
   canvas { position: fixed; inset: 0; display: block; }
   #sky { z-index: 0; } #c { z-index: 1; }
+  * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }                 /* thin scrollbars, as in the console */
+  ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; } ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
   .ui { position: fixed; z-index: 3; }
   #top { left: 18px; top: 16px; right: 18px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
   #top > * { pointer-events: auto; }
@@ -91,6 +93,28 @@
     new MutationObserver(() => { hbtn.title = hst.textContent || "Hands"; }).observe(hst, { childList: true, characterData: true, subtree: true });
     const r = document.createElement("button"); r.id = "rbtn"; r.type = "button"; r.textContent = "Recent"; r.setAttribute("aria-pressed", "false"); hbtn.before(r);
     r.onclick = () => r.setAttribute("aria-pressed", String(document.body.classList.toggle("recents")));
+  });
+}
+if (new URLSearchParams(location.search).get("mobile") === "1") {   // the console on a phone: the top clear of the notch, the bottom clear of its back pill, targets a thumb can hit
+  document.head.insertAdjacentHTML("beforeend", "<style>#c{touch-action:none}#top{padding-top:calc(env(safe-area-inset-top,0px) + 6px)}#search{width:38vw;min-width:120px;padding:8px 12px}.crumbs button{padding:7px 12px;font-size:13px}"
+    + "#hands{top:calc(env(safe-area-inset-top,0px) + 62px)}#hands button,#rbtn{padding:7px 12px;font-size:12px}"
+    + "#hint{left:96px!important;right:14px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 24px)!important;max-width:none;font-size:11px}"
+    + "#recent{left:14px!important;right:14px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 72px)!important}#recent .rc{padding:8px 12px;font-size:12px}"
+    + "#mini,#legend{display:none!important}</style>");                       // the minimap is a mouse tool: pinch and drag do its job here
+  addEventListener("DOMContentLoaded", () => {
+    // two fingers zoom: the pinch becomes the wheel the galaxy already understands, and its one-finger drag stands aside meanwhile
+    const c = document.getElementById("c"); let pinch = null;
+    const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY), mid = t => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+    c.addEventListener("touchstart", e => { if (e.touches.length === 2) { pinch = { d: dist(e.touches) }; e.preventDefault(); try { dragging = null; panning = null; moved = true; } catch {} } }, { passive: false });
+    c.addEventListener("touchmove", e => { if (!pinch || e.touches.length !== 2) return; e.preventDefault(); const d = dist(e.touches), m = mid(e.touches);
+      if (Math.abs(d - pinch.d) > 8) { c.dispatchEvent(new WheelEvent("wheel", { deltaY: d > pinch.d ? -1 : 1, clientX: m.x, clientY: m.y, bubbles: true, cancelable: true })); pinch.d = d; } }, { passive: false });
+    c.addEventListener("touchend", e => { if (e.touches.length < 2) pinch = null; });
+    for (const t of ["pointerdown", "pointermove", "pointerup"]) document.addEventListener(t, e => { if (pinch && e.pointerType === "touch") e.stopPropagation(); }, true);
+    // the hints speak of a mouse; here they speak of a thumb
+    const hint = document.getElementById("hint"); let fixing = false;
+    const touchWords = t => t.replace(/double-click/g, "double-tap").replace(/right-click for more/g, "press and hold for more").replace(/\bclick\b/g, "tap").replace(/ · shift-drag rotates · alt-drag tilts · 0 resets/, " · pinch to zoom").replace(/ · hands:.*$/, "");
+    new MutationObserver(() => { if (fixing) return; const m = touchWords(hint.textContent); if (m !== hint.textContent) { fixing = true; hint.textContent = m; fixing = false; } }).observe(hint, { childList: true, characterData: true, subtree: true });
+    hint.textContent = touchWords(hint.textContent);
   });
 }</script>
 <canvas id="sky"></canvas>

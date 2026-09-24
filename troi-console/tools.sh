@@ -4,7 +4,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 echo "TROI'S TOOLBOX  (all in $HERE/ unless noted. Read a script's header for its usage: several of them ACT when run"
 echo "with no arguments: backup-vault.sh, report.py, housekeeping.sh, look.sh, look-screen.sh, doctor.sh, ci-status.sh)"
 cat <<'TXT'
-  browser      mcp__playwright__*  (navigate, click, type, snapshot, screenshot, tabs)  — a Chrome you control; the owner's logins are not in it
+  browser      mcp__playwright__*  (navigate, click, type, snapshot, screenshot, tabs)  — the browser you drive: Arc when it is installed (the owner's Arc, their logins included: money, deletions and messages need their go-ahead), else a Chrome of your own
   hands        mcp__hands__*  (apps, launch, focus, windows, inspect, find, read, press, set, perform, menu, type, key, wait, click)  — every app by name through
                its accessibility tree, the result read back, no screenshot; risky labels are filed for approval. hands.sh <command> is the same from a terminal (docs/HANDS.md)
   cursor.sh    the pointer/keyboard fallback for what has no name: where | under | move | click | double | right | drag | type | key   (look-screen.sh first; risky buttons need the owner's approval)
@@ -30,7 +30,7 @@ cat <<'TXT'
   servers.py   list · add <name> <ssh-host> [role] · check [name] [--json]   read-only health of the servers in data/servers.json over SSH (the pulse watches every 15 min)
   agenda.py    today · next · week · soon [min] · current   the Mac's Calendar app (Google etc.); the pulse warns 15 min before an event
   face.py verify|check              face ID (its own env: .venv-face); learning the owner's face is theirs to do (Modes › Face ID)
-  browser-mcp.sh chrome             open your own Chrome (port 9223); the console's Browser page mirrors it live and the owner can click in it
+  browser-mcp.sh open | which       open the browser with its port 9223 (Arc, or Chrome) / say which it is; the console's Browser page mirrors it live and the owner can click in it
   news.py brief [uganda|world|all] [--n N] [--hours H] [--show] · topic "<words>" · read <url> · videos <outlet> · social <outlet> · sources   the news, Uganda first (news.json lists the outlets)
   pictures.py search "topic" [--n 6] [--show] [--add] · page <url> [--show] · shot <url> [--show] · board <title> <files…> · focus <n|word> · unfocus · clear   research pictures (free, credited) as a grid on the board
   telegram.py photo <file> [caption]   a picture to the owner's phone

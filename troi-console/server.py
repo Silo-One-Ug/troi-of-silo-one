@@ -19,6 +19,7 @@ import json
 import os
 import re
 import urllib.parse
+import ipaddress
 import sys
 import time
 import shutil
@@ -48,7 +49,7 @@ HOME = HERE.parent
 LOG = HOME / "backtalk" / "logs" / "backtalk.log"
 FIFO = HERE / ".typed"
 SETTINGS = P.CONFIG
-SETTING_DEFAULTS = {"wake_word": True, "eyes": "off", "voice_id": "off", "brief_time": "08:00", "tts": "kokoro", "elevenlabs_voice": "", "welcomed": False, "hands": {"pinch_close": .32, "pinch_open": .48, "ext": 1.45, "dwell_ms": 1300, "magnet": 16}, "wake_names": ["troi", "troy", "troye", "troie"]}
+SETTING_DEFAULTS = {"wake_word": True, "eyes": "off", "voice_id": "off", "brief_time": "08:00", "tts": "kokoro", "elevenlabs_voice": "", "welcomed": False, "lan": False, "hands": {"pinch_close": .32, "pinch_open": .48, "ext": 1.45, "dwell_ms": 1300, "magnet": 16}, "wake_names": ["troi", "troy", "troye", "troie"]}
 PORT = int(os.environ.get("TROI_PORT", 8796))
 START_POS = LOG.stat().st_size if LOG.exists() else 0  # only this session's lines
 
@@ -817,6 +818,10 @@ def try_unlock(pin):
 def protected_changes(body, cur):
     """Which of these settings changes lower the guard? Returns a plain-words list."""
     out = []
+    if body.get("lan") is True and cur.get("lan") is not True:
+        out.append("reachable on the network")
+    if body.get("lan") == "tailscale" and not cur.get("lan"):
+        out.append("reachable over Tailscale")
     if body.get("voice_id") in ("off", "learn") and cur.get("voice_id") != body["voice_id"]:
         out.append("voice ID " + body["voice_id"])
     if isinstance(body.get("voice_id_threshold"), (int, float)) and float(body["voice_id_threshold"]) < float(cur.get("voice_id_threshold", 0.78)) - 1e-9:
@@ -841,6 +846,8 @@ def protected_changes(body, cur):
 def apply_settings(body, cur):
     if isinstance(body.get("wake_word"), bool):
         cur["wake_word"] = body["wake_word"]
+    if isinstance(body.get("lan"), bool) or body.get("lan") == "tailscale":   # answer beyond this Mac (a phone's console); takes effect at the next start
+        cur["lan"] = body["lan"]
     if isinstance(body.get("face_gate"), bool):
         cur["face_gate"] = body["face_gate"]
     if body.get("eyes") in ("off", "every", "watch", "screen"):
@@ -1133,19 +1140,88 @@ def events_feed(pos, cpos):
         time.sleep(0.4)
 
 
-LOCAL_ORIGIN = re.compile(r"^https?://(127\.0\.0\.1|localhost)(:\d+)?$")
+def _tailscale():
+    """This Mac on its tailnet, when Tailscale runs: its MagicDNS name and addresses (the safe way in from a phone anywhere),
+    and every form of them a browser may put in an Origin header."""
+    for cli in ("/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale"):
+        if not Path(cli).exists():
+            continue
+        try:
+            st = json.loads(subprocess.run([cli, "status", "--json"], capture_output=True, text=True, timeout=5).stdout or "{}")
+        except Exception:
+            return None
+        me = st.get("Self") or {}
+        ips = [ip for ip in me.get("TailscaleIPs", []) if ip]
+        name = (me.get("DNSName") or "").rstrip(".").lower()
+        if not ips and not name:
+            return None
+        hosts = {ip.lower() for ip in ips if ":" not in ip} | {"[" + ip.lower() + "]" for ip in ips if ":" in ip}
+        if name:
+            hosts.add(name)
+        return {"name": name, "ip": next((ip for ip in ips if ":" not in ip), ips[0] if ips else ""), "hosts": hosts,
+                "running": st.get("BackendState") == "Running"}
+    return None
+
+
+TAILSCALE = _tailscale()
+TAILNET = (ipaddress.ip_network("100.64.0.0/10"), ipaddress.ip_network("fd7a:115c:a1e0::/48"))   # the addresses Tailscale gives
+
+
+def from_tailnet(addr):
+    """Did this connection come over Tailscale (or from this Mac itself)?"""
+    try:
+        a = ipaddress.ip_address(addr.split("%")[0])
+    except ValueError:
+        return False
+    if a.version == 6 and a.ipv4_mapped:
+        a = a.ipv4_mapped
+    return a.is_loopback or any(a in n for n in TAILNET)
+
+
+def _local_hosts():
+    """Every name this Mac answers to. Its own pages (the console, the galaxies) may come from any of them: localhost on the
+    Mac itself, the .local name or the address when the console is open on a phone on the same network."""
+    import socket
+    hosts = {"127.0.0.1", "localhost", "[::1]"}
+    try:
+        n = socket.gethostname().lower(); hosts.update({n, n.split(".")[0], n.split(".")[0] + ".local"})
+    except Exception:
+        pass
+    try:
+        r = subprocess.run(["scutil", "--get", "LocalHostName"], capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            hosts.add(r.stdout.strip().lower() + ".local")
+    except Exception:
+        pass
+    try:
+        hosts.update(re.findall(r"inet (\d+\.\d+\.\d+\.\d+)", subprocess.run(["ifconfig"], capture_output=True, text=True, timeout=3).stdout))
+    except Exception:
+        pass
+    if TAILSCALE:
+        hosts.update(TAILSCALE["hosts"])
+    return hosts
+
+
+LOCAL_HOSTS = _local_hosts()
+_ORIGIN = re.compile(r"^https?://([^/:]+|\[[0-9a-f:]+\])(:\d+)?$", re.I)
+
+
+def local_origin(o):
+    """Is this origin one of this Mac's own pages, whichever of the Mac's names the browser used?"""
+    m = _ORIGIN.match(o or "")
+    return bool(m) and m.group(1).lower() in LOCAL_HOSTS
 
 
 class Handler(BaseHTTPRequestHandler):
     def end_headers(self):
         o = self.headers.get("Origin") if hasattr(self, "headers") else None
-        if o and LOCAL_ORIGIN.match(o):
+        if o and local_origin(o):
             self.send_header("Access-Control-Allow-Origin", o); self.send_header("Vary", "Origin")
         super().end_headers()
 
     def _sse(self, gen):
         self.send_response(200)
-        for k, v in (("Content-Type", "text/event-stream; charset=utf-8"), ("Cache-Control", "no-store"), ("Connection", "keep-alive"), ("Access-Control-Allow-Origin", self.headers.get("Origin") or "*"), ("X-Accel-Buffering", "no")):
+        for k, v in (("Content-Type", "text/event-stream; charset=utf-8"), ("Cache-Control", "no-store"), ("Connection", "keep-alive"), ("X-Accel-Buffering", "no")):   # the origin header comes from end_headers(), once
             self.send_header(k, v)
         self.end_headers()
         try:
@@ -1156,8 +1232,10 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def do_OPTIONS(self):
+        # the preflight: end_headers() adds Access-Control-Allow-Origin for this Mac's own pages; it must not be sent twice
+        # (a browser refuses a duplicated origin header, and every JSON POST from the console then fails without a word)
         self.send_response(204)
-        for k, v in (("Access-Control-Allow-Origin", self.headers.get("Origin") or "*"), ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization"), ("Access-Control-Max-Age", "600")):
+        for k, v in (("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization"), ("Access-Control-Max-Age", "600")):
             self.send_header(k, v)
         self.end_headers()
 
@@ -1250,7 +1328,7 @@ class Handler(BaseHTTPRequestHandler):
                 "hand_tuning": settings().get("hands", SETTING_DEFAULTS["hands"]),
                 "wake_names": settings()["wake_names"],
                 "tts": settings().get("tts", "kokoro"), "elevenlabs_voice": settings().get("elevenlabs_voice", ""), "elevenlabs_voice_name": elevenlabs_voice_name(settings().get("elevenlabs_voice", "")), "elevenlabs_key": KC.has("elevenlabs"),
-                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""),
+                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""), "lan": settings().get("lan", False), "tailscale": ({"name": TAILSCALE["name"], "ip": TAILSCALE["ip"]} if TAILSCALE else None),
                 "face": f"http://127.0.0.1:{VIS.get('port', 8790)}/faces/{VIS.get('face', 'board')}/",
                 "hands": f"http://127.0.0.1:{HANDS.get('port', 8794)}/stage.html",
             })
@@ -1531,7 +1609,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "not found"}, 404)
         # localhost page only: refuse cross-site posts
         origin = self.headers.get("Origin", "")
-        if origin and not re.fullmatch(r"https?://(127\.0\.0\.1|localhost)(:\d+)?", origin):   # this machine's own pages only
+        if origin and not local_origin(origin):                         # this machine's own pages only (by any of its names)
             return self._json({"ok": False, "error": "forbidden"}, 403)
         try:
             n = min(int(self.headers.get("Content-Length", "0")), 20000)
@@ -1805,10 +1883,21 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": ok, "error": err}, 200 if ok else 409)
 
 
+class Server(ThreadingHTTPServer):
+    """The agent's server. "lan" (Modes, protected): false answers on this Mac only; "tailscale" answers this Mac and the
+    owner's own devices over Tailscale, and turns every other network away before a byte is read; true answers the network."""
+    only_tailnet = False
+
+    def verify_request(self, request, client_address):
+        return not self.only_tailnet or from_tailnet(client_address[0])
+
+
 if __name__ == "__main__":
     restore_requests()
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"the agent's server (API) on http://127.0.0.1:{PORT}/", flush=True)
+    reach = settings().get("lan")
+    srv = Server(("0.0.0.0" if reach else "127.0.0.1", PORT), Handler)
+    srv.only_tailnet = reach == "tailscale"
+    print(f"the agent's server (API) on http://127.0.0.1:{PORT}/" + (" and over Tailscale" if srv.only_tailnet else " and on this network" if reach else ""), flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
