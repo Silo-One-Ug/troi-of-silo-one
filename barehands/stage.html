@@ -280,12 +280,12 @@ if (location.protocol === "file:") {
 setTimeout(function () {
   var b = document.getElementById("boot");
   if (b && b.isConnected) b.innerHTML +=
-    '<span style="color:#7fb3ab;font-size:12px">still loading? the first run downloads the hand tracker and needs internet once. TROUBLESHOOTING.md has more.</span>';
+    '<span style="color:#7fb3ab;font-size:12px">still loading? the first run downloads the hand tracker and needs internet once.</span>';
 }, 12000);
 </script>
 <video id="cam" autoplay playsinline muted></video>
 <div id="behind"></div>
-<div id="boot">BAREHANDS<br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">by jaredrhod</span><br><span style="color:#a8d8cf;font-size:13px">loading hand tracker… allow the camera when asked</span></div>
+<div id="boot"><span id="boot-name" style="font-size:22px;letter-spacing:.18em">THE BOARD</span><br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">silo one</span><br><span id="boot-note" style="color:#a8d8cf;font-size:13px">waking the board… hand tracking is off until you switch it on</span></div>
 <div id="hint">tap the RING = orbs · tap an orb = its tree · TAP a card = open · pinch-drag = move · hold still ~1s = 3D rotate · two hands = scale · TAP an open item = close · CLAP (palms together, fingers up) = ring center-stage · CLAW: flash open, claw, aim, hold the strain 2s, SNAP = force pull · empty pinch dragged sideways = explode scrub · R respawn / C camera / D debug</div>
 <div id="debug"></div>
 <div id="toast"></div>
@@ -2090,7 +2090,7 @@ async function boot() {
   window.__landmarker = landmarker;   // troi-console/mouse.js: cursor control
   await loadTree();
   spawnStage();
-  toast("barehands v1.0", 2000);  // build fingerprint
+  toast("the board is up", 2000);   // troi-console: in place of the build fingerprint
   let lastT = performance.now();
 
   function frame(now) {

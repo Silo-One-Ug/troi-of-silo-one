@@ -78,13 +78,18 @@
 
   // the Hands button: the camera by request, here as on the console; the console's switch follows
   if (new URLSearchParams(location.search).get("role") === "render") return;
+  // the opening screen: the agent's name from the board's own config, and a note that says what is happening
+  const bootName = document.getElementById("boot-name"), bootNote = document.getElementById("boot-note");
+  const note = s => { if (bootNote && bootNote.isConnected) bootNote.textContent = s; };
+  if (bootName) fetch("/config").then(r => r.ok ? r.json() : null).then(c => { if (c && c.name && bootName.isConnected) bootName.textContent = String(c.name).toUpperCase(); }).catch(() => {});
+  addEventListener("message", e => { if ((e.data || {}).boardCamera === "on") note("starting the camera… allow it when the browser asks"); });
   const btn = document.createElement("button"); btn.id = "troi-hands"; btn.type = "button"; btn.setAttribute("aria-pressed", "false");
   const on = () => !!(window.cam && window.cam.srcObject);
   const paint = () => { const v = on(); btn.setAttribute("aria-pressed", v ? "true" : "false"); btn.textContent = v ? "Hands on" : "Hands off";
     btn.title = v ? "Hand tracking is on. Click to switch the camera off" : "Hand tracking is off. Click to switch the camera on (the browser asks for it once)"; };
   btn.addEventListener("click", async () => {
     const want = !on();
-    try { if (want) { if (window.__camOn) await window.__camOn(); } else if (window.__camOff) window.__camOff(); } catch (e) {}
+    try { if (want) { note("starting the camera… allow it when the browser asks"); if (window.__camOn) await window.__camOn(); } else if (window.__camOff) window.__camOff(); } catch (e) {}
     paint();
     try { if (window.parent !== window) window.parent.postMessage({ troi: "hands", on: on() }, "*"); } catch (e) {}
   });

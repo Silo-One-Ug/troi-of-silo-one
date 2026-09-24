@@ -56,6 +56,20 @@ det_old = "      const res = landmarker.detectForVideo(cam, now);"
 det_new = "      let res; try { res = landmarker.detectForVideo(cam, now); } catch (e) { res = { landmarks: [] }; }   // troi-console: an empty video must not stop the loop"
 if "troi-console: an empty video" not in s and det_old in s:
     s = s.replace(det_old, det_new, 1); changed.append("detect guard")
+# the opening screen is the agent's: the name from the board's config (board.js fills it in), Silo One's byline, and a
+# note that says what is happening (hand tracking is off until asked); the watchdog line and the build toast follow suit
+boot_old = '<div id="boot">BAREHANDS<br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">by jaredrhod</span><br><span style="color:#a8d8cf;font-size:13px">loading hand tracker… allow the camera when asked</span></div>'
+boot_new = '<div id="boot"><span id="boot-name" style="font-size:22px;letter-spacing:.18em">THE BOARD</span><br><span style="color:#a8d8cf;font-size:12px;letter-spacing:0.22em">silo one</span><br><span id="boot-note" style="color:#a8d8cf;font-size:13px">waking the board… hand tracking is off until you switch it on</span></div>'
+if 'id="boot-name"' not in s and boot_old in s:
+    s = s.replace(boot_old, boot_new, 1); changed.append("boot screen")
+wd_old = "still loading? the first run downloads the hand tracker and needs internet once. TROUBLESHOOTING.md has more."
+wd_new = "still loading? the first run downloads the hand tracker and needs internet once."
+if wd_old in s:
+    s = s.replace(wd_old, wd_new, 1); changed.append("watchdog line")
+toast_old = 'toast("barehands v1.0", 2000);  // build fingerprint'
+toast_new = 'toast("the board is up", 2000);   // troi-console: in place of the build fingerprint'
+if toast_old in s:
+    s = s.replace(toast_old, toast_new, 1); changed.append("ready toast")
 if changed: open(p, "w").write(s); print("board: patched", ", ".join(changed))
 else: print("board: cursor control already patched")
 PY
