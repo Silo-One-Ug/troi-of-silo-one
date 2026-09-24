@@ -107,6 +107,27 @@ def ask_owner(kind, what, why, action):
         return {"ok": False, "error": f"could not file the request: {e}"}
 
 
+def key_check(k):
+    """What a bare Return, Enter or Space would press right now (hands.py reads the accessibility tree), or None."""
+    try:
+        r = subprocess.run([str(Path(__file__).resolve().parent / "hands.sh"), "key-check", k], capture_output=True, text=True, timeout=15)
+        return json.loads(r.stdout.strip().splitlines()[-1])
+    except Exception:
+        return None
+
+
+def guard_key(k, why):
+    """A Return in a dialog whose default button is risky presses that button: it waits for the owner like a risky click."""
+    chk = key_check(k)
+    if not chk or not chk.get("ok"):
+        out({"ok": False, "error": f"refused: I could not see what {k} would press (the accessibility check failed); press the control by name with the hands tools instead"})
+    if chk.get("risky"):
+        r = ask_owner("click", f"{chk.get('role')} '{chk.get('label')}'", why, {"kind": "click", "x": chk["x"], "y": chk["y"]})
+        log(f"{why}: RISKY '{chk.get('label')}' -> approval {r.get('pending', r.get('error'))}")
+        out({"ok": False, "pending": r.get("pending"), "needs_approval": True,
+             "done": f"{k} would press '{chk.get('label')}', a risky control; a request is waiting for {OWNER}'s approval. Tell {OWNER} it is waiting."})
+
+
 def guarded_click(kind, x, y):
     if not looked_recently():
         out({"ok": False, "error": "look first: take a screenshot with look-screen.sh (it must be under 45 s old) so you click what is really there"})
@@ -145,6 +166,8 @@ def main(a):
         info = under(*pointer())
         if (info.get("role") or "") == "AXSecureTextField" or re.search(r"password|passcode|pin", (info.get("title") or "") + (info.get("window") or ""), re.I):
             out({"ok": False, "error": "that looks like a password field; the agent never types secrets"})
+        if "\n" in text or "\r" in text:
+            guard_key("return", "type text with a line break")
         ok, s = cli(f"t:{text}"); log(f"type {len(text)} chars into {info.get('role')} '{info.get('title')}'"); out({"ok": ok, "error": "" if ok else s})
     if cmd == "key":
         k = a[1].lower().replace("option", "alt").replace("command", "cmd").replace("control", "ctrl")
@@ -153,6 +176,8 @@ def main(a):
         if "+" in k:
             mods, key = k.rsplit("+", 1); ok, s = cli(f"kd:{mods}", f"t:{key}" if len(key) == 1 else f"kp:{key}", f"ku:{mods}")
         else:
+            if k in ("return", "enter", "space"):
+                guard_key(k, f"key {k}")
             ok, s = cli(f"kp:{k}")
         log(f"key {k}: {ok}"); out({"ok": ok, "error": "" if ok else s})
     print(__doc__); sys.exit(1)

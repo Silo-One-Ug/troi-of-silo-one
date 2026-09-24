@@ -152,7 +152,7 @@ It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you 
 | "show me the photo of ..." | the picture goes up on the hands board |
 | "move X into Y" / "rename" / "make a folder" | done directly, inside your file roots (never overwrites) |
 | "delete X" / "trash X" | an approval card. Nothing moves until you approve it (the console unlocked, or "approve" on Telegram), and then it goes to the macOS Trash |
-| "click the Save button" / "type hello in that field" | the guarded cursor: it looks first, refuses risky labels, asks for approval |
+| "click the Save button" / "type hello in that field" / "open the View menu and switch to list" | the native hands: the control is found by name in the app's accessibility tree, pressed, and the result read back; risky labels ask for approval. The guarded cursor remains for what has no name |
 | "draw me a…" / "make a picture of…" | a picture, in the Library and on the board |
 | "research …" / "show me what … looks like" | credited pictures on the board while it talks |
 | "what's in the news" / "what does NTV say about…" | headlines per outlet, Uganda first, read out or on the board |
@@ -223,7 +223,7 @@ A phone allows its microphone only on an https page, so calls need `call.html` (
 
 - **The agent cannot delete.** A hook blocks every destructive command, whatever the permission mode. Trash, force-quit and risky clicks need your approval, and only you can give it: the console unlocked with your PIN or face, or your own Telegram chat. What you approve for removal goes to the macOS Trash. The nightly housekeeping also only uses the Trash, for old captures, old editor backups and old logs.
 - **The agent cannot reach its own safeguards.** That covers your secrets in the Keychain, approvals and unlocks, the settings file, your voice and face prints, its record, its boot file, Claude Code's settings and the guard's code. The same hook blocks any attempt.
-- **The guarded cursor** refuses to click without a fresh screenshot, never types into password fields, and files an approval for controls labelled delete, pay, send, submit, install and the like.
+- **The hands** press controls by name through the accessibility tree and never write into password fields; a control labelled delete, pay, send, submit, install and the like is not pressed: an approval is filed for you. The guarded cursor, for what has no name, additionally refuses to click without a fresh screenshot.
 - **The browser** is the agent's own Chrome, with its own profile and none of your logins unless you log in for it on the Browser page. Payments, deletions and messages from a site need your explicit go-ahead in the same turn.
 - **What leaves the Mac.** Photos and screenshots stay on the Mac and go only to your private nightly backup. Your voice and face prints never leave it, and secrets stay in the Keychain.
 

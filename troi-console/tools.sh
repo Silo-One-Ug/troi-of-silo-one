@@ -5,7 +5,9 @@ echo "TROI'S TOOLBOX  (all in $HERE/ unless noted. Read a script's header for it
 echo "with no arguments: backup-vault.sh, report.py, housekeeping.sh, look.sh, look-screen.sh, doctor.sh, ci-status.sh)"
 cat <<'TXT'
   browser      mcp__playwright__*  (navigate, click, type, snapshot, screenshot, tabs)  — a Chrome you control; the owner's logins are not in it
-  cursor.sh    the real pointer/keyboard, any app: where | under | move | click | double | right | drag | type | key   (look-screen.sh first; risky buttons need the owner's approval)
+  hands        mcp__hands__*  (apps, launch, focus, windows, inspect, find, read, press, set, perform, menu, type, key, wait, click)  — every app by name through
+               its accessibility tree, the result read back, no screenshot; risky labels are filed for approval. hands.sh <command> is the same from a terminal (docs/HANDS.md)
+  cursor.sh    the pointer/keyboard fallback for what has no name: where | under | move | click | double | right | drag | type | key   (look-screen.sh first; risky buttons need the owner's approval)
   look.sh      one camera photo -> path (then Read it)          look-screen.sh [display]   one screenshot -> path (then Read it)
   apps.sh      list | running | open | focus | quit | kill (asks the owner)
   fs.sh        move | rename | copy | mkdir | reveal | open [app] | undo | trash (asks the owner) | pending     (only inside the file roots in the settings; the vault is one)
