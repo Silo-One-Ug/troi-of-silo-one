@@ -969,4 +969,78 @@ if __name__ == "__main__":
         (P.CACHE / "voice.pid").write_text(str(os.getpid()))    # the server signals this process, never its uv parent
     except OSError:
         pass
-    bt_main.main()
+    # ---- Markdown in a reply. The console renders it (headings, lists, tables), so the log must keep a reply's line
+#      structure: each newline is logged as a ⏎ mark (the server turns it back). The mouth must not read the marks: the
+#      text that goes to the voice is stripped of them first. Otherwise this is backtalk's speak_reply as it is.
+_MD = [(re.compile(r"^\s{0,3}#{1,6}\s+", re.M), ""), (re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+", re.M), ""), (re.compile(r"\[([^\]]+)\]\([^)]*\)"), r"\1"),
+       (re.compile(r"(\*\*|__)(.+?)\1"), r"\2"), (re.compile(r"(?<![\w*])[*_]([^*_\n]+?)[*_](?![\w*])"), r"\1"), (re.compile(r"^\s*>\s?", re.M), ""),
+       (re.compile(r"```[A-Za-z0-9_-]*"), ""), (re.compile(r"^\s*[-*_]{3,}\s*$", re.M), "")]
+
+
+def _table_line(line):
+    """A Markdown table row spoken as its cells; a separator row says nothing."""
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+        return ""
+    return ", ".join(c for c in cells if c) + "."
+
+
+def _speech(text):
+    """What the voice says of a Markdown reply: the words, not the marks."""
+    text = "\n".join(_table_line(l) if l.strip().startswith("|") or l.count("|") >= 2 else l for l in text.split("\n"))
+    for rx, rep in _MD:
+        text = rx.sub(rep, text)
+    return " ".join(text.replace("`", "").split()).strip()
+
+
+def _shown(text):
+    """What the log keeps of a reply chunk: its lines, joined with ⏎ (a newline in the console), spaces tidied."""
+    lines = [" ".join(l.split()) for l in text.split("\n")]
+    out = "⏎".join(lines)
+    while "⏎⏎⏎" in out:
+        out = out.replace("⏎⏎⏎", "⏎⏎")
+    return out.strip("⏎ ")
+
+
+async def speak_reply(brain, mouth, text):
+    t0 = time.time(); first = True; batch = []; pending = []; NAME_ = getattr(bt_main, "NAME", "Troi")
+
+    def emit(raw):
+        nonlocal first, batch, pending
+        found = bt_main._DIRECTION_TAG.findall(raw)
+        if found:
+            pending += [d.strip() for d in found if d.strip()]
+        raw = bt_main._DIRECTION_TAG.sub(" ", raw)
+        shown, s = _shown(raw), _speech(raw)
+        if not shown and not s:
+            return
+        if first:
+            log(f"[{NAME_}] ({time.time()-t0:.1f}s to first) {shown or s}" + (f"  <directions: {pending}>" if pending else ""))
+            if s:
+                mouth.say_chunk(s, pending); pending = []
+            first = False
+        else:
+            log(f"[{NAME_}] {shown or s}" + (f"  <directions: {pending}>" if pending else ""))
+            if s:
+                batch.append(s)
+            if len(batch) >= 2:
+                mouth.say_chunk(" ".join(batch), pending); pending = []; batch = []
+
+    try:
+        async for sentence in brain.ask_stream(text):
+            emit(sentence)
+        if batch:
+            mouth.say_chunk(" ".join(batch), pending); pending = []
+        if first:
+            signals.static_stop(); signals.set_state("idle")
+    except asyncio.CancelledError:
+        try:
+            await brain.interrupt()
+        except Exception:
+            pass
+        raise
+
+
+bt_main.speak_reply = speak_reply
+
+bt_main.main()

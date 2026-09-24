@@ -1,11 +1,17 @@
 "use client";
+// The theme switch in the bar: what you see is what it shows (a moon on the dark console, a sun on the light one),
+// and a click goes to the other. "System" stays a choice on the phone's More page and is honoured at boot; from here
+// it is simply the theme it resolves to, so a click always changes something you can see.
 import { useEffect, useState } from "react";
-import { Monitor, Moon, Sun } from "lucide-react";
-import { getTheme, setTheme, applyTheme, type Theme } from "@/lib/theme";
-const NEXT: Record<Theme, Theme> = { system: "light", light: "dark", dark: "system" };
+import { Moon, Sun } from "lucide-react";
+import { getTheme, setTheme, applyTheme, isDark } from "@/lib/theme";
 export function ThemeToggle() {
-  const [t, setT] = useState<Theme>("system");
-  useEffect(() => { setT(getTheme()); const mq = window.matchMedia("(prefers-color-scheme: dark)"); const on = () => applyTheme(getTheme()); mq.addEventListener("change", on); return () => mq.removeEventListener("change", on); }, []);
-  const Icon = t === "dark" ? Moon : t === "light" ? Sun : Monitor;
-  return <button onClick={() => { const n = NEXT[t]; setTheme(n); setT(n); }} title={`Theme: ${t} (click to change)`} className="text-muted-foreground hover:text-foreground"><Icon className="h-4 w-4" /></button>;
+  const [dark, setDark] = useState(true);
+  useEffect(() => {
+    setDark(isDark(getTheme()));
+    const mq = window.matchMedia("(prefers-color-scheme: dark)"); const on = () => { applyTheme(getTheme()); setDark(isDark(getTheme())); };
+    mq.addEventListener("change", on); return () => mq.removeEventListener("change", on);
+  }, []);
+  const Icon = dark ? Moon : Sun;
+  return <button onClick={() => { const n = dark ? "light" : "dark"; setTheme(n); setDark(n === "dark"); }} title={dark ? "Dark. Click for light" : "Light. Click for dark"} aria-label={dark ? "Switch to the light theme" : "Switch to the dark theme"} className="text-muted-foreground hover:text-foreground"><Icon className="h-4 w-4" /></button>;
 }

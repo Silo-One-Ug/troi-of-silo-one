@@ -110,7 +110,7 @@ def transcript(pos, raw=False):
             role = "you"
         elif who == NAME:
             role = "agent"
-            text = DIRECTIONS.sub("", TIMING.sub("", text))
+            text = DIRECTIONS.sub("", TIMING.sub("", text)).replace("⏎", "\n")          # a reply's lines, as the voice line logged them
             if text.strip().lower().rstrip(".!") == "noted":
                 continue
         elif who == "perm" and text.startswith("asking:"):
@@ -425,7 +425,7 @@ def ask_live(text, timeout=240):
             if who == "you" and text[:40] in txt:
                 seen_you = True
             elif who == NAME and seen_you:
-                reply.append(DIRECTIONS.sub("", TIMING.sub("", txt)))
+                reply.append(DIRECTIONS.sub("", TIMING.sub("", txt)).replace("⏎", "\n"))
         try:
             st = (HOME / "backtalk" / ".voice_state").read_text().strip()
         except Exception:
@@ -1360,7 +1360,7 @@ def agent_run(thread_id, run_id, text, silent=False, timeout=300):
     if box["sent"] == "" and LOG.exists():                                # the tap missed: take the finished sentences from the log
         with LOG.open("rb") as f:
             f.seek(start); chunk = f.read().decode("utf-8", "replace")
-        said = [DIRECTIONS.sub("", TIMING.sub("", m.group(4))) for m in (LINE.match(r) for r in chunk.splitlines()) if m and m.group(3) == NAME]
+        said = [DIRECTIONS.sub("", TIMING.sub("", m.group(4))).replace("⏎", "\n") for m in (LINE.match(r) for r in chunk.splitlines()) if m and m.group(3) == NAME]
         if said:
             box["mid"] = uuid.uuid4().hex; yield agui("TEXT_MESSAGE_START", messageId=box["mid"], role="assistant"); yield agui("TEXT_MESSAGE_CONTENT", messageId=box["mid"], delta=" ".join(said))
     yield close_text()

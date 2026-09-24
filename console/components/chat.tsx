@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as RKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Columns2, FileText, Folder, Mic, Paperclip, PictureInPicture2, Send, Square, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
@@ -41,6 +43,25 @@ function fromRow(r: Row): Msg | null {
   if (r.role === "card" && r.meta) return fromCard(r.meta);
   return null;
 }
+const STAGE = /<<[^>]*>>|\s*<directions:[^>]*>/g;                 // stage directions are for the face, never for the page
+const clean = (t: string) => t.replace(STAGE, "").replace(/[ \t]+\n/g, "\n").trim();
+/** Consecutive replies of one turn are one bubble: a reply arrives from the record a line at a time, the same minute.
+ *  The record keeps a reply's lines but not its blank lines, so a block (a table, a heading, a fence, a list after
+ *  prose) gets the blank line Markdown needs; sentences of prose join as one paragraph. */
+const block = (l: string) => /^(\||#{1,6}\s|```|>|[-*+]\s|\d+[.)]\s)/.test(l.trim());
+const item = (l: string) => /^([-*+]\s|\d+[.)]\s)/.test(l.trim());
+function join(a: string, b: string): string {
+  const al = a.split("\n").pop() || "", bl = b.split("\n")[0] || "";
+  const gap = (block(al) || block(bl)) && !(item(al) && item(bl));
+  return a + (gap ? "\n\n" : "\n") + b;
+}
+function append(ms: Msg[], m: Msg): Msg[] {
+  const last = ms[ms.length - 1];
+  if (m.role === "assistant" && last && last.role === "assistant" && !last.live && (last.t || "") === (m.t || "")) return [...ms.slice(0, -1), { ...last, text: join(last.text, m.text) }];
+  return [...ms, m];
+}
+const group = (rows: Msg[]) => rows.reduce<Msg[]>((acc, m) => append(acc, m), []);
+const Md = ({ text }: { text: string }) => <div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown></div>;
 export const globeState = (s: string) => (s === "thinking" || s === "working" ? "thinking" : s === "speaking" ? "speaking" : s === "listening" ? "listening" : "idle") as "idle" | "thinking" | "speaking" | "listening";
 
 // a file mention in a line: @/path, or @"/a path with spaces"
@@ -80,7 +101,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   useEffect(() => {
     let stop = false;
     (async () => {
-      try { const h = await eget("/history?limit=120"); setMsgs(h.items.map(fromRow).filter(Boolean) as Msg[]); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
+      try { const h = await eget("/history?limit=120"); setMsgs(group(h.items.map(fromRow).filter(Boolean) as Msg[])); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
       const poll = async () => {
         if (stop) return;
         try {
@@ -89,7 +110,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
             if (it.role === "ctl") continue;
             const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             if (it.role === "agent" && live.current) { live.current.final.push(it.text); continue; }
-            const m = fromRow(it); if (m) setMsgs(ms => [...ms, m]);
+            if (it.role === "agent" && busyRef.current) continue;                        // the same reply is streaming into its own bubble
+            const m = fromRow(it); if (m) setMsgs(ms => append(ms, m));
           }
           for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
         } catch {}
@@ -99,11 +121,11 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         if (stop) return;
         try {
           const d: State = await eget("/state"); setState(d.voice ? d.state : "off");
-          const part = (d.partial || "").replace(/\s*<directions:[^>]*>/g, "");
+          const part = clean(d.partial || "");
           if (part && !busyRef.current) {
             if (!live.current) { const id = nid(); live.current = { id, final: [] }; setMsgs(ms => [...ms, { id, role: "assistant", text: part, live: true }]); }
             else upsert(live.current.id, m => ({ ...m, text: part }));
-          } else if (!part && live.current) { const l = live.current; live.current = null; upsert(l.id, m => ({ ...m, live: false, text: l.final.length ? l.final.join(" ") : m.text })); }
+          } else if (!part && live.current) { const l = live.current; live.current = null; upsert(l.id, m => ({ ...m, live: false, text: clean(m.text) || l.final.join("\n") })); }   // the reply as written, its structure kept
         } catch { setState("off"); }
         setTimeout(pollState, 500);
       };
@@ -199,7 +221,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         onRunStartedEvent: () => { clearTimeout(free); setBusy(false); },
         onTextMessageStartEvent: ({ event }) => setMsgs(ms => [...ms, { id: event.messageId, role: "assistant", text: "", live: true }]),
         onTextMessageContentEvent: ({ event }) => upsert(event.messageId, m => ({ ...m, text: m.text + event.delta })),
-        onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.map(m => { if (m.id === event.messageId) { said.push(m.text); return { ...m, live: false }; } return m; })),
+        onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.map(m => { if (m.id === event.messageId) { said.push(m.text); return { ...m, live: false, text: clean(m.text) }; } return m; })),
         onToolCallStartEvent: ({ event }) => { const n = note(event.toolCallName); if (n) setMsgs(ms => [...ms, { id: nid(), role: "note", text: n }]); },
         onCustomEvent: ({ event }) => { if (event.name === "silo.state") setState(String(event.value)); const m = fromCard({ name: event.name, value: event.value }); if (m) setMsgs(ms => [...ms, m]);
           if (event.name === "silo.approval") setMsgs(ms => [...ms, { id: nid(), role: "note", text: `waiting for your approval: ${(event.value as any).kind} · ${(event.value as any).subject}` }]); },
@@ -220,8 +242,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
         <AnimatePresence initial={false}>
           {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} /> : (
-            <motion.div key={m.id} {...rise} className={m.role === "user" ? "ml-auto max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[75%] md:rounded-md md:text-sm" : m.role === "note" || m.role === "ignored" ? "px-1 text-xs italic text-muted-foreground" : cn("max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-surface/85 px-3.5 py-2 text-[15px] leading-6 md:max-w-[85%] md:rounded-md md:bg-transparent md:text-sm", m.live && "border-dashed")}>
-              {m.role === "user" ? <WithMentions text={m.text} /> : m.text}{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}{m.t && !m.live && m.role !== "note" && <span className="ml-2 text-[10px] text-muted-foreground">{m.t}</span>}
+            <motion.div key={m.id} {...rise} className={m.role === "user" ? "ml-auto max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[75%] md:rounded-md md:text-sm" : m.role === "note" || m.role === "ignored" ? "px-1 text-xs italic text-muted-foreground" : cn("max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-surface/85 px-3.5 py-2 text-[15px] leading-6 md:max-w-[85%] md:rounded-md md:bg-transparent md:text-sm", m.live && "border-dashed")}>
+              {m.role === "user" ? <WithMentions text={m.text} /> : m.role === "assistant" ? <Md text={m.text} /> : m.text}{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}{m.t && !m.live && m.role !== "note" && <span className="ml-2 text-[10px] text-muted-foreground">{m.t}</span>}
             </motion.div>))}
         </AnimatePresence>
         <div ref={end} />
