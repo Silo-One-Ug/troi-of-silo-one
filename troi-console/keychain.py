@@ -1,5 +1,5 @@
 """The agent's secrets, in the macOS login Keychain only (never a file). One account, one prefix:
-account "troi-of-silo-one", services "troi-of-silo-one.<name>". Names: pin, telegram, telegram-chat, elevenlabs,
+account "troi-of-silo-one", services "troi-of-silo-one.<name>". Names: pin, telegram, elevenlabs,
 openai, gemini, agora-appid, agora-cert. Onboarding and Settings write them; the tools read them here.
 
   keychain.py list               which are set (never the values)
@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 ACCOUNT = "troi-of-silo-one"
-NAMES = {"pin": "the PIN for protected settings", "telegram": "the Telegram bot token", "telegram-chat": "your Telegram chat id",
+NAMES = {"pin": "the PIN for protected settings", "telegram": "the Telegram bot token",
          "elevenlabs": "the ElevenLabs API key", "openai": "the OpenAI key (pictures)", "gemini": "the Gemini key (pictures)",
          "agora-appid": "the Agora app id (calls)", "agora-cert": "the Agora certificate (calls)"}
 

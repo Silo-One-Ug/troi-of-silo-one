@@ -132,7 +132,7 @@ Choose them in the welcome's **This Mac** step, or list them as `file_roots` in 
 2. Move `data/` to the Trash. It holds everything Troi kept.
 3. Remove the secrets:
    ```bash
-   for n in pin telegram telegram-chat elevenlabs openai gemini agora-appid agora-cert; do
+   for n in pin telegram elevenlabs openai gemini agora-appid agora-cert; do
      security delete-generic-password -a troi-of-silo-one -s "troi-of-silo-one.$n" >/dev/null 2>&1 && echo "removed $n"
    done
    ```

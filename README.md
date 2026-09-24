@@ -54,7 +54,7 @@ Secrets live only in the macOS login Keychain, under the account `troi-of-silo-o
 | Name | What |
 |---|---|
 | `pin` | The PIN that approves protected changes and trash requests |
-| `telegram`, `telegram-chat` | The Telegram bot token and your paired chat |
+| `telegram` | The Telegram bot token (your phone pairs with a code; the pairing is kept in the record) |
 | `elevenlabs` | The ElevenLabs key (voice, meeting transcription) |
 | `openai`, `gemini` | Keys for making pictures |
 | `agora-appid`, `agora-cert` | Voice calls |
