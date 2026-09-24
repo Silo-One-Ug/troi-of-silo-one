@@ -37,7 +37,7 @@ UVX = shutil.which("uvx") or str(Path.home() / ".local" / "bin" / "uvx")
 
 def accounts():
     """The accounts signed in: one credential file per address."""
-    return sorted(p.stem for p in CREDS.glob("*.json")) if CREDS.exists() else []
+    return sorted(p.stem for p in CREDS.glob("*.json") if "@" in p.stem) if CREDS.exists() else []   # the server's own state files are not accounts
 
 
 def env(email=""):

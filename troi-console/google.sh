@@ -9,4 +9,4 @@ if [ "$1" = "mcp" ]; then
   while IFS='=' read -r k v; do [ -n "$k" ] && export "$k=$v"; done < <(python3 "$HERE/google.py" env)
   exec uvx workspace-mcp --single-user --transport stdio --tools calendar gmail drive docs sheets tasks contacts
 fi
-exec python3 "$HERE/google.py" "$@"
+exec python3 -u "$HERE/google.py" "$@"
