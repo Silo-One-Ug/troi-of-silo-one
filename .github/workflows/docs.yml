@@ -1,0 +1,48 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "scripts/build-docs-nav.mjs", ".markdownlint-cli2.jsonc", ".github/workflows/docs.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["docs/**", "scripts/build-docs-nav.mjs", ".markdownlint-cli2.jsonc", ".github/workflows/docs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Markdown style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Pinned to the exact tool version rather than an action wrapper, so that
+      # `npx markdownlint-cli2@0.23.2` locally runs precisely what CI runs.
+      - name: Lint the documentation
+        run: npx --yes markdownlint-cli2@0.23.2
+
+  navigation:
+    name: Published navigation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # docs.json drives the published Mintlify site. It is generated from the tree, so a new page
+      # appears in the navigation without anyone remembering to edit a config file.
+      - name: Check docs.json and the section indexes match the tree
+        run: node scripts/build-docs-nav.mjs --check
+      # Pinned like the linter: `mint@latest` is unrunnable whenever its @mintlify/cli dependency
+      # has not been published yet (4.2.929 pointed at a missing 4.0.1532 on 24 Sep 2026).
+      - name: Check the site builds
+        run: cd docs && npx --yes mint@4.2.928 validate

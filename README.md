@@ -11,7 +11,7 @@ A chief of staff that lives on your Mac. Troi listens (hold a key, or say its na
 
 ## Get started
 
-You need an Apple Silicon Mac on macOS 14 or newer, [Homebrew](https://brew.sh), Google Chrome, and [Claude Code](https://claude.com/claude-code) installed and signed in.
+You need an Apple Silicon Mac on macOS 14 or newer, [Homebrew](https://brew.sh), Google Chrome, and [Claude Code](https://claude.com/claude-code) installed and signed in. If [Arc](https://arc.net) is installed, it becomes the browser the agent drives (shared with you, since Arc runs one instance only); Chrome stays for the hands board and the page tools that run without a window.
 
 ```bash
 git clone https://github.com/Silo-One-Ug/troi-of-silo-one ~/troi-of-silo-one
@@ -28,7 +28,7 @@ In **System Settings › Privacy & Security**, give Terminal (the app that runs 
 
 | Folder | What it holds |
 |---|---|
-| `console/` | The console app (Next.js, on http://localhost:3100): the welcome, the conversation, Library, Modes, Routines, Reports, Approvals, Eyes, Browser, and the Face, Hands, Files, Apps and Vault views |
+| `console/` | The console app (Next.js, on http://localhost:3100): the welcome, the conversation, Library, Modes, Routines, Reports, Approvals, Eyes, Browser, and the Face, Hands, Files, Apps and Vault views. On a phone it lays itself out as an app (tabs, a top bar, full-screen views, installable from Safari) |
 | `troi-console/` | The agent's server (http://127.0.0.1:8796) and tools: files, apps, eyes, browser, calendar, meetings, reports, Telegram, calls, the guard. `tools.sh` lists them all |
 | `backtalk/` | The voice line: speech in, the agent's session, speech out |
 | `ai-visualizer/`, `barehands/` | The face and the hands board |
@@ -51,11 +51,11 @@ Everything Troi keeps lives in `data/`, one folder that you can back up, move or
 | `data/backups/` | The previous version of every file edited in the console (to the Trash after 30 days) |
 | `data/servers.json` | The servers the pulse watches (`troi-console/servers.py add`) |
 | `data/prints/` | Your voice and face prints (they never leave the Mac) |
-| `data/logs/`, `data/cache/`, `data/models/`, `data/browser/` | Logs, throwaway files, speech models, and the agent's own Chrome profile |
+| `data/logs/`, `data/cache/`, `data/models/`, `data/browser/` | Logs, throwaway files, speech models, and the profile of the agent's own Chrome (with Arc installed, the agent drives your Arc on its own profile instead) |
 
 **Retention.** Camera looks, screenshots and Telegram files older than 14 days go to the macOS Trash, where you can still recover them. Their rows stay in the record, marked archived. Star a picture in the Library to keep it.
 
-**Backups.** Every night at 23:30 two things go to private repos in the `Silo-One-Ug` organization, written as the GitHub account `ayesigapaul` whichever gh account is active (`backup_org` and `github_account` in the settings). The vault is committed and pushed to `troi-vault`, or its own remote if it has one. The record and any new files go, as a release, to `troi-of-silo-one-backups` (or `backup_repo`). Missing repos are created on the first run. Backups only ever add; nothing is deleted.
+**Backups.** Every night at 23:30 two things go to private repos, written as the GitHub account in `github_account` and, when one is set, under the organization in `backup_org` (both in the settings; the welcome's Memory step shows the pair), whichever gh account is active. The vault is committed and pushed to `troi-vault`, or its own remote if it has one. The record and any new files go, as a release, to `troi-of-silo-one-backups` (or `backup_repo`). Missing repos are created on the first run. Backups only ever add; nothing is deleted.
 
 ## Secrets
 
@@ -83,8 +83,10 @@ Four background services run under launchd as `com.troi-of-silo-one.{pulse,ring,
 
 ## More
 
+- [docs/](docs/README.md): the documentation set, published with Mintlify: getting started, talking to Troi, the console, the views, every ability, safety, memory and data, and the reference (the toolbox, `console.sh`, settings, secrets, services, the API, troubleshooting).
 - [troi-console/docs/INSTALL.md](troi-console/docs/INSTALL.md): installing in detail, optional pieces, where things are, troubleshooting.
 - [troi-console/docs/USAGE.md](troi-console/docs/USAGE.md): what to say, click and do.
+- [troi-console/docs/HANDS.md](troi-console/docs/HANDS.md): the native hands, tool by tool.
 
 ## Credits and licences
 

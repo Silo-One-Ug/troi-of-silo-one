@@ -7,7 +7,7 @@ Written for someone setting Troi up on a Mac for the first time. Budget half an 
 1. **A Mac with Apple Silicon** (M1 or newer) on macOS 14 or newer. The speech models run on the Apple GPU through MLX; Intel Macs are not supported.
 2. **Homebrew.** Paste the one-liner from [brew.sh](https://brew.sh) into Terminal.
 3. **Claude Code**, signed in: [claude.com/claude-code](https://claude.com/claude-code). Run `claude` once and log in.
-4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The hands board and the agent's own browser need it.
+4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The hands board and the page tools that run without a window need it, and without Arc it is the agent's own browser. If **Arc** is installed, Arc becomes the browser the agent drives, and yours at the same time (Arc runs one instance only): the agent starts it with its debugging port, and asks it to quit and come back, tabs and spaces intact, if you opened it from the Dock first.
 
 The installer adds these command-line tools with Homebrew if they are missing:
 
@@ -57,10 +57,10 @@ Quit and reopen Terminal after granting them. The welcome checks Screen Recordin
 
 ## 4. Start, and the welcome
 
-Double-click **Troi** on the Desktop, or type `troi` in a terminal. Chrome opens the console at http://localhost:3100. The first time, it goes to the welcome:
+Double-click **Troi** on the Desktop, or type `troi` in a terminal. The agent's browser (Arc, or Chrome) opens the console at http://localhost:3100. The first time, it goes to the welcome:
 
 1. **The story.** Who Troi is, in seven scenes. Use the arrow keys or the scroll wheel, or skip straight to the setup.
-2. **You.** Your name, your full name, the greeting, and what Troi calls you mid-conversation.
+2. **You.** Your name (Troi greets you by the first word of it), and what it calls you mid-conversation.
 3. **This Mac.** The machine, the permissions, a test of the talk key, and the folders Troi may organise.
 4. **Memory.** A new vault in `data/vault` (git-backed; Troi interviews you to fill it in), or the vault you already have. Also where the nightly backup of Troi's record goes.
 5. **Voice.** Kokoro (local and free) or ElevenLabs (your key goes to the Keychain; pick one of your voices).
@@ -95,7 +95,7 @@ Run `gh auth login`, then set the org in the welcome's **Extras** step and resta
 
 ### Backups
 
-Both run at 23:30 and go to private repos in the `Silo-One-Ug` organization, written as the GitHub account `ayesigapaul`. They use that account's gh token whichever account is active (`github_account` and `backup_org` in `data/console.json`). Sign it in once with `gh auth login`.
+Both run at 23:30 and go to private repos, written as the GitHub account in `github_account` and, when one is set, under the organization in `backup_org` (both in `data/console.json`; the welcome's **Memory** step shows the pair it will use). They use that account's gh token whichever account is active in `gh`. Sign it in once with `gh auth login`.
 
 - **The vault** is committed and pushed to its own git remote. A vault without one gets `troi-vault` in the organization (or `vault_repo` from `data/console.json`), created on the first run. Pushes never force.
 - **Troi's record**, the database and any new files, goes as one release a night to `troi-of-silo-one-backups`, or to `backup_repo` from the welcome's **Memory** step. Starting Troi never runs a backup; Routines › Vault backup › Run now does (it backs up the record too).
@@ -119,7 +119,7 @@ Choose them in the welcome's **This Mac** step, or list them as `file_roots` in 
 | Voice and face prints | `data/prints/` |
 | Logs | `data/logs/`, `backtalk/logs/backtalk.log` |
 | Speech models | `data/models/` |
-| The agent's Chrome profile | `data/browser/` |
+| The agent's browser profile | Arc's own profile when the browser is Arc; `data/browser/` when it is a Chrome of the agent's own |
 | Secrets | the Keychain, account `troi-of-silo-one` (`troi-console/keychain.py list`) |
 | Boot file (identity, rules, abilities) | `CLAUDE.md`, rendered from `troi-console/templates/CLAUDE.md` |
 | Claude Code hooks and permissions | `.claude/settings.json`, rendered from `troi-console/templates/settings.json` |
@@ -151,7 +151,8 @@ Run `troi-console/doctor.sh` first. Then:
 | Garbled transcription with a Bluetooth headset | Set `mic_device` in `backtalk/backtalk.json` to the Mac's own microphone. |
 | A file you asked it to trash is still there | That is the design: the request waits in Approvals, across restarts too. Unlock with your PIN and approve it, or send "approve" on Telegram. |
 | "Approving needs you" | Unlock the console: the PIN box on the Approvals page, or **Check it's me** on the Eyes page. Or send "approve" on Telegram. |
-| The hands board shows only a ring | That is the board at rest: its camera stays off until you switch Hands on (the Eyes page, or "hands on"). If it still sees no hands, allow the camera for http://localhost:3100 in Chrome's site settings. |
+| The hands board shows only a ring | That is the board at rest: its camera stays off until you switch Hands on (the Eyes page, or "hands on"). If it still sees no hands, allow the camera for http://localhost:3100 in the browser's site settings. |
+| The agent's browser tools say the browser is not reachable | Arc was opened without its debugging port (from the Dock, before Troi). Quit Arc and start Troi again, or run `troi-console/browser-mcp.sh open`, which asks Arc to quit and brings it back with the port. |
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |
 | Anything else | Describe it to Troi in the console. It reads the troubleshooting guide that ships with each piece. |

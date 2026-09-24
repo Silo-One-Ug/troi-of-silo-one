@@ -1,0 +1,22 @@
+{
+  // The published documentation only (docs/). The repository's other Markdown keeps its own style.
+  "config": {
+    "default": true,
+    // Prose wraps at 100; tables, code and headings are exempt.
+    "MD013": { "line_length": 100, "tables": false, "code_blocks": false, "headings": false },
+    // Pages begin with YAML front matter rather than an H1.
+    "MD041": false,
+    // Front matter carries `title:`; the page's H1 is not a duplicate of it.
+    "MD025": { "front_matter_title": "" },
+    // Both ordered-list styles are used deliberately.
+    "MD029": { "style": "ordered" },
+    // No inline HTML: the pages render identically on GitHub and on the site.
+    "MD033": { "allowed_elements": [] },
+    // Bare URLs are disallowed; use link syntax.
+    "MD034": true,
+    // Tables pad their pipes on every row.
+    "MD055": { "style": "leading_and_trailing" }
+  },
+  "globs": ["docs/**/*.md"],
+  "ignores": ["node_modules/**", "docs/**/section-index.md"]
+}

@@ -1,0 +1,481 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Troi of Silo One",
+  "description": "Troi of Silo One is a chief of staff that lives on your Mac: it listens, sees when you ask, does the work, keeps its memory in a vault you own, and never deletes anything of yours.",
+  "colors": {
+    "primary": "#5B5CEB",
+    "light": "#8C95F7",
+    "dark": "#3527B8"
+  },
+  "logo": {
+    "light": "/assets/logo/lockup-light.svg",
+    "dark": "/assets/logo/lockup-dark.svg",
+    "href": "/"
+  },
+  "favicon": "/assets/logo/favicon.svg",
+  "appearance": {
+    "default": "system"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Author",
+        "href": "https://ayesigapaul.vercel.app/"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Silo-One-Ug/troi-of-silo-one"
+    }
+  },
+  "footer": {
+    "socials": {
+      "website": "https://ayesigapaul.vercel.app/",
+      "github": "https://github.com/Silo-One-Ug/troi-of-silo-one"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": [
+              "section-index"
+            ]
+          },
+          {
+            "group": "Getting started",
+            "pages": [
+              "00-start/section-index",
+              "00-start/what-troi-is",
+              "00-start/install",
+              "00-start/permissions",
+              "00-start/the-welcome",
+              "00-start/starting-and-stopping"
+            ]
+          },
+          {
+            "group": "Talking to Troi",
+            "pages": [
+              "10-talking/section-index",
+              "10-talking/the-voice",
+              "10-talking/voices",
+              "10-talking/telegram",
+              "10-talking/calls",
+              "10-talking/what-to-ask-for"
+            ]
+          },
+          {
+            "group": "The console",
+            "pages": [
+              "20-console/section-index",
+              "20-console/the-globe",
+              "20-console/conversation",
+              "20-console/modes",
+              "20-console/library",
+              "20-console/routines-and-reports",
+              "20-console/approvals",
+              "20-console/eyes",
+              "20-console/browser",
+              "20-console/on-your-phone"
+            ]
+          },
+          {
+            "group": "The views",
+            "pages": [
+              "30-views/section-index",
+              "30-views/files-galaxy",
+              "30-views/vault",
+              "30-views/apps-galaxy",
+              "30-views/hands-board"
+            ]
+          },
+          {
+            "group": "What Troi can do",
+            "pages": [
+              "40-abilities/section-index",
+              "40-abilities/files-and-apps",
+              "40-abilities/native-hands",
+              "40-abilities/the-browser",
+              "40-abilities/eyes-and-screen",
+              "40-abilities/pictures",
+              "40-abilities/news",
+              "40-abilities/music-and-movies",
+              "40-abilities/meetings",
+              "40-abilities/reminders-and-calendar",
+              "40-abilities/briefs-and-reports",
+              "40-abilities/code-ci-and-servers",
+              "40-abilities/drawing"
+            ]
+          },
+          {
+            "group": "Safety",
+            "pages": [
+              "50-safety/section-index",
+              "50-safety/the-guard",
+              "50-safety/approvals",
+              "50-safety/protected-settings-and-the-pin",
+              "50-safety/face-id-and-the-face-gate",
+              "50-safety/guests",
+              "50-safety/what-leaves-the-mac"
+            ]
+          },
+          {
+            "group": "Memory and data",
+            "pages": [
+              "60-memory/section-index",
+              "60-memory/the-vault",
+              "60-memory/the-record",
+              "60-memory/backups",
+              "60-memory/housekeeping",
+              "60-memory/where-things-are"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "70-reference/section-index",
+              "70-reference/toolbox",
+              "70-reference/console-sh",
+              "70-reference/settings",
+              "70-reference/secrets",
+              "70-reference/services",
+              "70-reference/api",
+              "70-reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/00-start/install.md",
+      "destination": "/00-start/install"
+    },
+    {
+      "source": "/00-start/permissions.md",
+      "destination": "/00-start/permissions"
+    },
+    {
+      "source": "/00-start",
+      "destination": "/00-start/section-index"
+    },
+    {
+      "source": "/00-start/README",
+      "destination": "/00-start/section-index"
+    },
+    {
+      "source": "/00-start/README.md",
+      "destination": "/00-start/section-index"
+    },
+    {
+      "source": "/00-start/starting-and-stopping.md",
+      "destination": "/00-start/starting-and-stopping"
+    },
+    {
+      "source": "/00-start/the-welcome.md",
+      "destination": "/00-start/the-welcome"
+    },
+    {
+      "source": "/00-start/what-troi-is.md",
+      "destination": "/00-start/what-troi-is"
+    },
+    {
+      "source": "/10-talking/calls.md",
+      "destination": "/10-talking/calls"
+    },
+    {
+      "source": "/10-talking",
+      "destination": "/10-talking/section-index"
+    },
+    {
+      "source": "/10-talking/README",
+      "destination": "/10-talking/section-index"
+    },
+    {
+      "source": "/10-talking/README.md",
+      "destination": "/10-talking/section-index"
+    },
+    {
+      "source": "/10-talking/telegram.md",
+      "destination": "/10-talking/telegram"
+    },
+    {
+      "source": "/10-talking/the-voice.md",
+      "destination": "/10-talking/the-voice"
+    },
+    {
+      "source": "/10-talking/voices.md",
+      "destination": "/10-talking/voices"
+    },
+    {
+      "source": "/10-talking/what-to-ask-for.md",
+      "destination": "/10-talking/what-to-ask-for"
+    },
+    {
+      "source": "/20-console/approvals.md",
+      "destination": "/20-console/approvals"
+    },
+    {
+      "source": "/20-console/browser.md",
+      "destination": "/20-console/browser"
+    },
+    {
+      "source": "/20-console/conversation.md",
+      "destination": "/20-console/conversation"
+    },
+    {
+      "source": "/20-console/eyes.md",
+      "destination": "/20-console/eyes"
+    },
+    {
+      "source": "/20-console/library.md",
+      "destination": "/20-console/library"
+    },
+    {
+      "source": "/20-console/modes.md",
+      "destination": "/20-console/modes"
+    },
+    {
+      "source": "/20-console/on-your-phone.md",
+      "destination": "/20-console/on-your-phone"
+    },
+    {
+      "source": "/20-console",
+      "destination": "/20-console/section-index"
+    },
+    {
+      "source": "/20-console/README",
+      "destination": "/20-console/section-index"
+    },
+    {
+      "source": "/20-console/README.md",
+      "destination": "/20-console/section-index"
+    },
+    {
+      "source": "/20-console/routines-and-reports.md",
+      "destination": "/20-console/routines-and-reports"
+    },
+    {
+      "source": "/20-console/the-globe.md",
+      "destination": "/20-console/the-globe"
+    },
+    {
+      "source": "/30-views/apps-galaxy.md",
+      "destination": "/30-views/apps-galaxy"
+    },
+    {
+      "source": "/30-views/files-galaxy.md",
+      "destination": "/30-views/files-galaxy"
+    },
+    {
+      "source": "/30-views/hands-board.md",
+      "destination": "/30-views/hands-board"
+    },
+    {
+      "source": "/30-views",
+      "destination": "/30-views/section-index"
+    },
+    {
+      "source": "/30-views/README",
+      "destination": "/30-views/section-index"
+    },
+    {
+      "source": "/30-views/README.md",
+      "destination": "/30-views/section-index"
+    },
+    {
+      "source": "/30-views/vault.md",
+      "destination": "/30-views/vault"
+    },
+    {
+      "source": "/40-abilities/briefs-and-reports.md",
+      "destination": "/40-abilities/briefs-and-reports"
+    },
+    {
+      "source": "/40-abilities/code-ci-and-servers.md",
+      "destination": "/40-abilities/code-ci-and-servers"
+    },
+    {
+      "source": "/40-abilities/drawing.md",
+      "destination": "/40-abilities/drawing"
+    },
+    {
+      "source": "/40-abilities/eyes-and-screen.md",
+      "destination": "/40-abilities/eyes-and-screen"
+    },
+    {
+      "source": "/40-abilities/files-and-apps.md",
+      "destination": "/40-abilities/files-and-apps"
+    },
+    {
+      "source": "/40-abilities/meetings.md",
+      "destination": "/40-abilities/meetings"
+    },
+    {
+      "source": "/40-abilities/music-and-movies.md",
+      "destination": "/40-abilities/music-and-movies"
+    },
+    {
+      "source": "/40-abilities/native-hands.md",
+      "destination": "/40-abilities/native-hands"
+    },
+    {
+      "source": "/40-abilities/news.md",
+      "destination": "/40-abilities/news"
+    },
+    {
+      "source": "/40-abilities/pictures.md",
+      "destination": "/40-abilities/pictures"
+    },
+    {
+      "source": "/40-abilities",
+      "destination": "/40-abilities/section-index"
+    },
+    {
+      "source": "/40-abilities/README",
+      "destination": "/40-abilities/section-index"
+    },
+    {
+      "source": "/40-abilities/README.md",
+      "destination": "/40-abilities/section-index"
+    },
+    {
+      "source": "/40-abilities/reminders-and-calendar.md",
+      "destination": "/40-abilities/reminders-and-calendar"
+    },
+    {
+      "source": "/40-abilities/the-browser.md",
+      "destination": "/40-abilities/the-browser"
+    },
+    {
+      "source": "/50-safety/approvals.md",
+      "destination": "/50-safety/approvals"
+    },
+    {
+      "source": "/50-safety/face-id-and-the-face-gate.md",
+      "destination": "/50-safety/face-id-and-the-face-gate"
+    },
+    {
+      "source": "/50-safety/guests.md",
+      "destination": "/50-safety/guests"
+    },
+    {
+      "source": "/50-safety/protected-settings-and-the-pin.md",
+      "destination": "/50-safety/protected-settings-and-the-pin"
+    },
+    {
+      "source": "/50-safety",
+      "destination": "/50-safety/section-index"
+    },
+    {
+      "source": "/50-safety/README",
+      "destination": "/50-safety/section-index"
+    },
+    {
+      "source": "/50-safety/README.md",
+      "destination": "/50-safety/section-index"
+    },
+    {
+      "source": "/50-safety/the-guard.md",
+      "destination": "/50-safety/the-guard"
+    },
+    {
+      "source": "/50-safety/what-leaves-the-mac.md",
+      "destination": "/50-safety/what-leaves-the-mac"
+    },
+    {
+      "source": "/60-memory/backups.md",
+      "destination": "/60-memory/backups"
+    },
+    {
+      "source": "/60-memory/housekeeping.md",
+      "destination": "/60-memory/housekeeping"
+    },
+    {
+      "source": "/60-memory",
+      "destination": "/60-memory/section-index"
+    },
+    {
+      "source": "/60-memory/README",
+      "destination": "/60-memory/section-index"
+    },
+    {
+      "source": "/60-memory/README.md",
+      "destination": "/60-memory/section-index"
+    },
+    {
+      "source": "/60-memory/the-record.md",
+      "destination": "/60-memory/the-record"
+    },
+    {
+      "source": "/60-memory/the-vault.md",
+      "destination": "/60-memory/the-vault"
+    },
+    {
+      "source": "/60-memory/where-things-are.md",
+      "destination": "/60-memory/where-things-are"
+    },
+    {
+      "source": "/70-reference/api.md",
+      "destination": "/70-reference/api"
+    },
+    {
+      "source": "/70-reference/console-sh.md",
+      "destination": "/70-reference/console-sh"
+    },
+    {
+      "source": "/70-reference",
+      "destination": "/70-reference/section-index"
+    },
+    {
+      "source": "/70-reference/README",
+      "destination": "/70-reference/section-index"
+    },
+    {
+      "source": "/70-reference/README.md",
+      "destination": "/70-reference/section-index"
+    },
+    {
+      "source": "/70-reference/secrets.md",
+      "destination": "/70-reference/secrets"
+    },
+    {
+      "source": "/70-reference/services.md",
+      "destination": "/70-reference/services"
+    },
+    {
+      "source": "/70-reference/settings.md",
+      "destination": "/70-reference/settings"
+    },
+    {
+      "source": "/70-reference/toolbox.md",
+      "destination": "/70-reference/toolbox"
+    },
+    {
+      "source": "/70-reference/troubleshooting.md",
+      "destination": "/70-reference/troubleshooting"
+    },
+    {
+      "source": "/",
+      "destination": "/section-index"
+    },
+    {
+      "source": "/README",
+      "destination": "/section-index"
+    },
+    {
+      "source": "/README.md",
+      "destination": "/section-index"
+    }
+  ]
+}

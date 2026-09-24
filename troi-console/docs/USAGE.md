@@ -86,11 +86,25 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
 - **Reports**: the end-of-day reports, each shown as it is, with its PDF, and a button that builds today's now.
 - **Approvals**: cards for trash, force-quit, risky-click and protected-setting requests, and a record of earlier decisions. Approving needs the console unlocked (your PIN at the lock, or **Check it's me** on the Eyes page); rejecting never does. Requests wait across a restart, except risky clicks, which expire because the screen has moved on.
 - **Eyes**: what the agent sees, the modes, the hands switch and face ID (see below).
-- **Browser**: the agent's own Chrome, mirrored live. Watch it work, or take over: click, scroll, type, use the address bar, log in to a site for it. **Window** brings the real Chrome window forward.
+- **Browser**: the agent's browser, mirrored live: Arc when it is installed (the same Arc you use), otherwise a Chrome of the agent's own. Watch it work, or take over: click, scroll, type, use the address bar, log in to a site for it. **Window** brings the real browser window forward.
 - **Notifications**: the bell in the bar turns on the system's own notifications. Approvals and reminders always notify; a reply or a Telegram message notifies only while the console is not the page you are looking at.
 - **Sound cues**: short interface sounds (made with ElevenLabs sound effects, in `troi-console/assets/`) play for a new approval, a due reminder, and a Telegram message while you are elsewhere. Turn them off with `"cues": false` in `data/console.json`; movie mode silences them for you.
 
 The agent can drive all of it: "switch to the hands", "open my files", "open the vault", "open the modes", "show me the browser", "float the conversation", "tidy up". It does this with `console.sh`, whose commands the console follows on whichever page is open.
+
+### On your phone
+
+Open the same address on your phone, on the same network (`http://<your Mac's name>.local:3100`), and the console lays itself out as an app:
+
+- a bar at the top: the agent's name and state, the page's title, and the lock (the PIN opens in a sheet);
+- five tabs at the bottom: **Talk**, **Views**, **Library**, **Approvals** (with its count) and **More**;
+- **More** holds everything else, one tap away: Modes, Routines, Reports, Eyes, Browser, notifications, appearance (auto, light, dark), the lock, and the welcome;
+- the five views open full screen from **Views**, with a pill at the bottom to come back. In the galaxies: tap a star, drag it onto a folder, press and hold for the menu, pinch to zoom;
+- the conversation is its own tab, with a round field and a send button; the floating pane is a desktop shape and does not exist here. "Float the conversation" simply opens the Talk tab.
+
+In Safari, **Share › Add to Home Screen** installs it with its own icon and no browser chrome. A phone held sideways keeps the same layout; an iPad gets the desktop console, with the lock opening the PIN sheet. Nothing is missing on the phone: every page and every switch of the desktop console is here.
+
+**Reaching Troi from the phone is off until you turn it on.** The agent answers only on the Mac itself by default. Modes › *Your phone* offers two ways beyond that, both protected changes (your PIN), both taking effect at Troi's next start. **Tailscale** (the option appears when Tailscale is installed on the Mac): with Tailscale on the Mac and the phone, signed in to the same account, open `http://<the Mac's tailnet name>:3100` on the phone (the hint under the switch shows the exact address); it works from anywhere, only your own devices can reach it, and every other network is turned away before a byte is read. **This network**: `http://<your Mac's name>.local:3100` on the same Wi-Fi, only on a network you trust, since anyone on it can then talk to Troi and read its record. The Face and Hands views also need their own servers reachable, which they are not yet; the galaxies, the conversation and every page work.
 
 ## The greeting
 
@@ -224,7 +238,7 @@ A phone allows its microphone only on an https page, so calls need `call.html` (
 - **The agent cannot delete.** A hook blocks every destructive command, whatever the permission mode. Trash, force-quit and risky clicks need your approval, and only you can give it: the console unlocked with your PIN or face, or your own Telegram chat. What you approve for removal goes to the macOS Trash. The nightly housekeeping also only uses the Trash, for old captures, old editor backups and old logs.
 - **The agent cannot reach its own safeguards.** That covers your secrets in the Keychain, approvals and unlocks, the settings file, your voice and face prints, its record, its boot file, Claude Code's settings and the guard's code. The same hook blocks any attempt.
 - **The hands** press controls by name through the accessibility tree and never write into password fields; a control labelled delete, pay, send, submit, install and the like is not pressed: an approval is filed for you. The guarded cursor, for what has no name, additionally refuses to click without a fresh screenshot.
-- **The browser** is the agent's own Chrome, with its own profile and none of your logins unless you log in for it on the Browser page. Payments, deletions and messages from a site need your explicit go-ahead in the same turn.
+- **The browser.** With Arc installed, the agent drives your Arc: Arc runs one instance only, so it cannot keep a separate one, and it starts yours, on your own profile, with its debugging port. Your logins are in it, which is exactly why payments, deletions and messages from a site need your explicit go-ahead in the same turn. Without Arc, the agent's browser is a Chrome of its own with none of your logins unless you log in for it on the Browser page.
 - **What leaves the Mac.** Photos and screenshots stay on the Mac and go only to your private nightly backup. Your voice and face prints never leave it, and secrets stay in the Keychain.
 
 ## Protected settings and the PIN
