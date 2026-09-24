@@ -81,9 +81,13 @@ certificate and serve it over https, once, in two steps:
    ```
 
 Then `https://<the Mac's tailnet name>/` opens the console on the phone, no port, with the
-microphone working; the console calls the agent's server over the same https. The serve rules stay
-until `tailscale serve reset`. Without this, the phone's console works over `http://<the Mac's
-Tailscale address>:3100` with everything but the microphone; Telegram voice notes are the way to talk.
+microphone working; the console calls the agent's server over the same https, and the hint under the
+switch in Modes shows that address. The serve rules stay until `tailscale serve reset`. With the
+second rule in place, Tailscale's own listener holds the tailnet side of port 8796, so the agent's
+server keeps to the Mac itself and Tailscale carries the phone: the plain `http://<address>:3100`
+way stops working, and the https name is the one to use. Without this, the phone's console works
+over `http://<the Mac's Tailscale address>:3100` with everything but the microphone; Telegram voice
+notes are the way to talk.
 
 ### What does not reach the phone yet
 

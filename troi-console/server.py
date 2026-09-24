@@ -1398,10 +1398,30 @@ def events_feed(pos, cpos):
         time.sleep(0.4)
 
 
+TAILSCALE_CLIS = ("/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale")
+
+
+def _serve_status():
+    """What `tailscale serve` publishes on the tailnet, or "" (bounded: the command waits forever when Serve is not enabled)."""
+    for cli in TAILSCALE_CLIS:
+        if Path(cli).exists():
+            try:
+                return subprocess.run([cli, "serve", "status"], capture_output=True, text=True, timeout=5).stdout or ""
+            except Exception:
+                return ""
+    return ""
+
+
+def _serve_holds(port):
+    """Does Tailscale's own https listener (a serve rule) hold this port on the tailnet side? Then this server keeps to the
+    Mac itself and Tailscale carries the phone: binding every interface would fail with "address already in use"."""
+    return f":{port} " in _serve_status() or f":{port}\n" in _serve_status()
+
+
 def _tailscale():
     """This Mac on its tailnet, when Tailscale runs: its MagicDNS name and addresses (the safe way in from a phone anywhere),
-    and every form of them a browser may put in an Origin header."""
-    for cli in ("/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale"):
+    every form of them a browser may put in an Origin header, and whether Tailscale serves the console over https."""
+    for cli in TAILSCALE_CLIS:
         if not Path(cli).exists():
             continue
         try:
@@ -1416,8 +1436,9 @@ def _tailscale():
         hosts = {ip.lower() for ip in ips if ":" not in ip} | {"[" + ip.lower() + "]" for ip in ips if ":" in ip}
         if name:
             hosts.add(name)
+        served = _serve_status()
         return {"name": name, "ip": next((ip for ip in ips if ":" not in ip), ips[0] if ips else ""), "hosts": hosts,
-                "running": st.get("BackendState") == "Running"}
+                "running": st.get("BackendState") == "Running", "https": bool(name) and (f"https://{name} (" in served or f"https://{name}\n" in served)}
     return None
 
 
@@ -1586,7 +1607,7 @@ class Handler(BaseHTTPRequestHandler):
                 "hand_tuning": settings().get("hands", SETTING_DEFAULTS["hands"]),
                 "wake_names": settings()["wake_names"],
                 "tts": settings().get("tts", "kokoro"), "elevenlabs_voice": settings().get("elevenlabs_voice", ""), "elevenlabs_voice_name": elevenlabs_voice_name(settings().get("elevenlabs_voice", "")), "elevenlabs_key": KC.has("elevenlabs"),
-                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""), "lan": settings().get("lan", False), "github_orgs": github_orgs(), "tailscale": ({"name": TAILSCALE["name"], "ip": TAILSCALE["ip"]} if TAILSCALE else None),
+                "kokoro_voice": BT.get("voice", "bm_lewis"), "welcomed": bool(settings().get("welcomed", False)), "owner": settings().get("owner", ""), "lan": settings().get("lan", False), "github_orgs": github_orgs(), "tailscale": ({"name": TAILSCALE["name"], "ip": TAILSCALE["ip"], "https": TAILSCALE.get("https", False)} if TAILSCALE else None),
                 "face": f"http://127.0.0.1:{VIS.get('port', 8790)}/faces/{VIS.get('face', 'board')}/",
                 "hands": f"http://127.0.0.1:{HANDS.get('port', 8794)}/stage.html",
             })
@@ -2195,10 +2216,15 @@ class Server(ThreadingHTTPServer):
 
 if __name__ == "__main__":
     restore_requests()
-    reach = settings().get("lan")
-    srv = Server(("0.0.0.0" if reach else "127.0.0.1", PORT), Handler)
-    srv.only_tailnet = reach == "tailscale"
-    print(f"the agent's server (API) on http://127.0.0.1:{PORT}/" + (" and over Tailscale" if srv.only_tailnet else " and on this network" if reach else ""), flush=True)
+    reach = settings().get("lan"); via_serve = False
+    try:
+        srv = Server(("0.0.0.0" if reach else "127.0.0.1", PORT), Handler)
+    except OSError as e:
+        if not (reach and e.errno == 48 and _serve_holds(PORT)):
+            raise
+        srv = Server(("127.0.0.1", PORT), Handler); via_serve = True         # Tailscale's https listener has the tailnet side of the port: it carries the phone
+    srv.only_tailnet = reach == "tailscale" and not via_serve
+    print(f"the agent's server (API) on http://127.0.0.1:{PORT}/" + (" and over Tailscale's https" if via_serve else " and over Tailscale" if srv.only_tailnet else " and on this network" if reach else ""), flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
