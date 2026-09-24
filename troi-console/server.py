@@ -11,6 +11,8 @@ A few of its routes:
   GET  /config, /state   the agent, its settings and what it is doing now
   GET  /history, /transcript?pos=N, /events   the conversation (AG-UI on POST /agent)
   POST /say              {"text": "..."} -> sent to the agent as a typed line
+  GET  /find?q=          files and folders under the file roots whose name contains q (the console's @ picker)
+  POST /upload           a file from the console page: X-Kind: uploads keeps it in data/blobs/uploads for the agent
   POST /settings         {"wake_word": true|false, ...} -> data/console.json, read live by voice.py
   POST /ui               a directive for the console (console.sh), followed at GET /ui?since=N
   GET  /                 sends a browser on to the console app
@@ -140,6 +142,7 @@ def transcript(pos, raw=False):
 
 
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".glb", ".gltf"}
+NOT_UPLOADED = {".app", ".pkg", ".dmg", ".command", ".scpt", ".exe", ".msi"}     # things the conversation does not take as files
 def image_roots():
     """Where the console may serve pictures from: the blob store, the vault, the board's airlock, the live frame."""
     vault = settings().get("vault") or HANDS.get("orbs", [{}])[0].get("path", "")
@@ -466,6 +469,55 @@ def file_roots():
 def inside_roots(path):
     p = Path(path).resolve()
     return any(p == r.resolve() or str(p).startswith(str(r.resolve()) + "/") for r in file_roots() if r.exists())
+
+
+_FIND = {"at": 0.0, "roots": None, "items": []}
+FIND_SKIP = SKIP_DIRS | {"site-packages", "anaconda3", "miniconda3", "conda", "envs", "Caches", "Photos Library.photoslibrary"}
+
+
+def _find_walk(roots):
+    """Every entry under the roots, cached for a minute and capped in size and time (the fallback and the empty query)."""
+    key = [str(r) for r in roots]
+    if _FIND["roots"] != key or time.time() - _FIND["at"] > 60:
+        items, deadline = [], time.time() + 2.0
+        for root in roots:
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and d not in FIND_SKIP)
+                base = Path(dirpath)
+                items += [(d, str(base / d), "dir") for d in dirnames]
+                items += [(f, str(base / f), "file") for f in sorted(filenames) if not f.startswith(".")]
+                if len(items) > 60000 or time.time() > deadline:
+                    break
+        _FIND.update(at=time.time(), roots=key, items=items)
+    return _FIND["items"]
+
+
+def find_files(q, limit=25):
+    """Files and folders under the file roots (and the conversation's uploads) whose name contains q: the console's @
+    picker. Spotlight answers a name search (complete and quick, whatever the size of the roots); the walk answers the
+    empty query with the roots' own entries, and stands in when Spotlight has nothing."""
+    roots = [P.blob_dir("uploads")] + [r for r in file_roots() if r.exists()]   # the uploads first: small, and walked before the cap can bite
+    ql = q.lower().strip()
+    if not ql:
+        tops = {str(r) for r in roots}
+        hits = sorted((it for it in _find_walk(roots) if str(Path(it[1]).parent) in tops), key=lambda it: (it[2] != "dir", it[0].lower()))
+    else:
+        hits, seen = [], set()
+        safe = ql.replace("\\", "").replace('"', "").replace("*", "")
+        try:
+            cmd = ["mdfind"] + sum([["-onlyin", str(r)] for r in roots], []) + [f'kMDItemFSName == "*{safe}*"cd']
+            found = subprocess.run(cmd, capture_output=True, text=True, timeout=4).stdout.splitlines()
+        except Exception:
+            found = []
+        for pth in found + [it[1] for it in _find_walk(roots) if ql in it[0].lower()]:
+            fp = Path(pth)
+            if pth in seen or fp.name.startswith(".") or any(part in FIND_SKIP or part.startswith(".") for part in fp.parts):
+                continue
+            seen.add(pth)
+            if fp.is_dir(): hits.append((fp.name, pth, "dir"))
+            elif fp.is_file(): hits.append((fp.name, pth, "file"))
+        hits.sort(key=lambda it: (0 if it[0].lower().startswith(ql) else 1, it[1].count("/"), it[2] != "dir", it[0].lower()))
+    return [{"name": n, "path": pth, "kind": k, "ext": Path(n).suffix.lower().lstrip(".")} for n, pth, k in hits[:limit]]
 
 
 def node(p, with_children=False, limit=80):
@@ -1361,6 +1413,8 @@ class Handler(BaseHTTPRequestHandler):
             live = P.LIVE
             live_p = str(live) if live.exists() and time.time() - live.stat().st_mtime < 6 else ""
             self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p})
+        elif path == "/find":
+            self._json({"items": find_files(dict(urllib.parse.parse_qsl(query)).get("q", ""))})
         elif path == "/tree":
             q = dict(urllib.parse.parse_qsl(query)); p = q.get("path", "")
             if not p:
@@ -1608,11 +1662,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         import subprocess   # some branches import it locally, which makes the name local to the whole method
         if self.path == "/upload":
-            # a picture chosen on the console page: saved into the board's airlock, then shown
-            name = re.sub(r"[^A-Za-z0-9._-]", "_", self.headers.get("X-Filename", "image.png"))[-80:]
+            # a file chosen on the console page. X-Kind: uploads keeps it in data/blobs/uploads (any kind, indexed in the
+            # record) for the agent to read through an @ mention; otherwise a picture or model for the board's airlock
+            origin = self.headers.get("Origin", "")
+            if origin and not local_origin(origin):
+                return self._json({"ok": False, "error": "forbidden"}, 403)
+            name = re.sub(r"[^A-Za-z0-9._-]", "_", self.headers.get("X-Filename", "image.png"))[-80:] or "file"
+            n = min(int(self.headers.get("Content-Length", "0")), 60_000_000)
+            if self.headers.get("X-Kind") == "uploads":
+                if Path(name).suffix.lower() in NOT_UPLOADED:
+                    return self._json({"ok": False, "error": "not a kind of file the agent takes"}, 400)
+                dst = P.blob_dir("uploads") / f"{time.strftime('%Y-%m-%d-%H%M%S')}-{name}"
+                dst.write_bytes(self.rfile.read(n))
+                try:
+                    DB.blob_index()
+                except Exception:
+                    pass
+                _FIND["at"] = 0.0                                          # the @ picker sees it on its next search
+                return self._json({"ok": True, "path": str(dst), "name": name})
             if Path(name).suffix.lower() not in IMG_EXTS:
                 return self._json({"ok": False, "error": "not an image or model"}, 400)
-            n = min(int(self.headers.get("Content-Length", "0")), 60_000_000)
             dst = HOME / "barehands" / "media" / ("models" if Path(name).suffix.lower() in (".glb", ".gltf") else "misc") / name
             dst.write_bytes(self.rfile.read(n))
             return self._json({"ok": True, "path": str(dst)})

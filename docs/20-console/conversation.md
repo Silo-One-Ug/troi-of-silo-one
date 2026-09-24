@@ -15,6 +15,22 @@ Everything the agent hears and says, live, in the same session as your voice, Te
   from the news land here as cards too.
 - A reload keeps the conversation: the console loads the last lines from the record when it opens.
 
+## Files
+
+A file can go with a line, and the agent reads it before it answers:
+
+- **Point at a file on the Mac.** Type `@` and the picker lists your folders (the file roots and the
+  vault); keep typing to search by name, ↑ ↓ to move, Enter to pick. The line carries the file's
+  path as `@/path/to/file.xlsx`; a folder works too. - **Attach a file.** The clip opens the file
+  chooser (on a phone, Photos and Files); a file dropped on the composer or pasted into it is
+  attached the same way. It is uploaded into `data/blobs/uploads/` on the Mac, shown as a chip until
+  you send (× leaves it out), and travels as the same `@` mention. - **What the agent does with
+  it.** It reads every mentioned file before answering: text, code, pictures and PDFs directly;
+  spreadsheets (xlsx as tables, csv), slides and Word documents through `troi-console/read.py`,
+  which prints them as text. Say what you want done with it in the same line.
+
+Pictures you attach also appear in the Library under Uploads.
+
 ## Two shapes
 
 It comes in two shapes, switched with the icon on its header, and your choice is remembered.

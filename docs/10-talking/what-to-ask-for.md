@@ -34,6 +34,7 @@ that explains the ability.
 | "research …" / "show me what … looks like" | Credited pictures on the board while it talks |
 | "what's in the news" / "what does NTV say about …" | Headlines per outlet, Uganda first, read out or on the board ([News](../40-abilities/news.md)) |
 | "open example.com and fill in the form" | The agent's browser ([The browser](../40-abilities/the-browser.md)) |
+| `@` then a file's name, or the clip, then what you want done with it | The file goes with your line, a spreadsheet, a document or a picture, and the agent reads it before answering ([Conversation](../20-console/conversation.md)) |
 | "show me a chart of …" / "compare these" | Drawn in the conversation as a chart, a table or cards ([Drawing in the conversation](../40-abilities/drawing.md)) |
 | "switch to the hands" / "open the vault" / "float the conversation" / "tidy up" | The agent drives its own console ([The console](../20-console/)) |
 | "go hands free" / "stop asking for permission" / "clear the session" | Only in your verified voice (or your face), from an unlocked console, or with your approve on Telegram |

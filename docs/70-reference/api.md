@@ -46,7 +46,8 @@ console is one.
 | `GET /tree`, `/recent`, `/file`, `POST /write` | The galaxies' folder tree, recent files, a file's contents, and an edit (with a backup) |
 | `GET /vaultcards`, `/vaultgraph` | The Vault wall and the memory graph |
 | `GET /apps`, `POST /app`, `GET /appicon` | The Apps galaxy |
-| `GET /images`, `/img`, `POST /star`, `/upload` | The Library |
+| `GET /images`, `/img`, `POST /star` | The Library |
+| `POST /upload`, `GET /find` | A file from the console page (`X-Kind: uploads` keeps it in `data/blobs/uploads` for the agent; otherwise a picture for the board), and the @ picker's search of the file roots |
 | `GET /reports`, `GET /report`, `GET /routines`, `POST /routines` | Reports and Routines: the list, one report, the clock and its switches |
 | `POST /look`, `/face-verify` | A look now, and Check it's me |
 | `GET /browser`, `POST /board`, `POST /show` | The Browser page's mirror, the board, and a card for the conversation |

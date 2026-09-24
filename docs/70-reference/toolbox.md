@@ -15,6 +15,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `cursor.sh` | `where`, `under`, `move`, `click`, `double`, `right`, `drag`, `type`, `key` | The pointer and keyboard fallback for what has no name (`look-screen.sh` first; risky buttons need your approval) |
 | `look.sh` | | One camera photo, its path printed |
 | `look-screen.sh` | `[display]` | One screenshot, its path printed |
+| `read.py` | `<file> [--sheet NAME] [--rows N] [--max-chars N]` | A file the Read tool cannot open, as text: xlsx sheets as tables, csv, pptx slides, docx and rtf through textutil, pdf through pdftotext |
 | `apps.sh` | `list`, `running`, `open`, `focus`, `quit`, `kill` (asks you) | Applications |
 | `fs.sh` | `move`, `rename`, `copy`, `mkdir`, `reveal`, `open [app]`, `undo`, `trash` (asks you), `pending` | Files, only inside the file roots (the vault is one) |
 | `console.sh` | see [console.sh](console-sh.md) | The console, driven |

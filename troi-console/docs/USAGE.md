@@ -57,6 +57,7 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   - A reply grows word by word in a dashed bubble, then settles into the finished text.
   - Faint "ignored" lines show what the filters dropped and why: a rejected voice shows its similarity score, and a line with no wake word says so.
   - Type and press Enter. Charts, tables, pictures and players the agent draws appear right in the conversation.
+  - Point it at a file: type `@` and pick one from your folders, or attach one with the clip (drop it on the composer, or paste it). Spreadsheets, documents, pictures and PDFs all work: the agent reads the file before it answers, with `read.py` for what its Read tool cannot open. Attached files are kept in `data/blobs/uploads/`.
   - It comes in two shapes, switched with the icon on its header, and your choice is remembered. The **column** is the Conversation page itself. The **floating** pane follows you onto every other page: drag it by the grip above its header, resize it from its corner, and double-click the grip to put it back.
 - **Modes**:
   | Switch | Options |
