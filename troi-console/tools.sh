@@ -16,9 +16,9 @@ cat <<'TXT'
   show.py     '<json tree>' | chart ... | table ... | vocabulary   draw interface in the conversation: charts, tables, stats, galleries (never an HTML file)
   media.py     now · play [words] · pause · resume · next · prev · volume N · louder · quieter · shuffle on|off · like · movie on|off   Apple Music by voice, and movie mode
   db.py        tail [N] · sessions · stats     the record: data/troi.db (conversation, cards, approvals, pictures, reports, runs)
-  meeting.py   devices · start <name> [--device NAME] · stop · status · transcribe <file> [--lang xx] [--speakers N] · list   record a meeting, transcript with speaker labels (ElevenLabs Scribe) in ~/my-agent/_meetings/
+  meeting.py   devices · start <name> [--device NAME] · stop · status · transcribe <file> [--lang xx] [--speakers N] · list   record a meeting, transcript with speaker labels (ElevenLabs Scribe) in data/blobs/meetings/
   ci-status.sh                      CI, PRs, releases per repo of your GitHub org
-  pr.py        list [repo] · review <repo> <n> [--post] [--tests] · review <project> --local · show <repo> <n>   a PR review by you, headless, in a throwaway checkout; report to ~/my-agent/_reviews/ and Telegram
+  pr.py        list [repo] · review <repo> <n> [--post] [--tests] · review <project> --local · show <repo> <n>   a PR review by you, headless, in a throwaway checkout; report to data/blobs/reviews/ and Telegram
   code.sh      list · <project> [--window]   a Claude Code session inside a project folder that still boots as the agent (boot file, guard, vault come along)
   servers.py   list · add <name> <ssh-host> [role] · check [name] [--json]   read-only health of your servers over SSH (the pulse watches every 15 min)
   agenda.py  today · next · week · soon [min] · current   the Mac's Calendar app (Google etc.); the pulse warns 15 min before an event
