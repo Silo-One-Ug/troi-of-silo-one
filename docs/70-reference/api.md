@@ -52,6 +52,8 @@ console is one.
 | `POST /look`, `/face-verify` | A look now, and Check it's me |
 | `GET /browser`, `POST /board`, `POST /show` | The Browser page's mirror, the board, and a card for the conversation |
 | `GET /voices` | Your ElevenLabs voices |
+| `GET /agents` | The brain's delegations this session, from Claude Code's record: names, kinds, states, what each is doing |
+| `POST /voice` | A voice note from the console page, to the agent's own ears: the words come back |
 | `GET /doctor` | The doctor's findings |
 | `POST /setup/profile`, `/setup/vault`, `/setup/backup`, `/setup/services`, `/setup/finish`, `GET /setup/status`, `POST /keychain`, `GET /telegram` | The welcome |
 

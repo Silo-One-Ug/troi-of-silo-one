@@ -12,6 +12,7 @@ cat <<'TXT'
   apps.sh      list | running | open | focus | quit | kill (asks the owner)
   fs.sh        move | rename | copy | mkdir | reveal | open [app] | undo | trash (asks the owner) | pending     (only inside the file roots in the settings; the vault is one)
   read.py      <file> [--sheet NAME] [--rows N]   a file the Read tool cannot open, as text: xlsx sheets as tables, csv, pptx slides, docx/rtf (textutil), pdf (pdftotext)
+  stt.py       <file>   the words in an audio file, with your own ears (run with backtalk/.venv/bin/python; the server keeps one as a worker for the console's voice notes)
   console.sh   go <place> · view face|hands|files|apps|vault · vault show|clear · files <folder> · focus <path> · apps open · images open|close
                modes|routines|approvals|reports open|close · camera open|close · browser open|close · talk column|floating · panel hide|show
                tidy · hint "<text>" · gestures on|off · eyes off|every|watch|screen · wake on|off · face-gate on|off · voice-id off|on|learn

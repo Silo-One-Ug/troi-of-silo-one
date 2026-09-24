@@ -16,7 +16,7 @@ breath while it listens. It holds:
 - the five **views**, which fill the whole window: the Face, the Hands board, the Files galaxy, the
   Apps galaxy and the Vault ([The views](../30-views/));
 - the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is
-  waiting), Eyes and Browser;
+  waiting), Eyes, Browser and Agents (with a count of the agents at work);
 - then the bell, the lock and the light/dark switch.
 
 | Page | What it is for |
@@ -28,6 +28,7 @@ breath while it listens. It holds:
 | [Approvals](approvals.md) | What waits on you, and a record of earlier decisions |
 | [Eyes](eyes.md) | What the agent sees, the sight modes, the hands switch, face ID |
 | [Browser](browser.md) | The agent's browser, mirrored live, yours to take over |
+| [Agents](agents.md) | Who the brain has put on a task, named for the job, and how each is doing |
 
 Also here: [The globe](the-globe.md), the small gold globe that floats over every Space, and
 [On your phone](on-your-phone.md), where the console lays itself out as an app.

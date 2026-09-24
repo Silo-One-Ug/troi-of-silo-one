@@ -13,13 +13,13 @@ import { eget, unlockToken, type State } from "@/lib/edge";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
-export const TITLES: Record<string, string> = { conversation: "Conversation", library: "Library", modes: "Modes", routines: "Routines", reports: "Reports", approvals: "Approvals", eyes: "Eyes", browser: "Browser", views: "Views", more: "More" };
+export const TITLES: Record<string, string> = { conversation: "Conversation", library: "Library", modes: "Modes", routines: "Routines", reports: "Reports", approvals: "Approvals", eyes: "Eyes", browser: "Browser", agents: "Agents", views: "Views", more: "More" };
 const TABS = [
   { href: "/conversation", label: "Talk", Icon: MessageSquare, match: ["/conversation"] },
   { href: "/views", label: "Views", Icon: Layers, match: ["/views", "/face", "/hands", "/files", "/apps", "/vault"] },
   { href: "/library", label: "Library", Icon: ImageIcon, match: ["/library"] },
   { href: "/approvals", label: "Approvals", Icon: ShieldCheck, match: ["/approvals"] },
-  { href: "/more", label: "More", Icon: MoreHorizontal, match: ["/more", "/modes", "/routines", "/reports", "/eyes", "/browser"] },
+  { href: "/more", label: "More", Icon: MoreHorizontal, match: ["/more", "/modes", "/routines", "/reports", "/eyes", "/browser", "/agents"] },
 ] as const;
 const STATE_WORD: Record<string, string> = { off: "not running", idle: "idle", listening: "listening", thinking: "thinking", working: "working", speaking: "speaking" };
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
+import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Network, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
 import { UnlockBox } from "./approvals";
 import { notifyOn, setNotify } from "./alerts";
 import { LockButton } from "./mobile/bars";
@@ -15,7 +15,7 @@ import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
 const GROUND = [["/face", "Face", Smile], ["/hands", "Hands board", Hand], ["/files", "Files galaxy", FolderOpen], ["/apps", "Apps galaxy", LayoutGrid], ["/vault", "Vault", Orbit]] as const;
-const PANES = [["/conversation", "Conversation", MessageSquare], ["/library", "Library", ImageIcon], ["/modes", "Modes", SlidersHorizontal], ["/routines", "Routines", Clock], ["/reports", "Reports", FileText], ["/approvals", "Approvals", ShieldCheck], ["/eyes", "Eyes", Eye], ["/browser", "Browser", Globe]] as const;
+const PANES = [["/conversation", "Conversation", MessageSquare], ["/library", "Library", ImageIcon], ["/modes", "Modes", SlidersHorizontal], ["/routines", "Routines", Clock], ["/reports", "Reports", FileText], ["/approvals", "Approvals", ShieldCheck], ["/eyes", "Eyes", Eye], ["/browser", "Browser", Globe], ["/agents", "Agents", Network]] as const;
 
 function Wave({ samples, state }: { samples: number[]; state: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -45,7 +45,7 @@ export function Dock({ name }: { name: string }) {
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-1">{GROUND.map(([h, l, I]) => item(h, l, I))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />
-      <div className="flex shrink-0 items-center gap-1">{PANES.map(([h, l, I]) => item(h, l, I, h === "/approvals" ? pending : 0))}</div>
+      <div className="flex shrink-0 items-center gap-1">{PANES.map(([h, l, I]) => item(h, l, I, h === "/approvals" ? pending : h === "/agents" ? (st?.agents || 0) : 0))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><Bell className="h-4 w-4" /></button>
         <div className="hidden lg:block"><UnlockBox /></div><LockButton className="h-9 w-9 lg:hidden" />{/* a tablet has no room for the PIN box in the bar: the lock opens it in a sheet */}

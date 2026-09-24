@@ -31,6 +31,15 @@ A file can go with a line, and the agent reads it before it answers:
 
 Pictures you attach also appear in the Library under Uploads.
 
+## On a phone
+
+The composer is a messenger's: the field grows with the lines (Return makes a new line; the plane
+sends), and while the field is empty a **microphone** stands where the plane will be. Tap it, speak,
+tap the plane: the note goes to the agent's own ears on the Mac, and the words it heard appear as
+your line and are answered like any other. × throws a recording away. The microphone needs an https
+address on a phone ([On your phone](on-your-phone.md)); over plain http, Telegram voice notes are the
+way to talk.
+
 ## Two shapes
 
 It comes in two shapes, switched with the icon on its header, and your choice is remembered.

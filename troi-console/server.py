@@ -12,6 +12,8 @@ A few of its routes:
   GET  /history, /transcript?pos=N, /events   the conversation (AG-UI on POST /agent)
   POST /say              {"text": "..."} -> sent to the agent as a typed line
   GET  /find?q=          files and folders under the file roots whose name contains q (the console's @ picker)
+  GET  /agents           the brain's delegations this session (the Agent tool's calls, each one's activity) for the Agents page
+  POST /voice            a voice note from the console page -> {"text": the words}, through the agent's own ears
   POST /upload           a file from the console page: X-Kind: uploads keeps it in data/blobs/uploads for the agent
   POST /settings         {"wake_word": true|false, ...} -> data/console.json, read live by voice.py
   POST /ui               a directive for the console (console.sh), followed at GET /ui?since=N
@@ -22,6 +24,7 @@ import os
 import re
 import urllib.parse
 import ipaddress
+import select
 import sys
 import time
 import shutil
@@ -469,6 +472,198 @@ def file_roots():
 def inside_roots(path):
     p = Path(path).resolve()
     return any(p == r.resolve() or str(p).startswith(str(r.resolve()) + "/") for r in file_roots() if r.exists())
+
+
+# ---- the brain's delegations: the Agent tool's calls and results in Claude Code's own transcript of the session, and
+#      each subagent's transcript beside it (<project>/<session>/subagents/agent-<id>.jsonl). Read incrementally, never
+#      whole; the brain names each one in the call's description, which is the name the console shows.
+_AGENTS = {"file": "", "size": 0, "tasks": {}, "order": []}
+NOTE_TOOL = {"Bash": "running a command", "Read": "reading a file", "Write": "writing a file", "Edit": "editing a file", "Glob": "looking through files",
+             "Grep": "searching files", "WebSearch": "searching the web", "WebFetch": "reading a page", "Agent": "delegating", "Task": "delegating"}
+
+
+def brain_paths():
+    """The brain's session id, its transcript, and the folder of its subagents' transcripts."""
+    try:
+        sid = (HOME / "backtalk" / ".backtalk_session").read_text().strip()
+    except Exception:
+        sid = ""
+    proj = Path.home() / ".claude" / "projects" / str(HOME).replace("/", "-")
+    return sid, (proj / f"{sid}.jsonl" if sid else None), (proj / sid / "subagents" if sid else None)
+
+
+def _ts(s):
+    import datetime as _dt
+    try:
+        return _dt.datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return time.time()
+
+
+def _blocks(rec):
+    c = (rec.get("message") or {}).get("content")
+    return [b for b in c if isinstance(b, dict)] if isinstance(c, list) else []
+
+
+def _text_of(rec):
+    c = (rec.get("message") or {}).get("content")
+    return c if isinstance(c, str) else " ".join(b.get("text", "") for b in _blocks(rec) if b.get("type") == "text")
+
+
+def _tool_note(name):
+    return NOTE_TOOL.get(name, ("in the browser" if name.startswith("mcp__playwright") else "using " + name.replace("mcp__", "").replace("__", " ")) if name else "")
+
+
+def agents_scan():
+    """Bring the picture of the session's delegations up to date from the transcript's new bytes."""
+    sid, f, _ = brain_paths(); st = _AGENTS
+    if not f or not f.exists():
+        st.update(file="", size=0, tasks={}, order=[]); return
+    if st["file"] != str(f) or f.stat().st_size < st["size"]:
+        st.update(file=str(f), size=0, tasks={}, order=[])
+    with f.open("rb") as fh:
+        fh.seek(st["size"]); chunk = fh.read()
+    cut = chunk.rfind(b"\n")                                        # whole lines only; a half-written one waits
+    if cut < 0:
+        return
+    st["size"] += cut + 1
+    for line in chunk[:cut].split(b"\n"):
+        if b"Agent" not in line and b"task-notification" not in line and b"toolUseResult" not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        if rec.get("type") == "assistant":
+            for b in _blocks(rec):
+                if b.get("type") == "tool_use" and b.get("name") in ("Agent", "Task"):
+                    inp = b.get("input") or {}
+                    st["tasks"][b["id"]] = {"id": b["id"], "name": str(inp.get("description") or "an agent").strip()[:80], "type": str(inp.get("subagent_type") or "general-purpose"),
+                                            "prompt": str(inp.get("prompt") or "").strip()[:400], "started": _ts(rec.get("timestamp")), "ended": 0, "status": "active", "agent_id": "", "result": ""}
+                    st["order"].append(b["id"])
+        elif rec.get("type") == "user":
+            for b in _blocks(rec):
+                if b.get("type") == "tool_result" and b.get("tool_use_id") in st["tasks"]:
+                    task = st["tasks"][b["tool_use_id"]]; tr = rec.get("toolUseResult")
+                    if isinstance(tr, dict) and tr.get("agentId"):
+                        task["agent_id"] = str(tr["agentId"])
+                    if not (isinstance(tr, dict) and tr.get("status") == "async_launched"):          # a blocking agent: this is its report
+                        c = b.get("content"); text = c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if isinstance(x, dict)) if isinstance(c, list) else ""
+                        task.update(status="failed" if b.get("is_error") else "done", ended=_ts(rec.get("timestamp")), result=text.strip()[:300])
+        txt = _text_of(rec) if rec.get("type") in ("user", "assistant") else (rec.get("content") if isinstance(rec.get("content"), str) else "")
+        if "<task-notification>" in txt:                                                            # an agent that ran in the background reported (queued, then delivered)
+            if True:
+                m_id = re.search(r"<task-id>([^<]+)</task-id>", txt); m_st = re.search(r"<status>([^<]+)</status>", txt); m_sum = re.search(r"<summary>([^<]+)</summary>", txt)
+                for task in st["tasks"].values():
+                    if m_id and task["agent_id"] == m_id.group(1).strip() and task["status"] == "active":
+                        task.update(status="done" if not m_st or m_st.group(1).strip() == "completed" else "failed", ended=_ts(rec.get("timestamp")))
+                        if m_sum:
+                            task["result"] = m_sum.group(1).strip()[:300]
+
+
+def agent_activity(agent_id, subdir):
+    """What a subagent is doing, from the tail of its own transcript: its last tool, its last words, its turns."""
+    f = (subdir / f"agent-{agent_id}.jsonl") if subdir and agent_id else None
+    if not f or not f.exists():
+        return {}
+    try:
+        size = f.stat().st_size
+        with f.open("rb") as fh:
+            fh.seek(max(0, size - 65536)); tail = fh.read().decode("utf-8", "replace").split("\n")
+        tool, detail, said, turns = "", "", "", 0
+        for line in tail:
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            if rec.get("type") != "assistant":
+                continue
+            turns += 1
+            for b in _blocks(rec):
+                if b.get("type") == "tool_use":
+                    inp = b.get("input") or {}; tool = b.get("name", "")
+                    detail = str(inp.get("description") or inp.get("command") or inp.get("file_path") or inp.get("pattern") or inp.get("url") or inp.get("query") or "")[:90]
+                elif b.get("type") == "text" and b.get("text", "").strip():
+                    said = b["text"].strip()[:220]; tool = ""; detail = ""
+        return {"doing": _tool_note(tool), "detail": detail, "said": said, "turns": turns, "seen": f.stat().st_mtime}
+    except Exception:
+        return {}
+
+
+def agents_snapshot(light=False):
+    """The session's delegations, newest first: name, type, status, times; with each one's activity unless light."""
+    agents_scan()
+    _, _, subdir = brain_paths(); now = time.time(); out = []
+    for tid in reversed(_AGENTS["order"]):
+        t = dict(_AGENTS["tasks"][tid])
+        if not light:
+            t.update(agent_activity(t["agent_id"], subdir))
+            if t["status"] == "active" and t.get("seen") and now - t["seen"] > 1800:
+                t["status"] = "quiet"                                                              # not a word in half an hour
+        out.append(t)
+    return out
+
+
+def brain_now():
+    """The brain itself: its state and the tool in its hands, for the top of the Agents page."""
+    try:
+        st = (HOME / "backtalk" / ".voice_state").read_text().strip() or "idle"
+    except Exception:
+        st = "off"
+    if st == "idle" and voice_busy():
+        st = "working"
+    try:
+        tool = (HOME / "backtalk" / ".voice_tool").read_text().strip()
+    except Exception:
+        tool = ""
+    return {"name": AGENT, "state": st if FIFO.exists() else "off", "doing": _tool_note(tool)}
+
+
+# ---- voice notes from the console page: the agent's own ears, in a resident worker (stt.py --serve) that keeps the
+#      model loaded and leaves ten minutes after the last note
+_STT = {"proc": None, "lock": threading.Lock(), "timer": None}
+STT_PY = HOME / "backtalk" / ".venv" / "bin" / "python"
+
+
+def _stt_stop():
+    with _STT["lock"]:
+        p = _STT["proc"]; _STT["proc"] = None
+        if p and p.poll() is None:
+            try:
+                p.terminate()
+            except Exception:
+                pass
+
+
+def stt_text(path, timeout=150):
+    """Words from an audio file. Raises when the ears do not answer."""
+    with _STT["lock"]:
+        p = _STT["proc"]
+        if p is None or p.poll() is not None:
+            p = subprocess.Popen([str(STT_PY), str(HERE / "stt.py"), "--serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+            _STT["proc"] = p
+        try:
+            p.stdin.write(json.dumps({"path": str(path)}) + "\n"); p.stdin.flush()
+            r, _, _ = select.select([p.stdout], [], [], timeout)
+            line = p.stdout.readline() if r else ""
+            if not line:
+                raise RuntimeError("the ears did not answer")
+        except Exception:
+            try:
+                p.kill()
+            except Exception:
+                pass
+            _STT["proc"] = None
+            raise
+        if _STT["timer"]:
+            _STT["timer"].cancel()
+        _STT["timer"] = threading.Timer(600, _stt_stop); _STT["timer"].daemon = True; _STT["timer"].start()
+    d = json.loads(line or "{}")
+    if d.get("error"):
+        raise RuntimeError(d["error"])
+    return str(d.get("text", "")).strip()
 
 
 _FIND = {"at": 0.0, "roots": None, "items": []}
@@ -1412,7 +1607,14 @@ class Handler(BaseHTTPRequestHandler):
                     wave = []
             live = P.LIVE
             live_p = str(live) if live.exists() and time.time() - live.stat().st_mtime < 6 else ""
-            self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p})
+            try:
+                agents = sum(1 for a in agents_snapshot(light=True) if a["status"] == "active")
+            except Exception:
+                agents = 0
+            self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p, "agents": agents})
+        elif path == "/agents":
+            sid, f, _ = brain_paths()
+            self._json({"brain": brain_now(), "agents": agents_snapshot(), "session": sid, "record": bool(f and f.exists())})
         elif path == "/find":
             self._json({"items": find_files(dict(urllib.parse.parse_qsl(query)).get("q", ""))})
         elif path == "/tree":
@@ -1661,6 +1863,25 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         import subprocess   # some branches import it locally, which makes the name local to the whole method
+        if self.path == "/voice":
+            # a voice note from the console page (the phone's microphone): the words come back, and the page sends them as a line
+            origin = self.headers.get("Origin", "")
+            if origin and not local_origin(origin):
+                return self._json({"ok": False, "error": "forbidden"}, 403)
+            ext = Path(re.sub(r"[^A-Za-z0-9._-]", "_", self.headers.get("X-Filename", "note.webm"))).suffix.lower() or ".webm"
+            n = min(int(self.headers.get("Content-Length", "0")), 30_000_000)
+            tmp = P.CACHE / f"voice-{time.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}{ext}"
+            tmp.write_bytes(self.rfile.read(n))
+            try:
+                text = stt_text(tmp)
+            except Exception as e:
+                return self._json({"ok": False, "error": f"the ears did not answer: {e}"}, 500)
+            finally:
+                try:
+                    tmp.unlink()
+                except Exception:
+                    pass
+            return self._json({"ok": True, "text": text})
         if self.path == "/upload":
             # a file chosen on the console page. X-Kind: uploads keeps it in data/blobs/uploads (any kind, indexed in the
             # record) for the agent to read through an @ mention; otherwise a picture or model for the board's airlock

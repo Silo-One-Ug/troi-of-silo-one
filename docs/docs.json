@@ -80,6 +80,7 @@
               "20-console/approvals",
               "20-console/eyes",
               "20-console/browser",
+              "20-console/agents",
               "20-console/on-your-phone"
             ]
           },
@@ -220,6 +221,10 @@
     {
       "source": "/10-talking/what-to-ask-for.md",
       "destination": "/10-talking/what-to-ask-for"
+    },
+    {
+      "source": "/20-console/agents.md",
+      "destination": "/20-console/agents"
     },
     {
       "source": "/20-console/approvals.md",

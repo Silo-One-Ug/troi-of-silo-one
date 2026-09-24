@@ -1,7 +1,7 @@
 ---
 title: On your phone
 description: The console as an app on your phone, and the three ways to reach Troi from it, Tailscale first.
-order: 9
+order: 10
 ---
 
 Open the console's address on your phone and it lays itself out as an app:
@@ -63,6 +63,27 @@ before; without the server behind them they show nothing of the record.
 
 Pick **This network**, enter your PIN, start Troi again, and open `http://<your Mac's name>.local:3100`
 on the phone, on the same Wi-Fi (the hint shows the name). Do this only on a network you trust.
+
+### Https, for the microphone and the name
+
+A phone's browser allows the microphone only on an https page, so the voice note in the
+conversation (the microphone that stands in for the send button while the field is empty) needs
+one; and browsers force https on every `.ts.net` name. Tailscale can give the console a real
+certificate and serve it over https, once, in two steps:
+
+1. In Tailscale's admin console, enable **HTTPS Certificates** (the DNS page) and **Serve** (the
+   page the command below names).
+2. On the Mac, once Troi is running:
+
+   ```bash
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=443 http://127.0.0.1:3100
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=8796 http://127.0.0.1:8796
+   ```
+
+Then `https://<the Mac's tailnet name>/` opens the console on the phone, no port, with the
+microphone working; the console calls the agent's server over the same https. The serve rules stay
+until `tailscale serve reset`. Without this, the phone's console works over `http://<the Mac's
+Tailscale address>:3100` with everything but the microphone; Telegram voice notes are the way to talk.
 
 ### What does not reach the phone yet
 
