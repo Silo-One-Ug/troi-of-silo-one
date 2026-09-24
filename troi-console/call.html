@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice call</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(900px 600px at 50% 30%, #0d2233, #04080c);
+         color: #e6f4ff; font: 17px/1.5 -apple-system, ui-sans-serif, sans-serif; }
+  main { text-align: center; padding: 24px; max-width: 420px; }
+  .ring { width: 160px; height: 160px; margin: 0 auto 24px; border-radius: 50%; border: 3px solid rgba(127,220,255,.5);
+          display: grid; place-items: center; letter-spacing: .3em; font-weight: 700; color: #7fdcff; transition: box-shadow .3s; }
+  .ring.live { box-shadow: 0 0 40px 6px rgba(127,220,255,.35); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 60px 12px rgba(127,220,255,.5); } }
+  button { font: inherit; font-size: 18px; padding: 14px 32px; border-radius: 999px; border: 0; color: #04080c; background: #7fdcff; cursor: pointer; }
+  button.end { background: #ff9b8a; }
+  #st { color: #8fb0c4; margin-top: 16px; min-height: 24px; }
+</style></head>
+<body><main>
+  <div class="ring" id="ring">CALL</div>
+  <button id="btn">Join the call</button>
+  <div id="st"></div>
+  <label id="pttw" style="display:none;margin-top:18px;color:#8fb0c4;font-size:15px"><input type="checkbox" id="pttc"> Push to talk (for a noisy room)</label>
+  <button id="ptt" style="display:none;margin-top:14px;width:220px;height:64px;background:#ffd28a;touch-action:none;user-select:none;-webkit-user-select:none">Hold to talk</button>
+  <div style="height:6px;margin:14px auto 0;width:220px;background:rgba(127,220,255,.15);border-radius:3px;overflow:hidden"><div id="mic" style="height:100%;width:0;background:#7fdcff;transition:width .1s"></div></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4/AgoraRTC_N-production.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const st = m => document.getElementById("st").textContent = m;
+st((q.get("appid") ? "app \u2026" + q.get("appid").slice(-4) : "no app id in this link") + " \u00b7 " + (q.get("channel") || "no channel") + " \u00b7 " + (q.get("token") ? "token ok" : "no token"));
+let client, mic;
+document.getElementById("btn").onclick = async () => {
+  const btn = document.getElementById("btn");
+  if (client) { await leave(); return; }
+  if (!q.get("appid") || !q.get("channel") || !q.get("token")) { st("This link is missing its call details. Ask your agent for a new one."); return; }
+  try {
+    // iPhone Safari: the microphone must be opened straight from the tap,
+    // before anything that waits on the network
+    mic = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true });
+    client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+    client.on("user-published", async (u, t) => { await client.subscribe(u, t); if (t === "audio") { u.audioTrack.play(); } });
+    client.on("user-left", () => st("The agent left the call."));
+    await client.join(q.get("appid"), q.get("channel"), q.get("token"), Number(q.get("uid") || 2));
+    await client.publish([mic]);
+    document.getElementById("ring").classList.add("live"); btn.textContent = "Hang up"; btn.classList.add("end");
+    meter = setInterval(() => { const v = mic.getVolumeLevel(); document.getElementById("mic").style.width = Math.min(100, v * 300) + "%"; }, 150);
+    st("Connected. Say hello. The bar below shows your microphone.");
+    document.getElementById("pttw").style.display = "block";
+  } catch (e) { st("Could not join: " + (e.message || e)); try { mic && mic.close(); } catch (x) {} client = null; }
+};
+let meter = null;
+// push to talk: the microphone is muted except while the big button is held
+const pttc = document.getElementById("pttc"), pttb = document.getElementById("ptt");
+pttc.onchange = () => { pttb.style.display = pttc.checked ? "inline-block" : "none"; if (mic) mic.setEnabled(!pttc.checked); st(pttc.checked ? "Push to talk: hold the button while you speak." : "Open microphone."); };
+const hold = on => { if (mic && pttc.checked) { mic.setEnabled(on); pttb.style.background = on ? "#8affc1" : "#ffd28a"; } };
+["pointerdown"].forEach(e => pttb.addEventListener(e, ev => { ev.preventDefault(); hold(true); }));
+["pointerup", "pointercancel", "pointerleave"].forEach(e => pttb.addEventListener(e, ev => { ev.preventDefault(); hold(false); }));
+async function leave() {
+  clearInterval(meter); try { mic && mic.close(); await client.leave(); } catch (e) {}
+  client = null; document.getElementById("ring").classList.remove("live");
+  const btn = document.getElementById("btn"); btn.textContent = "Join the call"; btn.classList.remove("end"); st("Call ended.");
+}
+</script></body></html>

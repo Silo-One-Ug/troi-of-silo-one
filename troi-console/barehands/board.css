@@ -1,0 +1,16 @@
+/* board.css — Silo One's look for the hands board (injected by patch-board.sh; upstream files untouched).
+   The camera stays on for hand tracking but is no longer the backdrop: the stage is a calm dark
+   gradient that takes any content, and pictures keep their true colours. */
+#cam { width: 2px !important; height: 2px !important; opacity: .01 !important; pointer-events: none !important; }
+body:not(.overlay):not(.keybg) {
+  background: radial-gradient(1400px 900px at 45% 38%, #0c1c2c 0%, #070f19 45%, #03060b 100%) !important;
+}
+body:not(.overlay):not(.keybg)::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(900px 600px at 70% 80%, rgba(120,80,200,.08), transparent 60%), radial-gradient(700px 500px at 20% 20%, rgba(60,160,220,.07), transparent 60%);
+}
+/* pictures are shown as they are: no holographic tint */
+.card.imgcard.mat img, .card.imgcard.mat video { filter: none !important; }
+.card.imgcard img, .card.imgcard video { filter: none; }
+/* cards read well on the dark ground */
+.card, .panel { box-shadow: 0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); }

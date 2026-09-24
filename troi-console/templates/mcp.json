@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "__ROOT__/troi-console/browser-mcp.sh",
+      "args": [],
+      "env": {}
+    }
+  }
+}

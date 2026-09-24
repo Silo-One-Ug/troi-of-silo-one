@@ -1,0 +1,27 @@
+# dependencies and builds
+node_modules/
+.next/
+.venv*/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+
+# everything Troi keeps: the record, the blob store, settings, prints, logs, models, the agent's browser, a vault it made
+data/
+
+# rendered on each Mac by troi-console/setup.py from troi-console/templates/
+/CLAUDE.md
+/.mcp.json
+/.claude/
+
+# runtime: the typing pipe, the launcher's pid, the voice line's session id, the hands board's airlock (your pictures), editor backups
+troi-console/.typed
+troi-console/.pid
+backtalk/.backtalk_session
+troi-console/backups/
+barehands/media/
+
+cache/
+logs/
+.DS_Store
+.env*

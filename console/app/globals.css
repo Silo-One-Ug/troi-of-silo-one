@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (docs/DESIGN.md). HSL triplets so Tailwind can add alpha. */
+@layer base {
+  :root {
+    --background: 0 0% 100%;         --foreground: 222 47% 11%;
+    --surface: 0 0% 98%;             --border: 220 13% 91%;
+    --muted: 210 40% 96%;            --muted-foreground: 215 16% 47%;
+    --primary: 240 60% 60%;          --primary-foreground: 0 0% 100%;
+    --accent: 243 75% 95%;           --accent-foreground: 243 60% 40%;
+    --tile: 184 55% 59%;
+    --ok-bg: 141 84% 93%; --ok-fg: 142 72% 25%; --note-bg: 251 91% 95%; --note-fg: 260 67% 41%; --warn-bg: 48 96% 89%; --warn-fg: 30 80% 31%;
+  }
+  .dark {
+    --background: 222 47% 6%;        --foreground: 210 40% 96%;
+    --surface: 222 40% 9%;           --border: 217 33% 17%;
+    --muted: 217 33% 14%;            --muted-foreground: 215 20% 65%;
+    --primary: 240 70% 70%;          --primary-foreground: 222 47% 6%;
+    --accent: 243 40% 18%;           --accent-foreground: 243 80% 85%;
+    --tile: 184 55% 45%;
+    --ok-bg: 142 50% 14%; --ok-fg: 141 70% 70%; --note-bg: 251 45% 18%; --note-fg: 251 90% 82%; --warn-bg: 40 60% 14%; --warn-fg: 45 90% 70%;
+  }
+  * { @apply border-border; }
+  html { font-feature-settings: "cv11", "ss01"; }
+  body { @apply bg-background text-foreground antialiased; font-size: 14px; }
+}
+
+@layer components {
+  .pill { @apply inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium; }
+  .pill-ok { background: hsl(var(--ok-bg)); color: hsl(var(--ok-fg)); }
+  .pill-note { background: hsl(var(--note-bg)); color: hsl(var(--note-fg)); }
+  .pill-warn { background: hsl(var(--warn-bg)); color: hsl(var(--warn-fg)); }
+  .label { @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground; }
+  .hairline { @apply border border-border rounded-md bg-background; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+@media print {
+  header, nav, .no-print { display: none !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .hairline { border: 0 !important; }
+  body { font-size: 12px; }
+}
+
+/* dark mode touches for what is not a token: map tiles, the amber and green notes */
+.dark .leaflet-tile { filter: brightness(0.75) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.6); }
+.dark .leaflet-container { background: hsl(var(--surface)); }
+.note-warn { @apply border-amber-200 bg-amber-50; } .dark .note-warn { border-color: hsl(40 60% 24%); background: hsl(40 60% 12%); }
+.note-ok { @apply border-emerald-200 bg-emerald-50; } .dark .note-ok { border-color: hsl(142 50% 24%); background: hsl(142 50% 11%); }
+
+/* over space: panels are frosted glass so the planet shows through */
+.dark .hairline { background: hsl(222 47% 6% / .72); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); }
+/* the ground behind the console pages is always space, so text that sits straight on it takes the dark tokens even in
+   the light theme; panels on it (hairline) keep the light ones */
+html:not(.dark) .on-space { --background: 222 47% 6%; --foreground: 210 40% 96%; --surface: 222 40% 9%; --border: 217 33% 22%; --muted: 217 33% 14%; --muted-foreground: 215 20% 72%;
+  --primary: 240 70% 70%; --primary-foreground: 222 47% 6%; --accent: 243 40% 18%; --accent-foreground: 243 80% 85%;
+  --ok-bg: 142 50% 14%; --ok-fg: 141 70% 70%; --note-bg: 251 45% 18%; --note-fg: 251 90% 82%; --warn-bg: 40 60% 14%; --warn-fg: 45 90% 70%; color: hsl(var(--foreground)); }
+html:not(.dark) .on-space .hairline, html:not(.dark) .on-space .note-warn, html:not(.dark) .on-space .note-ok { --background: 0 0% 100%; --foreground: 222 47% 11%; --surface: 0 0% 98%; --border: 220 13% 91%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+  --primary: 240 60% 60%; --primary-foreground: 0 0% 100%; --accent: 243 75% 95%; --accent-foreground: 243 60% 40%;
+  --ok-bg: 141 84% 93%; --ok-fg: 142 72% 25%; --note-bg: 251 91% 95%; --note-fg: 260 67% 41%; --warn-bg: 48 96% 89%; --warn-fg: 30 80% 31%; color: hsl(var(--foreground)); }
+body { background: #02040a; }   /* never a white frame behind a page that is still loading */
+
+/* glass is always a dark pane, so it always carries the dark tokens: in the light theme its text stays readable */
+.glass { --background: 222 47% 6%; --foreground: 210 40% 96%; --surface: 222 40% 9%; --border: 217 33% 17%; --muted: 217 33% 14%; --muted-foreground: 215 20% 65%;
+  --primary: 240 70% 70%; --primary-foreground: 222 47% 6%; --accent: 243 40% 18%; --accent-foreground: 243 80% 85%; color: hsl(var(--foreground)); color-scheme: dark; }
+.glass { background: hsl(222 47% 6% / .72); border: 1px solid hsl(var(--border)); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); }
+.glass .hairline { border: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
+html.dark body { background: #02040a; }
+
+.no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }

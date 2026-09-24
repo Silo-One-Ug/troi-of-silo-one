@@ -1,0 +1,104 @@
+{
+ "uganda": [
+  {
+   "name": "NBS Television",
+   "site": "https://nbs.ug",
+   "rss": "",
+   "youtube": "@NBSalways",
+   "x": "@nbstv",
+   "facebook": "NBSTelevisionUG",
+   "gnews": "\"NBS\" Uganda OR \"NBS Television\" OR \"Next Media\"",
+   "note": "nbs.ug carries no news feed; NBS stories run on Nile Post, and Google News covers the rest"
+  },
+  {
+   "name": "Nile Post (Next Media)",
+   "site": "https://nilepost.co.ug",
+   "rss": "https://nilepost.co.ug/feed/",
+   "x": "@nilepostnews",
+   "facebook": "NilePostNews"
+  },
+  {
+   "name": "NTV Uganda",
+   "site": "https://www.ntv.co.ug",
+   "rss": "https://www.ntv.co.ug/feed/",
+   "youtube": "@ntvuganda",
+   "x": "@ntvuganda",
+   "facebook": "NTVUganda"
+  },
+  {
+   "name": "UBC",
+   "site": "https://ubc.ug",
+   "rss": "",
+   "gnews": "\"UBC\" Uganda OR \"Uganda Broadcasting Corporation\"",
+   "youtube": "@ubctvuganda",
+   "x": "@ubctvuganda",
+   "facebook": "UBCTelevisionUganda",
+   "note": "the website is gone (HTTP 410): headlines come from Google News; videos from YouTube"
+  },
+  {
+   "name": "Galaxy FM",
+   "site": "https://galaxyfm.co.ug",
+   "rss": "https://galaxyfm.co.ug/feed/",
+   "youtube": "@galaxyfmug1002",
+   "x": "@galaxyfm100",
+   "facebook": "GalaxyFM100"
+  },
+  {
+   "name": "Simba FM",
+   "site": "",
+   "rss": "",
+   "gnews": "\"Simba FM\" Uganda",
+   "youtube": "@simbakulutimbe973",
+   "x": "@simbafm97",
+   "facebook": "SimbaFM97.3",
+   "note": "no working website: headlines come from Google News; videos from the Simba ku Lutimbe channel"
+  },
+  {
+   "name": "The Independent",
+   "site": "https://www.independent.co.ug",
+   "rss": "https://www.independent.co.ug/feed/"
+  },
+  {
+   "name": "The Observer",
+   "site": "https://observer.ug",
+   "rss": "https://observer.ug/feed/"
+  },
+  {
+   "name": "PML Daily",
+   "site": "https://www.pmldaily.com",
+   "rss": "https://www.pmldaily.com/feed/"
+  },
+  {
+   "name": "Google News \u00b7 Uganda",
+   "site": "https://news.google.com",
+   "rss": "https://news.google.com/rss/headlines/section/geo/Uganda?hl=en-UG&gl=UG&ceid=UG:en"
+  }
+ ],
+ "world": [
+  {
+   "name": "BBC World",
+   "site": "https://www.bbc.com/news/world",
+   "rss": "https://feeds.bbci.co.uk/news/world/rss.xml"
+  },
+  {
+   "name": "BBC Africa",
+   "site": "https://www.bbc.com/news/world/africa",
+   "rss": "https://feeds.bbci.co.uk/news/world/africa/rss.xml"
+  },
+  {
+   "name": "Al Jazeera",
+   "site": "https://www.aljazeera.com",
+   "rss": "https://www.aljazeera.com/xml/rss/all.xml"
+  },
+  {
+   "name": "The Guardian World",
+   "site": "https://www.theguardian.com/world",
+   "rss": "https://www.theguardian.com/world/rss"
+  },
+  {
+   "name": "Washington Post World",
+   "site": "https://www.washingtonpost.com/world",
+   "rss": "https://feeds.washingtonpost.com/rss/world"
+  }
+ ]
+}

@@ -1,0 +1,8 @@
+# runtime and environments (everything the agent keeps lives in ../data; secrets live in the macOS Keychain)
+.typed
+.pid
+backups/
+.venv*/
+__pycache__/
+node_modules/
+.DS_Store

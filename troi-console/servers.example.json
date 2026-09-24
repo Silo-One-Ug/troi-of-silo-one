@@ -1,0 +1,14 @@
+{
+  "servers": [
+    {
+      "name": "example",
+      "host": "my-server",
+      "role": "what it runs (host = an alias or address from ~/.ssh/config with key auth)"
+    }
+  ],
+  "thresholds": {
+    "disk_pct": 80,
+    "load_per_core": 1.5,
+    "mem_pct": 90
+  }
+}

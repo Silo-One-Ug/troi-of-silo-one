@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.troi-of-silo-one.telegram</string>
+  <key>ProgramArguments</key><array><string>__ROOT__/backtalk/.venv/bin/python</string><string>__ROOT__/troi-console/telegram.py</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string><key>HF_HOME</key><string>__ROOT__/data/models/hf</string><key>TORCH_HOME</key><string>__ROOT__/data/models/torch</string></dict>
+  <key>StandardOutPath</key><string>__ROOT__/data/logs/telegram.out</string>
+  <key>StandardErrorPath</key><string>__ROOT__/data/logs/telegram.out</string>
+</dict></plist>
