@@ -71,3 +71,23 @@ body { background: #02040a; }   /* never a white frame behind a page that is sti
 html.dark body { background: #02040a; }
 
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* scrollbars: thin everywhere, a rounded thumb in the hairline colour, no track */
+* { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .55); }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+/* the phone: under 768 px, or a touch screen shorter than 600 px (a phone held sideways), the console is an app
+   (components/mobile/bars.tsx; the same rule is lib/mobile.ts and the md screen in tailwind.config.ts). The page keeps
+   clear of the bar at the top and the tabs at the bottom, of the notch and of the home indicator; text is a size a
+   thumb can read; fields are 16 px so Safari never zooms into them. */
+@media (max-width: 767px), ((pointer: coarse) and (max-height: 600px)) {
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-size: 15px; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  input, select, textarea { font-size: 16px !important; }
+  a, button { touch-action: manipulation; }
+  .app-page { padding-top: calc(env(safe-area-inset-top, 0px) + 60px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); min-height: 100dvh; }
+  .fill-page { height: calc(100dvh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-width: none; }
+}

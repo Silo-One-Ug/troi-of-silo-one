@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { eget, emit, setTalkShape } from "@/lib/edge";
+import { isMobile } from "@/lib/mobile";
 
 const PLACES = ["conversation", "library", "modes", "routines", "reports", "approvals", "eyes", "browser", "face", "hands", "files", "apps", "vault"];
 type D = Record<string, any> & { seq: number };
@@ -35,7 +36,7 @@ export function Directives() {
       for (const k of ["modes", "routines", "approvals", "reports"]) { if (d[k] === "open" || d[k] === "toggle") go(k); if (d[k] === "close" && path.startsWith("/" + k)) go("conversation"); }
       if (d.camera === "open") go("eyes"); if (d.camera === "close" && path.startsWith("/eyes")) go("conversation");
       if (d.browser === "open") go("browser"); if (d.browser === "close" && path.startsWith("/browser")) go("conversation");
-      if (d.talk === "column" || d.talk === "floating") { setTalkShape(d.talk); if (d.talk === "column") go("conversation"); }
+      if (d.talk === "column" || d.talk === "floating") { if (isMobile()) go("conversation"); else { setTalkShape(d.talk); if (d.talk === "column") go("conversation"); } }   // a phone has no floating pane: the conversation is its own tab
       if (d.panel === "hide") emit("panel", false); if (d.panel === "show") { emit("panel", true); }
       if (d.tidy) { emit("tidy", true); emit("panel", true); }
       if (d.hint) { setHint(String(d.hint)); clearTimeout(t); t = setTimeout(() => setHint(""), 9000); }

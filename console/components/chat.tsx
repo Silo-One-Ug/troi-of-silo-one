@@ -5,13 +5,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
-import { Columns2, PictureInPicture2, Send, Square } from "lucide-react";
+import { ArrowUp, Columns2, PictureInPicture2, Send, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
 import { rise } from "@/lib/motion";
 import { edgeUrl, eget, epost, img, setTalkShape, talkShape, type Card, type Row, type State } from "@/lib/edge";
+import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
 type Msg = { id: string; role: "user" | "assistant" | "note" | "ignored" | "headlines" | "pictures" | "ui"; text: string; t?: string; live?: boolean; data?: any };
@@ -100,25 +101,27 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     for (const s of said) for (const sent of s.split(/(?<=[.!?])\s+/)) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
     setBusy(false); busyRef.current = false;
   }
-  const shape = talkShape();
+  const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off");
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", embedded ? "" : "hairline")}>
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
+    <div className={cn("flex h-full min-h-0 flex-col", embedded ? "" : "md:hairline")}>
+      {/* the header is the desktop's: on a phone the top bar already says who is speaking and in what state */}
+      <div className="hidden items-center gap-2 border-b border-border px-3 py-2 text-sm md:flex"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
         <button className="ml-auto text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-        {msgs.length === 0 && <div className="grid h-full place-items-center text-sm text-muted-foreground">Nothing said yet. Hold your talk key and speak, or type below.</div>}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 md:p-4">
+        {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
         <AnimatePresence initial={false}>
           {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} /> : (
-            <motion.div key={m.id} {...rise} className={m.role === "user" ? "ml-auto max-w-[75%] rounded-md bg-accent px-3 py-2 text-sm" : m.role === "note" || m.role === "ignored" ? "text-xs italic text-muted-foreground" : cn("max-w-[85%] whitespace-pre-wrap rounded-md border border-border px-3 py-2 text-sm leading-6", m.live && "border-dashed")}>
+            <motion.div key={m.id} {...rise} className={m.role === "user" ? "ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[75%] md:rounded-md md:text-sm" : m.role === "note" || m.role === "ignored" ? "px-1 text-xs italic text-muted-foreground" : cn("max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-border bg-surface/85 px-3.5 py-2 text-[15px] leading-6 md:max-w-[85%] md:rounded-md md:bg-transparent md:text-sm", m.live && "border-dashed")}>
               {m.text}{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}{m.t && !m.live && m.role !== "note" && <span className="ml-2 text-[10px] text-muted-foreground">{m.t}</span>}
             </motion.div>))}
         </AnimatePresence>
         <div ref={end} />
       </div>
-      <form className="flex gap-2 border-t border-border p-3" onSubmit={e => { e.preventDefault(); send(text); }}>
-        <Input value={text} onChange={e => setText(e.target.value)} placeholder={`Type to ${name} and press Enter`} />
-        <Button type="submit" disabled={busy}><Send className="h-4 w-4" />Send</Button>
-        <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)"><Square className="h-4 w-4" /></Button>
+      {/* the composer: on a phone a round field and a round send button, as messages are written on one; Stop shows while a reply is under way */}
+      <form className="flex items-center gap-2 border-t border-border p-2.5 md:p-3" onSubmit={e => { e.preventDefault(); send(text); }}>
+        <Input value={text} onChange={e => setText(e.target.value)} placeholder={mobile ? `Message ${name}` : `Type to ${name} and press Enter`} enterKeyHint="send" autoCapitalize="sentences" autoComplete="off" className="h-10 rounded-full px-4 md:h-9 md:rounded-sm md:px-3" />
+        <Button type="submit" disabled={busy} aria-label="Send" className="h-10 w-10 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><ArrowUp className="h-5 w-5 md:hidden" /><Send className="hidden h-4 w-4 md:block" /><span className="hidden md:inline">Send</span></Button>
+        <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)" aria-label="Stop the reply" className={cn("h-10 w-10 shrink-0 rounded-full p-0 md:inline-flex md:h-9 md:w-auto md:rounded-sm md:px-3", talking ? "inline-flex" : "hidden")}><Square className="h-4 w-4" /></Button>
       </form>
       {hint && <div className="px-4 pb-3 text-xs text-muted-foreground">{hint}</div>}
     </div>

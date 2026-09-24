@@ -8,8 +8,10 @@ import { motion } from "framer-motion";
 import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
 import { UnlockBox } from "./approvals";
 import { notifyOn, setNotify } from "./alerts";
+import { LockButton } from "./mobile/bars";
 import { ThemeToggle } from "./theme-toggle";
 import { eget, type State } from "@/lib/edge";
+import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
 const GROUND = [["/face", "Face", Smile], ["/hands", "Hands board", Hand], ["/files", "Files galaxy", FolderOpen], ["/apps", "Apps galaxy", LayoutGrid], ["/vault", "Vault", Orbit]] as const;
@@ -22,7 +24,7 @@ function Wave({ samples, state }: { samples: number[]; state: string }) {
 }
 
 export function Dock({ name }: { name: string }) {
-  const path = usePathname(); const [st, setSt] = useState<State | null>(null); const [pending, setPending] = useState(0); const [bell, setBell] = useState(false);
+  const path = usePathname(); const mobile = useMobile(); const [st, setSt] = useState<State | null>(null); const [pending, setPending] = useState(0); const [bell, setBell] = useState(false);
   useEffect(() => { setBell(notifyOn()); }, []);
   const toggleBell = async () => {                                   // on: approvals and reminders always; replies and Telegram while you are elsewhere
     if (!("Notification" in window)) return;
@@ -32,12 +34,12 @@ export function Dock({ name }: { name: string }) {
     setNotify(true); setBell(true);
     try { new Notification(name || "Troi", { body: "Notifications are on.", tag: "troi-hello", silent: true }); } catch {}
   };
-  useEffect(() => { let stop = false; const tick = async () => { if (stop) return; try { const d = await eget("/state"); setSt(d); setPending((d.pending || []).length); } catch { setSt(null); } setTimeout(tick, 500); }; tick(); return () => { stop = true; }; }, []);
+  useEffect(() => { if (mobile) return; let stop = false; const tick = async () => { if (stop) return; try { const d = await eget("/state"); setSt(d); setPending((d.pending || []).length); } catch { setSt(null); } setTimeout(tick, 500); }; tick(); return () => { stop = true; }; }, [mobile]);   // a phone has its own bars, and their own poll
   const state = st ? (st.voice ? st.state : "off") : "off";
   const item = (href: string, label: string, Icon: any, badge?: number) => { const on = path.startsWith(href); return (
     <Link key={href} href={href} title={label} aria-label={label} className={cn("relative grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors", on ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-surface hover:text-foreground")}><Icon className="h-[18px] w-[18px]" />{!!badge && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">{badge}</span>}</Link>); };
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-2 z-40 flex justify-center px-2 sm:bottom-4">{/* centring lives on this wrapper: Framer Motion owns the bar's transform */}
+    <div className="pointer-events-none fixed inset-x-0 bottom-2 z-40 hidden justify-center px-2 sm:bottom-4 md:flex">{/* centring lives on this wrapper: Framer Motion owns the bar's transform. Under 768 px the phone's bars take over */}
     <motion.nav initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="glass no-scrollbar pointer-events-auto flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl px-2 py-2 shadow-2xl sm:px-3">{/* narrow windows: the bar scrolls sideways instead of spilling off */}
       <div className="flex shrink-0 items-center gap-2 pr-1 sm:pr-2"><span className={cn("h-2.5 w-2.5 rounded-full", state === "off" ? "bg-muted-foreground/40" : state === "idle" ? "bg-emerald-500" : state === "listening" ? "bg-emerald-400 animate-pulse" : state === "speaking" ? "bg-primary animate-pulse" : "bg-amber-400 animate-pulse")} /><img src="/brand/mark.svg" alt="" className="hidden h-5 w-5 dark:block" /><img src="/brand/mark-on-light.svg" alt="" className="h-5 w-5 dark:hidden" /><b className="text-xs tracking-[.12em]">{name.toUpperCase()}</b><span className="hidden w-14 text-xs text-muted-foreground md:inline">{state}</span><span className="hidden lg:inline"><Wave samples={st?.wave || []} state={state} /></span></div>
       <span className="h-6 w-px shrink-0 bg-border" />
@@ -45,7 +47,9 @@ export function Dock({ name }: { name: string }) {
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-1">{PANES.map(([h, l, I]) => item(h, l, I, h === "/approvals" ? pending : 0))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />
-      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><Bell className="h-4 w-4" /></button><UnlockBox /><ThemeToggle /></div>
+      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><Bell className="h-4 w-4" /></button>
+        <div className="hidden lg:block"><UnlockBox /></div><LockButton className="h-9 w-9 lg:hidden" />{/* a tablet has no room for the PIN box in the bar: the lock opens it in a sheet */}
+        <ThemeToggle /></div>
     </motion.nav>
     </div>
   );

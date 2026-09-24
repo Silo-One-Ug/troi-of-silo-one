@@ -4,10 +4,11 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { edgeUrl, eget, epost, on, type Config } from "@/lib/edge";
+import { isMobile } from "@/lib/mobile";
 
 export function View({ kind }: { kind: "face" | "hands" | "files" | "apps" | "vault" }) {
-  const [c, setC] = useState<Config | null>(null); const [ready, setReady] = useState(false); const [path, setPath] = useState("");
-  useEffect(() => { eget("/config").then(setC).catch(() => {}); try { setPath(new URLSearchParams(location.search).get("path") || ""); } catch {} }, []);
+  const [c, setC] = useState<Config | null>(null); const [ready, setReady] = useState(false); const [path, setPath] = useState(""); const [mobile, setMobile] = useState<boolean | null>(null);
+  useEffect(() => { setMobile(isMobile()); eget("/config").then(setC).catch(() => {}); try { setPath(new URLSearchParams(location.search).get("path") || ""); } catch {} }, []);   // the frame waits for this: known once, loaded once (and nothing is rendered on the server that the browser would redo)
   const galaxy = kind === "files" || kind === "apps" || kind === "vault";
   useEffect(() => {                                               // the galaxy's "Ask Troi about it" (only from the galaxy's own origin)
     const h = (e: MessageEvent) => {
@@ -21,8 +22,10 @@ export function View({ kind }: { kind: "face" | "hands" | "files" | "apps" | "va
     const f = document.querySelector("iframe[data-view]") as HTMLIFrameElement | null;
     f?.contentWindow?.postMessage({ hands: !!v }, "*"); f?.contentWindow?.postMessage({ boardCamera: v ? "on" : "off" }, "*");
   }), []);
-  const src = kind === "face" ? c?.face : kind === "hands" ? c?.hands : `${edgeUrl()}/galaxy.html?safe=0&mode=${kind}${kind !== "vault" ? "&bg=deep" : ""}${kind === "vault" && c?.vault ? "&vault=" + encodeURIComponent(c.vault) : ""}${kind === "files" && path ? "&path=" + encodeURIComponent(path) : ""}`;
-  if (!src) return <div className="grid h-full place-items-center bg-black text-sm text-muted-foreground">…</div>;
+  // the face and the board are served by the Mac: from a phone, the Mac is the host the page came from, not 127.0.0.1
+  const onMac = (u?: string) => { if (!u) return u; try { const h = location.hostname; return h === "localhost" || h === "127.0.0.1" ? u : u.replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/])/, "//" + h); } catch { return u; } };
+  const src = kind === "face" ? onMac(c?.face) : kind === "hands" ? onMac(c?.hands) : `${edgeUrl()}/galaxy.html?safe=0&mode=${kind}${kind !== "vault" ? "&bg=deep" : ""}${mobile ? "&mobile=1" : ""}${kind === "vault" && c?.vault ? "&vault=" + encodeURIComponent(c.vault) : ""}${kind === "files" && path ? "&path=" + encodeURIComponent(path) : ""}`;
+  if (!src || mobile === null) return <div className="grid h-full place-items-center bg-black text-sm text-muted-foreground">…</div>;
   // the frame fades in once it has painted: no blank frame between pages
   // data-galaxy / data-ready: Troi's commands (focus, refresh, hands) are posted into the galaxy once it has loaded
   return <iframe key={src} src={src} title={kind} data-view={kind} data-galaxy={galaxy ? "1" : undefined} data-ready={ready ? "1" : undefined} allow="camera; microphone; autoplay; fullscreen" onLoad={e => { setReady(true); try { if (localStorage.getItem("silo.hands") === "1") setTimeout(() => { (e.target as HTMLIFrameElement).contentWindow?.postMessage({ hands: true }, "*"); (e.target as HTMLIFrameElement).contentWindow?.postMessage({ boardCamera: "on" }, "*"); }, 1500); } catch {} }} className={cn("block h-full w-full border-0 bg-black transition-opacity duration-500 ease-out", ready ? "opacity-100" : "opacity-0")} />;

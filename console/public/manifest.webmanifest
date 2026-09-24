@@ -1,0 +1,15 @@
+{
+  "name": "Troi",
+  "short_name": "Troi",
+  "description": "Troi of Silo One: a chief of staff that lives on your Mac.",
+  "start_url": "/conversation",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#02040a",
+  "theme_color": "#02040a",
+  "icons": [
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}

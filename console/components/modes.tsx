@@ -47,10 +47,10 @@ export function Modes() {
   const run = async (key: string, v: string, fn: () => Promise<void>) => { setBusy(b => ({ ...b, [key]: v })); try { await fn(); } finally { setBusy(b => ({ ...b, [key]: null })); } };
   const say = async (t: string) => { const d = await epost("/say", { text: t }); if (!d.ok) tell("warn", d.error ? `Not sent: ${d.error}.` : "Not sent: the voice line did not answer."); return !!d.ok; };
   const locked = () => !!c?.guarded && !unlockToken();
-  const needsPin = (what: string) => tell("warn", `${what} is protected. Unlock with your PIN in the bar, then pick it again.`);
+  const needsPin = (what: string) => tell("warn", `${what} is protected. Unlock with your PIN (the lock in the bar), then pick it again.`);
   const set = async (body: any, done: string) => {
     const d = await epost("/settings", body);
-    if (d.pending) { tell("warn", `Protected (${(d.protected || []).join(", ")}): sent to Telegram for approval. Or unlock with your PIN in the bar and pick it again.`); return; }
+    if (d.pending) { tell("warn", `Protected (${(d.protected || []).join(", ")}): sent to Telegram for approval. Or unlock with your PIN (the lock in the bar) and pick it again.`); return; }
     if (d.ok) tell("ok", done); else tell("warn", "Not saved: " + (d.error || "the console refused it") + ".");
     load();
   };
@@ -73,7 +73,7 @@ export function Modes() {
           <span className="min-w-0">{down || note?.text}</span>
         </motion.div>)}
       </AnimatePresence>
-      {!c.guarded || unlockToken() ? null : <div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" />Changes marked with a lock need your PIN (unlock in the bar) or your approval on Telegram.</div>}
+      {!c.guarded || unlockToken() ? null : <div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" />Changes marked with a lock need your PIN (the lock in the bar) or your approval on Telegram.</div>}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="How it works">
@@ -99,6 +99,12 @@ export function Modes() {
             onPick={v => run("model", v, async () => { if (await say(v === "deep" ? "switch to the deep model" : "back to the fast model")) { setModel(v); try { localStorage.setItem("silo.model", v); } catch {} tell("ok", v === "deep" ? "Deep model for this session." : "Fast model."); } })} />
           <Seg label="Effort" value={c.effort || ""} busy={busy.effort} hint={c.effort ? undefined : "the model's default"} options={[{ v: "low", l: "Low" }, { v: "medium", l: "Medium" }, { v: "high", l: "High" }, { v: "max", l: "Max" }]}
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
+          <Seg label="Your phone" value={c.lan === "tailscale" ? "tailscale" : c.lan ? "on" : "off"} busy={busy.lan}
+            hint={c.lan === "tailscale" ? `Troi answers your own devices over Tailscale from its next start, and turns every other network away: open http://${c.tailscale?.name || "this-mac.your-tailnet.ts.net"}:3100 on your phone, with Tailscale on.`
+              : c.lan ? `Troi answers on this network from its next start: open http://${typeof location !== "undefined" ? location.hostname : "this-mac.local"}:3100 on your phone. Only on a network you trust: anyone on it can talk to Troi and read its record.`
+              : `This Mac only. ${c.tailscale ? "Tailscale: your own devices, from anywhere, nothing else. " : ""}This network: any phone on this Wi-Fi. Either takes effect at Troi's next start.`}
+            options={[{ v: "off", l: "This Mac only" }, ...(c.tailscale ? [{ v: "tailscale", l: "Tailscale", title: "Only your own devices, over Tailscale", locked: locked() }] : []), { v: "on", l: "This network", title: "Anyone on the network can reach Troi", locked: locked() }]}
+            onPick={v => run("lan", v, async () => { if (v !== "off" && locked()) return needsPin(v === "tailscale" ? "Reaching Troi over Tailscale" : "Reaching Troi from the network"); await set({ lan: v === "tailscale" ? "tailscale" : v === "on" }, v === "tailscale" ? "Over Tailscale, from Troi's next start." : v === "on" ? "On this network, from Troi's next start." : "This Mac only, from Troi's next start."); })} />
         </Panel>
 
         <Panel title="Senses and voice">

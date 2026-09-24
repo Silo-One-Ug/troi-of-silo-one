@@ -153,29 +153,34 @@ const VIEWS: Record<string, [number, number, number, number, number]> = {
   "w-intro": [0, 2.2, 15.5, 0, 0.9], "w-listen": [0.3, 0.1, 8, -2.4, -0.3], "w-see": [-1.4, 0.7, 7.4, 1.1, -0.5], "w-work": [1.1, -0.1, 6.6, -1.3, -0.7],
   "w-remember": [0, 1.6, 10.5, 0, 0.6], "w-ask": [0.3, 0, 8, -2.2, -0.5], "w-setup": [0.6, 0.4, 9.2, -2.8, -0.2] };
 function Rig({ view }: { view: string }) {
-  const { camera } = useThree(); const look = useRef({ x: 0, y: 0 }); const target = useRef(new THREE.Vector3());
-  useEffect(() => { const [x, y, z, lx, ly] = VIEWS[view] || VIEWS.default; gsap.to(camera.position, { x, y, z, duration: 2.6, ease: "power2.inOut" }); gsap.to(look.current, { x: lx, y: ly, duration: 2.6, ease: "power2.inOut" }); }, [view, camera]);
+  const { camera, size } = useThree(); const look = useRef({ x: 0, y: 0 }); const target = useRef(new THREE.Vector3()); const portrait = size.width < size.height;
+  useEffect(() => {
+    let [x, y, z, lx, ly] = VIEWS[view] || VIEWS.default;
+    if (portrait) { x *= 0.4; lx *= 0.35; z *= 1.25; ly -= 0.55; }                       // a phone held upright: the planet's limb along the bottom, the ship above it
+    gsap.to(camera.position, { x, y, z, duration: 2.6, ease: "power2.inOut" }); gsap.to(look.current, { x: lx, y: ly, duration: 2.6, ease: "power2.inOut" });
+  }, [view, camera, portrait]);
   useFrame(({ pointer }) => { target.current.set(look.current.x + pointer.x * 0.12, look.current.y + pointer.y * 0.08, 0); camera.lookAt(target.current); });
   return null;
 }
 
 function Ready({ onReady }: { onReady: () => void }) { useEffect(() => { onReady(); }, [onReady]); return null; }
 
-export function Space({ state = "idle", view = "default", active = true }: { state?: SpaceState; view?: string; active?: boolean }) {
+export function Space({ state = "idle", view = "default", active = true, lite = false }: { state?: SpaceState; view?: string; active?: boolean; lite?: boolean }) {
   const [ready, setReady] = useState(false); const done = useCallback(() => setReady(true), []);
+  // lite (a phone): one pixel per point, no post-processing, fewer stars: the same scene at a fraction of the battery
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 bg-black transition-opacity duration-700 ease-out" style={{ opacity: ready && active ? 1 : 0 }}>{/* fades in once the planet is loaded: never a half-built frame */}
-      <Canvas frameloop={active ? "always" : "never"} camera={{ position: [0.3, 0.1, 8], fov: 38, near: 0.1, far: 1000 }} dpr={[1, 2]} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0, outputColorSpace: THREE.SRGBColorSpace }}>
+      <Canvas frameloop={active ? "always" : "never"} camera={{ position: [0.3, 0.1, 8], fov: 38, near: 0.1, far: 1000 }} dpr={lite ? 1 : [1, 2]} gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0, outputColorSpace: THREE.SRGBColorSpace, powerPreference: lite ? "low-power" : "high-performance" }}>
         <color attach="background" args={["#000"]} />
         <ambientLight intensity={0.03} />
         <directionalLight position={SUN.clone().multiplyScalar(50)} intensity={3.2} color="#fff6ea" />
         <hemisphereLight args={["#1a2a44", "#0a1a33", 0.25]} />
         <Suspense fallback={null}><Sky /><Earth state={state} /><Ready onReady={done} /></Suspense>
-        <Stars />
+        <Stars count={lite ? 1800 : 5200} />
         <SunGlare />
         <Ship state={state} />
         <Rig view={view} />
-        <EffectComposer multisampling={4}><Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur /><Noise opacity={0.02} /><Vignette eskil={false} offset={0.25} darkness={0.75} /></EffectComposer>
+        {!lite && <EffectComposer multisampling={4}><Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur /><Noise opacity={0.02} /><Vignette eskil={false} offset={0.25} darkness={0.75} /></EffectComposer>}
       </Canvas>
     </div>
   );

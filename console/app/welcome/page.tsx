@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Eye, FolderOpen, KeyRound, Loader2, Mic, MonitorSmartphone, Send, ShieldCheck, Sparkles, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { compatibility, machine, type Check as Chk, type Machine } from "@/lib/detect";
 import { eget, epost, rememberUnlock, unlockToken } from "@/lib/edge";
@@ -133,9 +134,11 @@ function Setup() {
   const say = (tone: "info" | "ok" | "warn", text: string) => setMsg({ tone, text });
 
   // ---- you
-  const [you, setYou] = useState({ owner: "", owner_full: "", address: "", call: "sir" });
-  useEffect(() => { if (st.owner !== undefined) setYou(y => ({ owner: y.owner || st.owner || "", owner_full: y.owner_full || st.owner_full || "", address: y.address || st.address || "", call: y.call || st.call || "sir" })); }, [st.owner, st.owner_full, st.address, st.call]);
-  const saveYou = async () => { if (!you.owner.trim()) { say("warn", "Your first name, please: it is how Troi knows you."); return; } setBusy(true); try { const d = await epost("/setup/profile", { ...you, address: you.address.trim() || you.owner.trim() }); if (d.ok) { mark("you"); next(); } else say("warn", d.error || "Not saved."); } finally { setBusy(false); } };
+  // one name: the first word is what Troi greets you by, the whole of it goes on anything written for other people
+  const [you, setYou] = useState({ owner_full: "", call: "sir" });
+  const firstName = (you.owner_full.trim().split(/\s+/)[0] || "");
+  useEffect(() => { if (st.owner !== undefined) setYou(y => ({ owner_full: y.owner_full || st.owner_full || st.owner || "", call: y.call || st.call || "sir" })); }, [st.owner, st.owner_full, st.call]);
+  const saveYou = async () => { if (!firstName) { say("warn", "Your name, please: it is how Troi knows you."); return; } setBusy(true); try { const call = you.call === "your name" ? firstName : (you.call || "sir"); const d = await epost("/setup/profile", { owner: firstName, owner_full: you.owner_full.trim(), address: firstName, call }); if (d.ok) { mark("you"); next(); } else say("warn", d.error || "Not saved."); } finally { setBusy(false); } };
 
   // ---- this Mac (and the folders it may organise)
   const [roots, setRoots] = useState<string[] | null>(null);
@@ -213,8 +216,8 @@ function Setup() {
   };
 
   const k = STEPS[step].key;
-  const readyItems = [["You", you.owner || st.owner], ["Memory", st.vault_ready ? "vault ready" : ""], ["Voice", engine === "elevenlabs" ? "ElevenLabs" : "Kokoro"], ["Phone", tg?.paired ? "paired" : ""], ["PIN", st.secrets?.pin ? "set" : ""], ["Screen", st.screen ? "granted" : ""]] as const;
-  const passage = "The quick brown fox jumps over the lazy dog. I am teaching Troi my voice so that, when I work hands-free, it answers me and nobody else. My name is " + (you.owner || "…") + ", and this is how I sound when I speak normally, not too fast and not too slow.";
+  const readyItems = [["You", firstName || st.owner], ["Memory", st.vault_ready ? "vault ready" : ""], ["Voice", engine === "elevenlabs" ? "ElevenLabs" : "Kokoro"], ["Phone", tg?.paired ? "paired" : ""], ["PIN", st.secrets?.pin ? "set" : ""], ["Screen", st.screen ? "granted" : ""]] as const;
+  const passage = "The quick brown fox jumps over the lazy dog. I am teaching Troi my voice so that, when I work hands-free, it answers me and nobody else. My name is " + (firstName || st.owner || "…") + ", and this is how I sound when I speak normally, not too fast and not too slow.";
   return (
     <>
       <Space state="idle" view="w-setup" />
@@ -226,19 +229,20 @@ function Setup() {
             <li key={s.key}><button onClick={() => { setMsg(null); setStep(i); }} className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition", on ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/[0.05] hover:text-white")}>
               <span className={cn("grid h-7 w-7 place-items-center rounded-full border", done[s.key] ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : on ? "border-white/40" : "border-white/15")}>{done[s.key] ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}</span>{s.title}</button></li>); })}</ol>
         </aside>
-        <section className="glass self-start rounded-3xl p-6 sm:p-9">
+        <section className="glass min-w-0 self-start rounded-3xl p-5 sm:p-9">{/* min-w-0: the step strip below scrolls instead of widening the card past the phone */}
+          {/* on a phone the steps are a strip above the card (the side list is hidden); every step stays one tap away */}
+          <div className="no-scrollbar mb-4 flex w-full max-w-full gap-2 overflow-x-auto md:hidden">{STEPS.map((s, i) => { const Icon = s.icon; const on = i === step; return (
+            <button key={s.key} onClick={() => { setMsg(null); setStep(i); }} aria-current={on ? "step" : undefined} className={cn("flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] transition", on ? "border-white bg-white text-black" : done[s.key] ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-100" : "border-white/15 text-white/60")}>{done[s.key] && !on ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}{s.title}</button>); })}</div>
           <div className="mb-1 text-xs font-medium uppercase tracking-[0.3em] text-sky-200/80">Step {step + 1} of {STEPS.length}</div>
           <AnimatePresence mode="wait">
             <motion.div key={k} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.45, ease }} className="grid gap-6">
               {k === "you" && (<>
-                <div><h2 className="text-3xl font-semibold tracking-tight text-white">First, who does Troi work for?</h2><p className="mt-2 text-white/60">Troi uses this to greet you and to know you from everyone else.</p></div>
+                <div><h2 className="text-3xl font-semibold tracking-tight text-white">First, who does Troi work for?</h2><p className="mt-2 text-white/60">Troi greets you by your first name and knows you from everyone else by it.</p></div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="First name"><Input className={input} value={you.owner} onChange={e => setYou({ ...you, owner: e.target.value })} placeholder="Alex" autoFocus /></Field>
-                  <Field label="Full name" hint="For anything written for other people."><Input className={input} value={you.owner_full} onChange={e => setYou({ ...you, owner_full: e.target.value })} placeholder="Alex Morgan" /></Field>
-                  <Field label="The greeting" hint="How Troi says hello."><Input className={input} value={you.address} onChange={e => setYou({ ...you, address: e.target.value })} placeholder={you.owner || "Alex"} /></Field>
-                  <Field label="In the flow" hint="What Troi calls you mid-conversation."><div className="flex flex-wrap gap-2">{["sir", "boss", "madam", you.owner || "your name"].map(c => <button key={c} onClick={() => setYou({ ...you, call: c === "your name" ? you.owner : c })} className={cn("rounded-full border px-3.5 py-1.5 text-sm transition", you.call === c || (c === you.owner && you.call === you.owner) ? "border-white bg-white text-black" : "border-white/20 text-white/75 hover:border-white/50")}>{c}</button>)}</div></Field>
+                  <Field label="Your name" hint="Your full name; the first word is how Troi says hello. The whole of it goes on anything written for other people."><Input className={input} value={you.owner_full} onChange={e => setYou({ ...you, owner_full: e.target.value })} placeholder="Alex Morgan" autoCapitalize="words" autoFocus /></Field>
+                  <Field label="What Troi calls you" hint="Mid-conversation: &ldquo;Right away, sir.&rdquo;"><div className="flex flex-wrap gap-2">{["sir", "boss", "madam", firstName || "your name"].map(c => { const on = you.call === c || (c === firstName && (you.call === firstName || you.call === "your name")); return <button key={c} onClick={() => setYou({ ...you, call: c === firstName ? "your name" : c })} className={cn("rounded-full border px-3.5 py-1.5 text-sm transition", on ? "border-white bg-white text-black" : "border-white/20 text-white/75 hover:border-white/50")}>{c}</button>; })}</div></Field>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white/80"><div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/45">You will hear</div>&ldquo;Hello {you.address || (you.owner ? you.owner : "…")}.&rdquo; &nbsp;…&nbsp; &ldquo;Right away, {you.call || "sir"}.&rdquo;</div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white/80"><div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/45">You will hear</div>&ldquo;Hello {firstName || "…"}.&rdquo; &nbsp;…&nbsp; &ldquo;Right away, {you.call === "your name" ? (firstName || "…") : (you.call || "sir")}.&rdquo;</div>
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" disabled={busy} onClick={saveYou}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "mac" && (<>
@@ -263,7 +267,7 @@ function Setup() {
                   <div className="rounded-2xl border border-white/15 bg-white/[0.05] p-5"><div className="text-lg font-medium text-white">Use one I have</div><div className="mt-2 grid gap-2">{(st.vault_candidates || []).map(c => <button key={c} onClick={() => pickVault(c)} className="truncate rounded-lg border border-white/10 px-3 py-2 text-left text-sm text-white/80 hover:border-white/40" title={c}>{c.replace(/^\/Users\/[^/]+/, "~")}</button>)}<div className="flex gap-2"><Input className={cn(input, "h-9")} value={vaultPath} onChange={e => setVaultPath(e.target.value)} placeholder="/path/to/your vault" /><Button size="sm" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10" onClick={() => pickVault(vaultPath)}>Use</Button></div></div></div>
                 </div>
                 {st.vault_ready && <Note tone="ok">Vault: {st.vault}</Note>}
-                <Field label="Nightly backups" hint={st.gh ? `Private repos in ${st.backup_org || "Silo-One-Ug"}, written as ${st.github_account || "ayesigapaul"}: the record here, the vault in troi-vault. Created on the first backup.` : `Sign ${st.github_account || "ayesigapaul"} in to GitHub first (gh auth login in a terminal); until then the backups stay on this Mac.`}><Input className={input} value={backupRepo} onChange={e => setBackupRepo(e.target.value)} placeholder={st.backup_repo || `${st.backup_org || "Silo-One-Ug"}/troi-of-silo-one-backups (default)`} /></Field>
+                <Field label="Nightly backups" hint={st.gh ? `Two private repos${st.backup_org ? ` in ${st.backup_org}` : ""}, written as ${st.github_account || "your GitHub account"}: the record here, the vault in troi-vault. Created on the first backup.` : `Sign in to GitHub first (gh auth login in a terminal); until then the backups stay on this Mac.`}><Input className={input} value={backupRepo} onChange={e => setBackupRepo(e.target.value)} placeholder={st.backup_repo || `${st.backup_org || st.github_account || "your-account"}/troi-of-silo-one-backups (default)`} /></Field>
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" disabled={!st.vault_ready} onClick={next}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "voice" && (<>
@@ -271,7 +275,7 @@ function Setup() {
                 <div className="grid gap-3 sm:grid-cols-2">{(["kokoro", "elevenlabs"] as const).map(e => <button key={e} onClick={() => setEngine(e)} className={cn("rounded-2xl border p-5 text-left transition", engine === e ? "border-white bg-white/[0.1]" : "border-white/15 bg-white/[0.04] hover:border-white/40")}><div className="text-lg font-medium text-white">{e === "kokoro" ? "Kokoro" : "ElevenLabs"}</div><div className="mt-1 text-sm text-white/55">{e === "kokoro" ? "Local, free, private. A warm British voice." : "Premium voices, including your own clone."}</div></button>)}</div>
                 {engine === "elevenlabs" && <div className="grid gap-3">
                   {!st.secrets?.elevenlabs ? <div className="flex gap-2"><Input type="password" className={input} value={elKey} onChange={e => setElKey(e.target.value)} placeholder="ElevenLabs API key (elevenlabs.io › Profile › API keys)" /><Button className="h-11" onClick={async () => { if (await keepKey("elevenlabs", elKey, "Key kept in the Keychain.")) { setElKey(""); loadVoices(); } }}>Keep</Button></div> : <Note tone="ok">Your ElevenLabs key is in the Keychain.</Note>}
-                  {st.secrets?.elevenlabs && <div className="flex gap-2"><select className="h-11 flex-1 rounded-md border border-white/15 bg-white/[0.06] px-3 text-sm text-white" value={voice} onChange={e => setVoice(e.target.value)} onFocus={() => !voices.length && loadVoices()}><option value="">{voices.length ? "Choose a voice…" : "Load your voices…"}</option>{voices.map(v => <option key={v.voice_id} value={v.voice_id} className="text-black">{v.name}{v.labels ? " · " + v.labels : ""}</option>)}</select><Button variant="outline" className="h-11 border-white/20 bg-transparent text-white hover:bg-white/10" onClick={loadVoices}>Voices</Button></div>}
+                  {st.secrets?.elevenlabs && <div className="flex gap-2"><Combobox className="flex-1" value={voice} options={voices.map(v => ({ value: v.voice_id, label: v.name, hint: typeof v.labels === "string" ? v.labels : Object.values(v.labels || {}).join(" · ") }))} loading={!voices.length} onOpen={() => !voices.length && loadVoices()} onChange={setVoice} placeholder={voices.length ? "Choose a voice…" : "Load your voices…"} empty="No voice by that name." /><Button variant="outline" className="h-11 border-white/20 bg-transparent text-white hover:bg-white/10" onClick={loadVoices}>Voices</Button></div>}
                 </div>}
                 <div className="flex flex-wrap gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" disabled={engine === "elevenlabs" && !voice} onClick={async () => { await saveVoice(); }}>Use this voice</Button><Button size="lg" variant="outline" className="rounded-full border-white/25 bg-transparent text-white hover:bg-white/10" onClick={testVoice}><Volume2 className="h-4 w-4" />Hear it</Button><Button size="lg" variant="ghost" className="rounded-full text-white/70 hover:bg-white/10" onClick={next}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
@@ -282,7 +286,7 @@ function Setup() {
                   <div className="flex gap-2"><Input type="password" className={input} value={tgToken} onChange={e => setTgToken(e.target.value)} placeholder="123456789:AA…" /><Button className="h-11" onClick={saveTelegram}>Keep</Button></div>
                 </div>) : tg?.paired ? <Note tone="ok">Your phone is paired{tg.bot ? " with @" + tg.bot : ""}. Say hello to it.</Note> : (
                   <div className="grid gap-3"><Note>Now send this code to {tg?.bot ? <b className="text-white">@{tg.bot}</b> : "your bot"} from your own Telegram account:</Note>
-                    <div className="flex items-center gap-4"><div className="rounded-2xl border border-white/15 bg-white/[0.06] px-6 py-4 font-mono text-4xl tracking-[0.3em] text-white">{tg?.code || "······"}</div><Loader2 className="h-5 w-5 animate-spin text-white/50" /><span className="text-sm text-white/50">waiting for your message…</span></div></div>)}
+                    <div className="flex flex-wrap items-center gap-4"><div className="rounded-2xl border border-white/15 bg-white/[0.06] px-5 py-3 font-mono text-3xl tracking-[0.2em] text-white sm:px-6 sm:py-4 sm:text-4xl sm:tracking-[0.3em]">{tg?.code || "······"}</div><span className="flex items-center gap-2 text-sm text-white/50"><Loader2 className="h-5 w-5 animate-spin text-white/50" />waiting for your message…</span></div></div>)}
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" onClick={next}>{tg?.paired ? "Continue" : "Skip for now"}<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "security" && (<>
@@ -307,7 +311,7 @@ function Setup() {
                 <div className="flex gap-3"><Button size="lg" className="rounded-full bg-white px-6 text-black hover:bg-white/90" onClick={saveExtras}>Continue<ArrowRight className="h-4 w-4" /></Button></div>
               </>)}
               {k === "ready" && (<>
-                <div><h2 className="text-4xl font-semibold tracking-tight text-white">Troi is ready{you.owner ? `, ${you.owner}` : ""}.</h2><p className="mt-2 text-white/60">It will introduce itself. Anything you skipped lives in the console: Modes, Approvals, and the Keychain items under troi-of-silo-one.</p></div>
+                <div><h2 className="text-4xl font-semibold tracking-tight text-white">Troi is ready{(firstName || st.owner) ? `, ${firstName || st.owner}` : ""}.</h2><p className="mt-2 text-white/60">It will introduce itself. Anything you skipped lives in the console: Modes, Approvals, and the Keychain items under troi-of-silo-one.</p></div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{readyItems.map(([l, v]) => <div key={l} className={cn("rounded-2xl border p-4", v ? "border-emerald-300/25 bg-emerald-300/[0.07]" : "border-white/10 bg-white/[0.03]")}><div className="text-[10px] uppercase tracking-[0.2em] text-white/45">{l}</div><div className={cn("mt-1 text-sm", v ? "text-white" : "text-white/40")}>{v || "later"}</div></div>)}</div>
                 <div><Button size="lg" className="group rounded-full bg-white px-8 text-black hover:bg-white/90" disabled={busy} onClick={finish}>Meet Troi<ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Button></div>
               </>)}
