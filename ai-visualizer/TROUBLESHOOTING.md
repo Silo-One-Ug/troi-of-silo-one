@@ -1,5 +1,7 @@
 # Troubleshooting
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its port and signal folder are set by `setup.py` on every render.
+
 ## The server won't start
 
 - `python3: command not found` on Mac or Linux: install Python 3 from python.org or your package manager. On Windows use `run.bat`, which tries the `py` launcher first and plain `python` second.

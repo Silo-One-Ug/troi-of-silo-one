@@ -5,200 +5,303 @@ Written for someone who has installed it and wants to know what to say, click an
 ## Starting and stopping
 
 - **Start**: double-click **Troi** on the Desktop, or type `troi` in a terminal. Everything comes up: the console (http://localhost:3100), the agent's server (http://127.0.0.1:8796), the face, the hands board, the eyes, the agent's browser and the voice line. Starting it twice is safe; the new launch replaces the old one.
-- **Stop**: Ctrl-C in that window, or close it. The four background services (ring, pulse, Telegram, backup) keep running; the ring dims to "off".
-- **Typing**: the Conversation page takes typed turns in the same session as your voice. For a terminal session, `cd ~/troi-of-silo-one && claude`: same boot file, same memory.
+- **Stop**: Ctrl-C in that window, or close it. The globe dims to "off". The four background services keep running: the pulse, the globe, the Telegram bridge and the nightly backup (`python3 troi-console/setup.py services status`).
+- **Typing**: the Conversation page takes typed turns in the same session as your voice. For a terminal session, `cd ~/troi-of-silo-one && claude` gives you the same boot file and the same memory.
+
+## The welcome
+
+The first time the console opens, it goes to `/welcome`: who Troi is, in seven scenes, then the setup one step at a time.
+
+- **You**: your name, the greeting, and what it calls you.
+- **This Mac**: the permissions, a test of the talk key (it shows the words it heard), and the folders it may organise.
+- **Memory**: a new vault or the one you have, and where the nightly backup goes.
+- **Voice**: Kokoro, or ElevenLabs with your key and one of your voices.
+- **Your phone**: Telegram.
+- **Security**: the PIN, your face and your voice.
+- **Extras**: keys for pictures and calls, and the GitHub org to watch.
+
+Your name and a memory are needed; everything else can wait. Until you finish, Troi hears but does not answer. The last step restarts the voice with everything you set, and Troi introduces itself.
+
+`/welcome?step=setup` runs the setup again. Once you have been welcomed, changes there need the console unlocked with your PIN.
 
 ## The globe
 
-A small gold globe, a wireframe sphere on a tilted axis with an orbit ring and two satellites, floats on every Space and over full-screen apps. It turns with the agent's state (slow when idle, fast when thinking, pulsing when speaking). Drag it to move it. **Double-click** it to open the console. A red badge shows the number of things waiting on you (approvals, reminders due soon). The menu bar **T** shows, hides or quits it.
-
-## The welcome
-The first time the console opens it goes to `/welcome`: who Troi is, in seven scenes, then the setup one step at a time. The steps are you (your name, the greeting, what it calls you), this Mac (the permissions, the talk key, the folders it may organise), memory (a new vault or yours, and the nightly backup), the voice (Kokoro, or ElevenLabs with your key and one of your voices), your phone (Telegram), security (the PIN, your face and your voice) and the extras. The last step restarts the voice with everything you set, and Troi introduces itself. `/welcome?step=setup` runs the setup again; once you have been welcomed, changes there need the console unlocked with your PIN.
+A small gold globe floats on every Space and over full-screen apps: a wireframe sphere on a tilted axis, with an orbit ring and two satellites. It turns with the agent's state: slow when idle, fast when thinking, pulsing when speaking. Drag it to move it, and **double-click** it to open the console. A red badge counts what is waiting on you: approvals, plus reminders due in the next ten minutes (overdue ones too). The menu bar **T** shows or hides it, opens the console, or quits it.
 
 ## The voice
-Kokoro speaks by default, local and free. **ElevenLabs** is the premium voice: keep your key in the Keychain (the welcome does it, or `troi-console/keychain.py set elevenlabs`), then Modes › Voice › **Voices** lists yours; pick one and click **ElevenLabs** (with no pick, your own cloned voice comes first, else the first listed). From a terminal or by voice: `console.sh voice list`, `console.sh voice elevenlabs "Rachel"`, `console.sh voice kokoro`. The switch is live: the next sentence comes in the new voice, and Kokoro takes over the moment ElevenLabs cannot answer. The same key powers meeting transcription (`meeting.py`).
 
-## The record (SQLite)
-Everything the voice line logs is tailed into `data/troi.db` (stdlib SQLite): the conversation per session, cards the tools showed, approvals and what became of them, pictures the agent found, reports and routine runs. The console loads the last lines from it when it opens, so a reload keeps the conversation. `troi-console/db.py tail 50`, `db.py sessions`, `db.py stats`; the server serves `/history`, `/sessions`, `/approvals`.
+Kokoro speaks by default, local and free. **ElevenLabs** is the premium voice:
 
-The conversation has two shapes: a full column on the right, or a floating pane you drag where you like. The button on its header switches (**Column** / **Floating**) and the choice is remembered.
+1. Keep your key in the Keychain: the welcome does it, or `troi-console/keychain.py set elevenlabs`.
+2. In **Modes**, the Voice switch then offers ElevenLabs, with an **ElevenLabs voice** picker (and a reload button) listing your voices. Picking one switches to it at once. With no pick, your own cloned voice comes first, else the first listed.
 
-## Drawing in the conversation
-Charts, tables, stats, galleries, tabs, maps and players are drawn inside the conversation from data: the agent runs `show.py` with a component tree (or `show.py chart …` / `show.py table …`), the card lands in the log, live, and stays in the record. No HTML files, no screenshots of them. `show.py vocabulary` lists the components; the console draws them with its own components.
+From a terminal or by voice: `console.sh voice list`, `console.sh voice elevenlabs "Rachel"`, `console.sh voice kokoro`. The change applies from the next reply, and Kokoro takes over the moment ElevenLabs cannot answer. The same key powers meeting transcription (`meeting.py`).
 
-## AG-UI
-The console server speaks [AG-UI](https://docs.ag-ui.com): `POST /agent` takes a `RunAgentInput` (the last user message is the line; `forwardedProps.silent: true` makes it a written turn, answered but not spoken) and streams the standard events over SSE: the reply as it grows, the tool in use, `silo.state`, `silo.pictures` and `silo.headlines` cards, `silo.approval` when something waits for you. `GET /events` is the same vocabulary as a running feed of the whole conversation. Any AG-UI client can drive the agent with it; the console is one.
+## Talking
+
+- Hold **Right Option**, speak, release. That key is never gated by Voice ID, so it always works.
+- **Hands-free** listens all the time. With the wake word on, say the name first: "Troi, what time is it". Words before the name are dropped, so a TV in the room does not trigger it.
+- **Voice ID** (Only me) fails closed. A clip that cannot be identified as you is dropped, whether it is too short, too different or unreadable, and the transcript shows why, with its score. The talk key is never gated.
+- **Stopping a reply**: say "**stop**", or press **Stop** (the square button) or **Esc** in the console. With barge-in on, only a sentence with the agent's name interrupts.
+- **Long jobs**: the agent says so instead of going quiet, and gives a short update if it is still busy after a while. It ignores its own voice.
 
 ## The console
 
-The console is a web app at http://localhost:3100. Behind everything is space: the Earth from low orbit, turning slowly. One control floats over it: **the bar**, at the bottom centre. Nothing else is fixed, and nothing sits behind the bar.
+The console is a web app at http://localhost:3100. Behind the pages is space: the Earth from low orbit, turning slowly, with a spacecraft whose engines light while the agent works. One control floats over everything: **the bar**, at the bottom centre.
 
-- **The bar** shows the agent's name and state with a small audio wave: its voice while it speaks, a breath while it listens. It holds the five **views**, which fill the window: the Face, the Hands board, the Files galaxy, the Apps galaxy and the Vault. It also holds the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is waiting), Eyes and Browser. Then come the bell, the lock and the light/dark switch.
-- **Conversation**: everything the agent hears and says, live. A reply appears word by word while the agent is still producing it, then settles into the finished text. Faint "ignored" lines show what the filters dropped and why (a rejected voice shows its similarity score). Type and press Enter; **Stop** or Esc cuts a reply off. Charts, tables, pictures and players the agent draws appear right in the conversation. It comes in two shapes: a full **column**, or a **floating** pane you drag by its header and resize from its corner, which stays inside the window and above the bar. The switch is on its header, and the choice and the pane's place are remembered.
+- **The bar** shows the agent's name and state, with a small audio wave: its voice while it speaks, a breath while it listens. It holds:
+  - the five **views**, which fill the whole window: the Face, the Hands board, the Files galaxy, the Apps galaxy and the Vault;
+  - the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is waiting), Eyes and Browser;
+  - then the bell, the lock and the light/dark switch.
+- **Conversation**: everything the agent hears and says, live.
+  - A reply grows word by word in a dashed bubble, then settles into the finished text.
+  - Faint "ignored" lines show what the filters dropped and why: a rejected voice shows its similarity score, and a line with no wake word says so.
+  - Type and press Enter. Charts, tables, pictures and players the agent draws appear right in the conversation.
+  - It comes in two shapes, switched with the icon on its header, and your choice is remembered. The **column** is the Conversation page itself. The **floating** pane follows you onto every other page: drag it by the grip above its header, resize it from its corner, and double-click the grip to put it back.
 - **Modes**:
   | Switch | Options |
   |---|---|
   | Permissions | Ask first / Auto-approve (two clicks to confirm) |
   | Microphone | Push to talk (hold Right Option) / Hands-free |
   | Wake word | In hands-free, only sentences containing the agent's name are acted on |
-  | Model | Fast / Deep. Effort: Low to Max |
+  | Model | Fast / Deep (Deep lasts for this session). Effort: Low to Max |
   | Eyes | Off / Every reply / Watch / Screen |
   | Voice ID | Off / Only me / Learn my voice (about a minute of push-to-talk speech) |
   | Strictness | How closely a voice must match your voice print. Move it right if someone else gets through, left if it starts ignoring you |
   | Face ID | Learn my face |
   | Voice | Kokoro / ElevenLabs, and which of your ElevenLabs voices |
 
-  A protected change (see below) needs your PIN; the page says so and files it for your approval.
-- **Library**: every picture the agent took, made, found or received, shelved as books by where it came from and by day. Search, open a book, view a picture full size, and star the ones to keep past the 14-day tidy-up.
-- **Routines**: everything that runs on a clock, with its time, its switch and its last run: the morning brief, the end-of-day report, the CI watch, the vault backup, housekeeping, session compaction, the Telegram bridge and the globe. Change a time, switch a job off, or run one now. Below them, the reminders, with Cancel.
-- **Reports**: the end-of-day reports, each shown as it is, with its PDF.
-- **Approvals**: cards for trash, force-quit, risky-click and protected-setting requests, and a record of earlier decisions. Approving needs the console unlocked (your PIN at the lock, or **Check it's me** on the Eyes page); rejecting never does.
-- **Eyes**: what the agent sees, with the modes, the hands switch and face ID (see below).
+  A protected choice needs the console unlocked. For Auto-approve and Hands-free, the page asks you to unlock and pick again. The other protected switches are filed for your approval on Telegram.
+- **Library**: every picture the agent took, made, found or received, shelved as books by source and by day. You can:
+  - filter by source and search;
+  - open a book and view a picture full size (←/→ to move, Esc to close);
+  - star the ones to keep past the 14-day tidy-up.
+- **Routines**: everything that runs on a clock, with its last run:
+  - the morning brief and the end-of-day report, each with a time and a switch;
+  - the CI watch, the server watch and the calendar;
+  - the vault backup, housekeeping and session compaction;
+  - the Telegram bridge and the globe.
+
+  **Run now** is there for the report, the brief, compaction, the backup, housekeeping and CI. Below them are the reminders, with Cancel.
+- **Reports**: the end-of-day reports, each shown as it is, with its PDF, and a button that builds today's now.
+- **Approvals**: cards for trash, force-quit, risky-click and protected-setting requests, and a record of earlier decisions. Approving needs the console unlocked (your PIN at the lock, or **Check it's me** on the Eyes page); rejecting never does. Requests wait across a restart, except risky clicks, which expire because the screen has moved on.
+- **Eyes**: what the agent sees, the modes, the hands switch and face ID (see below).
 - **Browser**: the agent's own Chrome, mirrored live. Watch it work, or take over: click, scroll, type, use the address bar, log in to a site for it. **Window** brings the real Chrome window forward.
-- **The face gate** (`face_gate` in the settings, `console.sh face-gate on|off`): hands-free only answers while your face is at the camera, so the TV can't wake the agent. It needs a learnt face (Modes › Face ID). It fails closed, the talk key always works, and turning it off is protected.
-- **Notifications**: the bell in the bar turns on the system's own notifications. Approvals and reminders always notify; a reply or a Telegram message only while the console is not the page you are looking at.
-- **Sound cues**: short interface sounds (made with ElevenLabs sound effects, in `troi-console/assets/`) play for a new approval, a due reminder, and a Telegram message while you are elsewhere. Switch them off with `"cues": false` in `data/console.json`; movie mode silences them for you.
+- **Notifications**: the bell in the bar turns on the system's own notifications. Approvals and reminders always notify; a reply or a Telegram message notifies only while the console is not the page you are looking at.
+- **Sound cues**: short interface sounds (made with ElevenLabs sound effects, in `troi-console/assets/`) play for a new approval, a due reminder, and a Telegram message while you are elsewhere. Turn them off with `"cues": false` in `data/console.json`; movie mode silences them for you.
 
 The agent can drive all of it: "switch to the hands", "open my files", "open the vault", "open the modes", "show me the browser", "float the conversation", "tidy up". It does this with `console.sh`, whose commands the console follows on whichever page is open.
 
 ## The greeting
 
-The voice line says your greeting ("Hello \<you\>.", as you set it in the welcome) the moment it starts. Once the brain is warm it is handed a session-start line with the time, today's reminders and the top of your priorities, and it adds what a fellow person would add: a word on the time of day, the shape of the day, a dry remark or a small joke now and then. It is never the same line twice and it is not scripted. Turn it off with `"living_greeting": false` in `data/console.json`.
+The voice line says your greeting ("Hello \<you\>.", as you set it in the welcome) the moment it starts. Once the brain is warm, it is handed a session-start line with the time, today's reminders and the top of your priorities. It then adds what a fellow person would add: a word on the time of day or the day ahead, a dry remark, or a small joke now and then. It is never the same line twice and it is not scripted. Turn it off with `"living_greeting": false` in `data/console.json`.
+
+## The record (SQLite)
+
+Everything the voice line logs is tailed into `data/troi.db`: the conversation per session, the cards the tools showed, approvals and what became of them, pictures, reports and routine runs. The console loads the last lines from it when it opens, so a reload keeps the conversation.
+
+- `troi-console/db.py tail 50`, `db.py sessions` and `db.py stats` read it.
+- `db.py star <path>` keeps a capture past the 14-day tidy-up.
+- The server serves `/history`, `/sessions` and `/approvals`.
+
+## Drawing in the conversation
+
+Charts, tables, stats, galleries, tabs, maps and players are drawn inside the conversation from data. The agent runs `show.py` with a component tree (or `show.py chart …` / `show.py table …`), and the card lands in the log, live, and stays in the record. No HTML files, no screenshots of them. `show.py vocabulary` lists the components.
+
+## AG-UI
+
+The agent's server speaks [AG-UI](https://docs.ag-ui.com). `POST /agent` takes a `RunAgentInput`: the last user message is the line, and `forwardedProps.silent: true` makes it a written turn, answered but not spoken. It streams the standard events over SSE:
+
+- the reply as it grows, and the tool in use;
+- `silo.state`, `silo.partial` and `silo.note`;
+- cards: `silo.pictures`, `silo.headlines` and `silo.ui`;
+- `silo.approval` when something waits for you.
+
+`GET /events` is the same vocabulary as a running feed of the whole conversation, and `POST /ask` runs one turn and returns the reply. Any AG-UI client can drive the agent with it; the console is one.
 
 ## The end-of-day report
 
-At the report time (default 18:30, in Routines or `report_time` in `data/console.json`) the pulse builds a report of the day: every commit in every git repository under your browsable folders (who, what, when), commits and CI runs in your GitHub org, notes changed in the vault, files touched, reminders that fired, and a "What changed today" paragraph written by the agent from those facts, in the same shared session. It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you on Telegram, and the Routines pane lists every report with a download. Ask for it any time ("send me today's report") or run `report.py`, with `--date` for another day and `--no-send` to keep it local.
+At the report time (18:30 by default; set it in Routines or as `report_time` in `data/console.json`), the pulse builds a report of the day:
 
-## Talking
+- commits in the git repositories under your file roots, and in your GitHub org (who, what, when);
+- CI runs, notes changed in the vault, files touched and reminders that fired;
+- a "What changed today" paragraph, written by the agent from those facts in the same shared session.
 
-- Hold **Right Option**, speak, release. That key is never gated by Voice ID, so it always works.
-- **Hands-free** listens all the time. With the wake word on, say the name first: "Troi, what time is it". Words before the name are dropped, so a TV in the room does not trigger it.
-- **Voice ID** (Only me) fails closed: a clip that cannot be identified as you, whether too short, too different or unreadable, is dropped, and the transcript shows why with its score. The talk key is never gated.
-- Say "**stop**" to cut a reply off without starting a new one. With barge-in on, only a sentence with the agent's name interrupts.
-- If the agent starts something long it says so instead of going quiet, and gives a short update if it is still busy after a while.
+It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you on Telegram, and the Reports page lists every report. Ask for it any time ("send me today's report") or run `report.py`: `--date` for another day, `--no-send` to keep it local, `--no-narrative` to skip the paragraph.
 
 ## Things to ask for
 
 | Say | What happens |
 |---|---|
-| "show me my files" / "open \<folder\> in the galaxy" / "where is \<project\>" | the Files galaxy opens, the item lights up |
+| "show me my files" / "open \<folder\> in the galaxy" / "where is \<project\>" | the Files galaxy opens, and the item lights up |
 | "open the apps" / "open Spotify" / "close Chrome" / "what's running" | the Apps galaxy, or the app is opened, focused or politely quit |
 | "look at me" / "what am I holding" | one camera photo, described |
 | "what's on my screen" / "read this error" | a screenshot, read |
-| "remind me in 20 minutes to ..." / "remind me at 3pm ..." | the pulse fires it, spoken and on Telegram |
-| "review PR 3 on my-app" / "review my changes in the website" | a review by the agent in a headless session of its own, in a throwaway checkout with read-only tools, following your Code Review job; the report lands in `data/blobs/reviews/` and on Telegram, and goes on the PR only when you say "post it" |
-| "work on the website" / "open the my-app project" | a Terminal window with a Claude Code session inside that project folder that is still your agent (boot file, deletion guard and vault come along); `code.sh list` shows the projects from the settings |
-| "how are the servers" / "check prod" | a read-only health check over SSH of every server in `data/servers.json` (load, disk, memory, failed services, containers, updates, reboot needed); the pulse runs it every 15 minutes and speaks only what changed |
-| "what's on today" / "when is my next meeting" | the Mac's Calendar app (add Google or others under Internet Accounts); the pulse warns 15 minutes before an event, the morning brief lists the day, and "record this meeting" names the recording after the event |
-| "play some jazz" / "play my gospel playlist" / "pause" / "next" / "what's this song" / "louder" | Apple Music: a playlist by name, then the library by genre, artist, album or title; nothing in the library opens the app's search for you to tap. Music dips while the agent speaks (`duck_music`) |
-| "movie mode" / "movie mode off" | push to talk so the film can't wake the agent, sound cues off, the console panel hidden and the page dimmed; "off" restores it (say "go hands free" yourself if you were hands-free) |
-| "record this meeting" / "stop recording" / "transcribe it" | a recording (from "Meeting In", the Mac's microphone plus BlackHole, with the sound output routed through "Meeting Out" until stop; the microphone alone without BlackHole), then a speaker-labelled transcript with ElevenLabs Scribe in `data/blobs/meetings/`, from which the agent writes the meeting note into the vault |
+| "remind me in 20 minutes to ..." / "remind me at 3pm ..." | the pulse fires it, and the agent says it (on Telegram when the voice line is down) |
+| "review PR 3 on my-app" / "review my changes in the website" | a review in a headless session of the agent's own, in a throwaway checkout with read-only tools, following your Code Review job. The report lands in `data/blobs/reviews/` and on Telegram, and goes on the PR only when you say "post it" |
+| "work on the website" / "open the my-app project" | a Terminal window with a Claude Code session inside that project folder that is still your agent (the boot file, the guard and the vault come along); `code.sh list` shows the projects from the settings |
+| "how are the servers" / "check prod" | a read-only health check over SSH of every server in `data/servers.json`: load, disk, memory, failed services, containers, updates, reboot needed. The pulse runs it every 15 minutes and speaks only what changed |
+| "what's on today" / "when is my next meeting" | the Mac's Calendar app (add Google or others under Internet Accounts). The pulse gives a heads-up 15 minutes before an event, the morning brief lists the day, and "record this meeting" names the recording after the event |
+| "play some jazz" / "play my gospel playlist" / "pause" / "next" / "what's this song" / "louder" | Apple Music: a playlist by name, then the library by genre, artist, album or title. When nothing matches, the app's search opens for you to tap. With `duck_music` on in the settings, music dips while the agent speaks |
+| "movie mode" / "movie mode off" | push to talk so the film can't wake the agent, sound cues off, the floating conversation hidden and the page dimmed. "Off" restores it (say "go hands free" yourself if you were hands-free) |
+| "record this meeting" / "stop recording" / "transcribe it" | a recording, from "Meeting In" (the Mac's microphone plus BlackHole, with the Mac's sound routed through "Meeting Out" until stop), or from the microphone alone without BlackHole. Then a speaker-labelled transcript with ElevenLabs Scribe in `data/blobs/meetings/`, from which the agent writes the meeting note into the vault |
 | "good morning" | the morning brief |
 | "how is CI" / "any failed builds" | CI status for your GitHub org |
-| "back up the vault" | the nightly backup, now |
+| "back up now" | the nightly backup, now: the vault, then the record |
 | "call me" | a call link on Telegram; the agent answers |
 | "show me the photo of ..." | the picture goes up on the hands board |
-| "move X into Y" / "rename" / "make a folder" | done directly (never overwrites) |
-| "delete X" / "trash X" | an approval card. Nothing moves until you approve it (the console unlocked with your PIN, or Telegram) |
+| "move X into Y" / "rename" / "make a folder" | done directly, inside your file roots (never overwrites) |
+| "delete X" / "trash X" | an approval card. Nothing moves until you approve it (the console unlocked, or "approve" on Telegram), and then it goes to the macOS Trash |
 | "click the Save button" / "type hello in that field" | the guarded cursor: it looks first, refuses risky labels, asks for approval |
 | "draw me a…" / "make a picture of…" | a picture, in the Library and on the board |
 | "research …" / "show me what … looks like" | credited pictures on the board while it talks |
 | "what's in the news" / "what does NTV say about…" | headlines per outlet, Uganda first, read out or on the board |
-| "go hands free" / "stop asking for permission" | only in your verified voice, from an unlocked console, or with your approve on Telegram |
-| "open example.com and fill in the form" | the Playwright browser |
+| "go hands free" / "stop asking for permission" / "clear the session" | only in your verified voice (or your face), from an unlocked console, or with your approve on Telegram |
+| "open example.com and fill in the form" | the agent's browser |
 
 ## The Files galaxy
 
-A folder drawn as a galaxy. Folders are glowing nuclei, files are stars coloured and iconed by type. Solid lines are the folder tree; dashed lines are related files (same name with different extensions, wikilinks, links inside Markdown).
+A folder drawn as a galaxy. Folders are glowing nuclei, and files are stars, coloured and marked by type. Solid lines are the folder tree; dashed lines join related files (the same name with different extensions, wikilinks, links inside Markdown).
 
-- Click a folder to unfold it, double-click to make it the centre. Breadcrumbs go up.
-- Double-click a file to peek in the drawer, which is a pane like the others (drag, resize, minimise to a chip under the Hands button): rendered Markdown, syntax-highlighted code, Word, Excel, CSV as a table, JSON, PDF, audio, video, 3D models, images. **Edit** and **Save** text files (the previous version is kept in `data/backups/`). **Open in app**. **Ask \<Agent\>** sends it to the agent.
-- Right-click or long-press: rename, new folder, reveal in Finder, move to Trash (approval), let it float.
-- Drag a file onto a folder to move it (a menu confirms). Drag a star aside to pin it where you work.
-- Wheel to zoom. Shift-drag rotates, Alt-drag tilts, `0` resets. The minimap at the bottom shows where you are.
-- The **Recent** strip shows files changed in the last seven days. The view refreshes itself when files change.
+- **Moving around.** Click a folder to unfold it; double-click it to make it the centre. Breadcrumbs go up. The search box finds a file by name. Wheel to zoom; Shift-drag rotates, Alt-drag tilts, and `0` resets. In the Vault view a minimap shows where you are.
+- **Peeking.** Double-click a file to peek at it in the drawer, a small window of its own inside the galaxy (drag it, resize it, or minimise it to a chip under the Hands button). It shows rendered Markdown, highlighted code, Word, Excel, CSV as a table, JSON, PDF, audio, video, 3D models and images.
+  - **Edit** and **Save** text files. The previous version is kept in `data/backups/`, and goes to the Trash after 30 days.
+  - **Open in app** opens the file in its application.
+  - **Ask \<Agent\>** sends it to the agent.
+- **Changing things.** Right-click or long-press for rename, new folder, reveal in Finder, move to Trash (an approval) or let it float. Drag a file onto a folder to move it; a menu confirms and offers to copy instead. Drag a star aside to pin it where you work.
+- **Recent** (the button next to Hands) shows files changed in the last seven days. The view refreshes itself when files change.
 - **Memory graph** draws the vault's notes and their wikilinks.
 
 The root of the Files galaxy is called Silo One.
 
 ## The Vault
 
-The vault is your agent's memory, and the Vault view shows it as a wall of cards drawn by the same engine as the galaxies, so every gesture is the same. Folders sit across the top as small stacks, each with the opening lines of its index note, its counts and its newest notes; notes sit below with their opening lines, word and link counts, age and tags. Tap a folder to open it, tap a note to read it in the drawer (rendered Markdown, editable). Drag a note onto a folder to move it. Right-click for rename, new folder, reveal, or a trash request. Search lights up matches in titles, excerpts and tags. **Memory graph** draws the notes and their wikilinks instead.
+The vault is your agent's memory. The Vault view shows it as a wall of cards drawn by the same engine as the galaxies, so every gesture is the same.
+
+- Folders sit across the top as small stacks, each with the opening lines of its index note, its counts and its newest notes.
+- Notes sit below, with their opening lines, word and link counts, age and tags.
+- Tap a folder to open it, and tap a note to read it in the drawer (rendered Markdown, editable).
+- Drag a note onto a folder to move it. Right-click for rename, new folder, reveal, or a trash request.
+- Search lights up matches in titles, excerpts and tags. **Memory graph** draws the notes and their wikilinks instead.
 
 ## The Apps galaxy
 
-Every application as a standalone icon, grouped by category. Running apps glow. Tap (or dwell with a hand) to open, long-press for quit or force quit (force quit asks for approval).
+Every application as a standalone icon, grouped by category; running apps glow. Tap (or dwell with a hand) to open one. A long press offers Open or Bring to front, Quit, Force quit (an approval) and Show in Finder.
 
 ## Hand gestures (webcam)
 
-The webcam is off until you ask, to save the battery: the **Hands** switch on the Eyes page (or "hands on" to the agent) turns hand tracking on for the board and the galaxies; the Hands button inside a galaxy does the same for that view. A small sampler shows what the tracker sees.
+The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or "hands on" to the agent, turns hand tracking on for the hands board and the galaxies; the Hands button inside a galaxy does the same for that view. Chrome asks for the camera the first time.
 
 | Hand | Meaning |
 |---|---|
 | One finger (index) | the cursor. Hover a star or a card to focus it; hold still for a moment (dwell) to open it |
-| Two fingers pinched | grab and drag |
-| Fist | stop tracking (the cursor freezes) |
-| Open hand rolled | rotate the galaxy |
-| Two hands apart or together | zoom; move them up and down together to tilt |
+| A pinch (thumb and index), or index and middle fingers together | grab and drag; a long pinch opens the menu |
+| Fist | the cursor hides and anything held is dropped |
+| A pinched hand rolled, on empty space | rotate the galaxy |
+| Two pinched hands apart or together | zoom (turning them rotates, moving them up and down tilts) |
 | In a peek drawer: hand up and down | scrolls like a trackpad (small movements, repeat) |
 | In a peek drawer: swipe right | closes it |
 
-Sensitivity lives in `data/console.json` under `hand_tuning` (pinch thresholds, dwell time, magnet). The mouse also works as a hand on the hands board: move is an open hand, hold is a pinch, click is a tap.
+The galaxies' sensitivity lives in `data/console.json` under `hands` (pinch thresholds, dwell time, magnet), or use `console.sh hands <key> <value>`. Press **P** in a galaxy to sample a pose. The mouse also works as a hand on the hands board: move is an open hand, hold is a pinch, click is a tap.
 
 ## Telegram
 
-Text, photos and voice notes both ways, in the same session as the console. The agent answers in plain text, or in its own voice when you send a voice note. Reply "approve" or "reject" to approval requests. `/call` starts a voice call. The agent can message you first when something is urgent (a failed build, a reminder while you are away).
+Text, photos and voice notes both ways, in the same session as the console.
+
+- **Replies.** The agent answers in plain text, and adds a voice note (in Kokoro) when you sent one; `"voice_replies": true` in the settings sends a voice note with every reply.
+- **Approvals.** Send "approve" or "reject" (or /approve) to decide the newest request that is waiting.
+- **Calls.** `/call` starts a voice call.
+- **The agent writing first.** It messages you when something needs you while the voice line is down: a reminder, a failed build, a server change. It never sends more than one message for one event.
 
 ## Voice calls
 
-"Call me" or `/call` sends a link. Open it on your phone, tap to allow the microphone, talk. The agent hears with voice ID, answers with its voice, and stays in the same conversation. Hang up to end.
+"Call me" or `/call` sends a link. Open it on your phone, tap to allow the microphone (or switch to push to talk), and talk. The agent answers in Kokoro and stays in the same conversation; with a voice print it listens for your voice (it lets short clips through). Hang up to end.
+
+A phone allows its microphone only on an https page, so calls need `call.html` (in `console/public/`) hosted on an https address and set as `call_page` in `data/console.json`. The console serves the page on your own network too, but over plain http, and phones refuse the microphone there.
 
 ## Safety
 
-- The agent cannot delete. Every destructive command is blocked by a hook regardless of permission mode. Trash, force-quit and risky clicks need your approval, and only you can give it: the console unlocked with your PIN or face, or your own Telegram chat.
-- The agent cannot reach its own safeguards: your secrets in the Keychain, approvals and unlocks, the settings file, your voice and face prints, its record, its boot file, Claude Code's settings and the guard's code. The same hook blocks the attempt.
-- The guarded cursor refuses to click without a fresh screenshot, never types into password fields, and files an approval for controls labelled delete, pay, send, submit, install and the like.
-- The browser is the agent's own Chrome (its own profile), with none of your logins unless you log in for it on the Browser page. Payments, deletions and messages from a site need your explicit go-ahead in the same turn.
-- Camera and screenshots stay on the machine. Voice ID is a local voice print. Secrets stay in the Keychain.
+- **The agent cannot delete.** A hook blocks every destructive command, whatever the permission mode. Trash, force-quit and risky clicks need your approval, and only you can give it: the console unlocked with your PIN or face, or your own Telegram chat. What you approve for removal goes to the macOS Trash. The nightly housekeeping also only uses the Trash, for old captures, old editor backups and old logs.
+- **The agent cannot reach its own safeguards.** That covers your secrets in the Keychain, approvals and unlocks, the settings file, your voice and face prints, its record, its boot file, Claude Code's settings and the guard's code. The same hook blocks any attempt.
+- **The guarded cursor** refuses to click without a fresh screenshot, never types into password fields, and files an approval for controls labelled delete, pay, send, submit, install and the like.
+- **The browser** is the agent's own Chrome, with its own profile and none of your logins unless you log in for it on the Browser page. Payments, deletions and messages from a site need your explicit go-ahead in the same turn.
+- **What leaves the Mac.** Photos and screenshots stay on the Mac and go only to your private nightly backup. Your voice and face prints never leave it, and secrets stay in the Keychain.
 
 ## Protected settings and the PIN
 
-Some switches lower the agent's guard: auto-approve, hands-free listening, clearing the session, voice ID off or looser, the wake word off, the camera on, and the guard itself. Anyone in the room could otherwise say "go hands free" or "stop asking for permission", so these need one of three things:
+Some switches lower the agent's guard. Anyone in the room could otherwise say "go hands free" or "stop asking for permission", so each needs you:
 
-- **Your verified voice, or your face.** With a voice print learnt, a spoken order is checked against it before it runs; if the voice does not match and your face is learnt, the camera gets a look before the order is refused.
-- **An unlocked console.** Set a PIN once (the welcome does it, or `troi-console/keychain.py set pin`), then type it at the lock in the bar; the console stays unlocked for 15 minutes, protected switches apply straight away, and approvals go through.
-- **Your approve on Telegram.** Anything protected that arrives another way, including the agent being talked into it, becomes an approval card and a Telegram message. Reply "approve" or "reject". On the console, approving any card needs the console unlocked.
+- **Spoken or typed phrases** (auto-approve, hands-free listening, clearing the session) go through in your verified voice. If the voice does not match and your face is learnt, the camera gets a look before the order is refused. They also go through from an unlocked console, or with your approve on Telegram.
+- **Settings** (voice ID off, looser or learning, the wake word off, the camera or screen sight on, learning a face, the face gate off, and the guard itself) change only from an unlocked console or with your approve on Telegram.
 
-The guard is on by default (`guard_settings` in the settings). Turning it off is itself protected. Five wrong PINs lock the console for ten minutes. If you have no voice print, no PIN and no Telegram yet, the doctor and the console say so: until then nothing can verify you, so the guard stands down.
+To unlock, set a PIN once (the welcome does it, or `troi-console/keychain.py set pin`), then type it at the lock in the bar, or use **Check it's me** on the Eyes page. The console stays unlocked for 15 minutes: protected switches apply straight away, and approvals go through.
+
+Anything protected that arrives another way, including the agent being talked into it, becomes an approval card and a Telegram message. The guard is on by default (`guard_settings` in the settings), and turning it off is itself protected. Five wrong PINs lock the console for ten minutes. Until something can verify you (a PIN, a paired phone, or a voice or face print), the guard stands down; the doctor warns about it.
 
 ## Eyes, screen sight and Face ID
 
-The **Eyes** page shows what the agent sees: the live frame while the camera is on, or the last photo. **Look now** takes a photo, **Screen now** a screenshot, and the mode switch is the same as in Modes: Off, Every reply (a fresh camera frame with each request), Watch (it speaks up when the room changes), and **Screen**, which attaches a screenshot to every request so it answers knowing what is on your screen. Screen sight needs the Screen Recording permission for the terminal app.
+The **Eyes** page shows what the agent sees: the live frame while the camera is on, or the look you just took. **Look now** takes a photo and **Screen now** a screenshot. The mode switch is the same as in Modes:
 
-**Face ID** is a second way to prove it is you, beside the voice print, the PIN and Telegram. It uses a real face-recognition model in its own environment; nothing leaves the Mac. Learn your face once (Modes > Face ID > Learn my face: five photos, a second apart; it is a protected change, so it needs the PIN, your voice or a Telegram approve). From then on **Check it's me** on the Eyes page unlocks the console like the PIN does, and when someone gives a protected spoken order in a voice that does not match yours, the agent says "One moment, let me see you" and checks the camera before refusing. A photo held up to the camera can fool it; the PIN cannot, so keep the PIN for the things that matter most.
+- **Off.**
+- **Every reply**: a fresh camera frame with each request.
+- **Watch**: it speaks up when the room changes.
+- **Screen**: a screenshot with every request, so it answers knowing what is on your screen. Screen sight needs the Screen Recording permission for Terminal.
 
+**Face ID** is another way to prove it is you, beside the voice print, the PIN and Telegram. It uses a real face-recognition model in its own environment, and nothing leaves the Mac. Learn your face once in Modes › Face ID › Learn my face: five photos, a second apart. It is a protected change, so it needs the console unlocked or a Telegram approve. From then on:
+
+- **Check it's me** on the Eyes page unlocks the console like the PIN does.
+- When someone gives a protected spoken order in a voice that does not match yours, the agent says "One moment, let me see you" and checks the camera before refusing.
+
+A photo held up to the camera can fool it; the PIN cannot, so keep the PIN for the things that matter most.
+
+**The face gate** (`face_gate` in the settings, `console.sh face-gate on|off`) makes hands-free with the wake word answer only while your face is at the camera, so the TV can't wake the agent. It needs a learnt face, it fails closed, the talk key always works, and turning it off is protected.
 
 ## The news, Uganda first
 
-"What's in the news", "what's trending in Uganda", "what does NBS say about the budget": the agent reads the outlets listed in `news.json`. Out of the box: NBS Television, Nile Post (Next Media), NTV Uganda, UBC, Galaxy FM, Simba FM, The Independent, The Observer, PML Daily and Google News for Uganda; then BBC World, BBC Africa, Al Jazeera, The Guardian and The Washington Post. It gives the latest per outlet with how old each story is, can put a front page of cards on the board, search every outlet for a subject, read an article out, list an outlet's latest YouTube videos, and open its X or Facebook page in its browser when you ask what they are posting. Outlets without a working website (UBC, Simba FM) are covered through Google News and YouTube. Edit `news.json` to add or drop outlets; feeds, Google News queries and handles are all it needs.
+"What's in the news", "what's trending in Uganda", "what does NBS say about the budget": the agent reads the outlets listed in `troi-console/news.json`. Out of the box:
+
+- **Uganda:** NBS Television, Nile Post (Next Media), NTV Uganda, UBC, Galaxy FM, Simba FM, The Independent, The Observer, PML Daily, and Google News for Uganda.
+- **World:** BBC World, BBC Africa, Al Jazeera, The Guardian and The Washington Post.
+
+It can:
+
+- give the latest per outlet, with how old each story is;
+- put a front page of cards on the board;
+- search every outlet for a subject;
+- read an article out;
+- list an outlet's latest YouTube videos;
+- open its X or Facebook page in its browser when you ask what they are posting.
+
+Outlets without a working website (UBC, Simba FM) are covered through Google News and YouTube. Edit `news.json` to add or drop outlets; feeds, Google News queries and handles are all it needs.
 
 ## Research with pictures
 
-When the agent researches or explains something that has a look to it, it puts pictures up while it talks: free, credited pictures from Wikimedia Commons, Wikipedia and Openverse; the pictures a web page leads with; or a screenshot of the page. They land on the hands board as a numbered grid under one caption card (each new topic sweeps the last unless the agent is asked to add), and you can say "focus on the second one" to spotlight a picture and "show them all" to bring the rest back. They also land in the Library under Research, and in `data/blobs/research/<topic>/` with a credits file. "Send me those" sends them to your phone. The board itself now has a calm dark backdrop instead of the camera feed (the camera still runs for hand tracking), and pictures keep their true colours.
+When the agent researches or explains something that has a look to it, it puts pictures up while it talks: free, credited pictures from Wikimedia Commons, Wikipedia and Openverse, the pictures a web page leads with, or a screenshot of the page.
+
+- **On the board**, they land as a numbered grid under one caption card. Each new topic sweeps the last unless the agent is asked to add.
+- **Steering**: say "focus on the second one" to spotlight a picture, and "show them all" to bring the rest back.
+- **Kept**: they also land in the Library under Research, and in `data/blobs/research/<topic>/` with a credits file.
+- **To your phone**: "Send me those."
+
+The board has a calm dark backdrop, its camera stays off until hand tracking is on, and pictures keep their true colours.
 
 ## Making pictures
 
-"Draw me a…", "make a picture of…", "imagine…": the agent makes a picture from words, or restyles one you point it at, saves it in the Library, and can put it on the hands board. It needs an image key in the keychain, whichever you have:
+"Draw me a…", "make a picture of…", "imagine…": the agent makes a picture from words, or restyles one you point it at, saves it in the Library, and can put it on the hands board. It needs an image key in the Keychain; the welcome's Extras step keeps it, or:
 
 ```bash
 troi-console/keychain.py set openai     # OpenAI
 troi-console/keychain.py set gemini     # Google Gemini
 ```
 
-The welcome's Extras step keeps them too.
-
-`imagine.py check` says which backend is on. Pictures and their prompts land in `data/blobs/imagined/`.
+`troi-console/imagine.py check` says which backend is on. Pictures and their prompts land in `data/blobs/imagined/`.
 
 ## Housekeeping
 
-The pulse rotates logs nightly, moves camera looks, screenshots and Telegram files older than 14 days to the Trash (starred ones stay; their record stays), and compacts the shared session at 03:30. `doctor.sh` is the check-up; `tools.sh` prints the agent's full toolbox; `housekeeping.sh` runs the cleanup now.
+At 03:00 the pulse runs `housekeeping.sh`:
+
+- logs that pass about 20 MB are rotated, and rotated logs go to the Trash after a week;
+- camera looks, screenshots and Telegram files older than 14 days go to the Trash, unless starred (their record stays);
+- editor backups go to the Trash after 30 days.
+
+At 03:30 it compacts the shared session. `doctor.sh` is the check-up, `tools.sh` prints the agent's full toolbox, and `housekeeping.sh` runs the cleanup now.

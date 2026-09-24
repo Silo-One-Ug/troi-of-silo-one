@@ -9,7 +9,7 @@ import { eget, epost } from "@/lib/edge";
 
 export function Routines() {
   const [d, setD] = useState<any>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
-  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg("The console server is not answering."); } };
+  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg("Troi's server is not answering: start Troi from the Desktop."); } };
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
   const post = async (body: any) => { setBusy(body.id); try { const r = await epost("/routines", body); setMsg(r.done || (r.ok ? "saved" : r.error || "")); } finally { setBusy(""); load(); } };
   if (!d) return <div className="hairline p-6 text-sm text-muted-foreground">{msg || "…"}</div>;

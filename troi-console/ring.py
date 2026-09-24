@@ -3,11 +3,11 @@
 Space and over full-screen apps, breathing with the agent's state (idle, listening,
 thinking, speaking) from the voice line's signal files.
 
-  double-click        open the console in the browser
-  click and drag      move it (the spot is remembered in console.json)
+  double-click        open the console (http://localhost:3100) in the browser
+  click and drag      move it (the spot is remembered in data/console.json)
   menu bar "T"        show / hide the ring, open the console, quit
 
-Runs as a login service (com.troi.ring). Needs only the voice line's state files;
+Runs as a login service (com.troi-of-silo-one.ring). Needs only the voice line's state files;
 when the agent is not running the ring dims to "off".
 """
 import json
@@ -131,13 +131,7 @@ def settings():
         return {}
 
 
-def console_open():
-    """Is a console tab open in Chrome? (the fan is pointless without one)"""
-    try:
-        r = subprocess.run(["osascript", "-e", 'tell application "Google Chrome" to get URL of every tab of every window'], capture_output=True, text=True, timeout=4)
-        return "127.0.0.1:8796" in r.stdout
-    except Exception:
-        return True
+CONSOLE_URL = os.environ.get("TROI_CONSOLE_URL", "http://localhost:3100/")     # the console app; :8796 is the agent's API
 
 
 def save_pos(x, y):
@@ -151,7 +145,7 @@ class DragView(NSView):
     """A see-through layer over the ring: drag moves the window, a double-click opens the console."""
     def mouseDown_(self, event):
         if event.clickCount() >= 2:
-            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_("http://127.0.0.1:8796/"))
+            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL))
             return
         before = self.window().frame().origin
         self.window().performWindowDragWithEvent_(event)
@@ -169,7 +163,7 @@ APP = None
 class Handler(NSObject):
     def userContentController_didReceiveScriptMessage_(self, ctl, msg):
         if str(msg.body()) == "open":
-            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_("http://127.0.0.1:8796/"))
+            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL))
 
 
 class App(NSObject):
@@ -252,7 +246,7 @@ class App(NSObject):
         self.win.orderOut_(None) if self.win.isVisible() else self.win.orderFrontRegardless()
 
     def open_(self, sender):
-        NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_("http://127.0.0.1:8796/"))
+        NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL))
 
     def quit_(self, sender):
         NSApplication.sharedApplication().terminate_(None)

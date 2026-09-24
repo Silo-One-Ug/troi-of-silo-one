@@ -23,11 +23,10 @@ export function compatibility(): Check[] {
   let webgl = false; try { const c = document.createElement("canvas"); webgl = !!(c.getContext("webgl2") || c.getContext("webgl")); } catch {}
   return [
     has(window.isSecureContext, "Secure context", "secure", "https or localhost: the microphone and camera can be asked for", "Serve the console over https (or localhost); browsers refuse the microphone otherwise"),
-    has("WebSocket" in window, "Live channels", "ws", "WebSockets for voice and devices", "No WebSocket: voice and devices cannot connect"),
     has(!!(window.AudioContext || (window as any).webkitAudioContext), "Audio", "audio", "Web Audio for the spoken replies", "No Web Audio: replies will not be spoken"),
     has(!!navigator.mediaDevices?.getUserMedia, "Microphone and camera access", "media", "The browser can ask for them", "No media devices API in this browser"),
     has(webgl, "3D", "webgl", "WebGL for the globe and the board", "No WebGL: the globe falls back to a still"),
-    has(storage, "Local storage", "storage", "Your sign-in stays on this machine", "Storage is blocked: you will sign in each visit"),
+    has(storage, "Local storage", "storage", "The console remembers its unlock, shapes and choices", "Storage is blocked: the console forgets its choices each visit"),
     has("Notification" in window, "Notifications", "notify", "The console can tap you on the shoulder", "No notifications in this browser"),
     has(typeof ReadableStream !== "undefined" && "TextDecoder" in window, "Streaming", "stream", "Replies arrive as they are written", "No streaming: replies arrive whole"),
   ];

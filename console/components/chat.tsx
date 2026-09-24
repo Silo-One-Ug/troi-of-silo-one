@@ -42,10 +42,14 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
   useEffect(() => { onState?.(state); }, [state, onState]);
+  useEffect(() => {                                               // Esc cuts a reply off, as the Stop button does
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented && state && state !== "idle" && state !== "off") epost("/say", { text: "stop" }); };
+    addEventListener("keydown", k); return () => removeEventListener("keydown", k);
+  }, [state]);
   useEffect(() => {
     let stop = false;
     (async () => {
-      try { const h = await eget("/history?limit=120"); setMsgs(h.items.map(fromRow).filter(Boolean) as Msg[]); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("The console server is not answering."); }
+      try { const h = await eget("/history?limit=120"); setMsgs(h.items.map(fromRow).filter(Boolean) as Msg[]); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
       const poll = async () => {
         if (stop) return;
         try {
@@ -114,7 +118,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       <form className="flex gap-2 border-t border-border p-3" onSubmit={e => { e.preventDefault(); send(text); }}>
         <Input value={text} onChange={e => setText(e.target.value)} placeholder={`Type to ${name} and press Enter`} />
         <Button type="submit" disabled={busy}><Send className="h-4 w-4" />Send</Button>
-        <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off"><Square className="h-4 w-4" /></Button>
+        <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)"><Square className="h-4 w-4" /></Button>
       </form>
       {hint && <div className="px-4 pb-3 text-xs text-muted-foreground">{hint}</div>}
     </div>

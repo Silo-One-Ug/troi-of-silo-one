@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troi of Silo One — logo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&display=swap">
+<style>
+  :root { --space: #05070F; --ink: #0B1020; --snow: #F4F6FF; --sub-dark: #97A3D6; --sub-light: #4B5680; --paper: #FFFFFF; --mist: #ECEDF3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Sora, system-ui, sans-serif; background: var(--space); color: var(--snow); }
+  section { padding: 72px 16px; display: grid; place-items: center; gap: 40px; }
+  .light { background: var(--paper); color: var(--ink); }
+  .mist { background: var(--mist); color: var(--ink); }
+  h2 { margin: 0; font-size: 13px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sub-dark); }
+  .light h2, .mist h2 { color: var(--sub-light); }
+  .lockup { width: min(760px, 100%); height: auto; }
+  .stacked { display: flex; flex-wrap: wrap; justify-content: center; gap: 0; width: 100%; max-width: 1100px; }
+  .stacked > div { flex: 1 1 320px; display: grid; place-items: center; padding: 56px 16px; }
+  .stacked img { width: min(360px, 90%); height: auto; }
+  .row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 36px; }
+  .size { display: grid; justify-items: center; gap: 10px; font-size: 12px; color: var(--sub-light); }
+  .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 28px; }
+  .tile { width: 200px; display: grid; justify-items: center; gap: 12px; font-size: 12px; color: var(--sub-light); }
+  .tile div { width: 200px; height: 200px; border-radius: 24px; display: grid; place-items: center; }
+  .tile img { width: 140px; height: 140px; }
+  .swatches { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; max-width: 900px; }
+  .sw { display: grid; justify-items: center; gap: 6px; font-size: 11px; }
+  .sw i { width: 52px; height: 52px; border-radius: 13px; display: block; border: 1px solid rgba(127,127,127,.25); }
+</style>
+</head>
+<body>
+<section><h2>Primary lockup, on dark</h2><img class="lockup" src="../console/public/brand/lockup-dark.svg" alt="Troi of Silo One"></section>
+<section class="light"><h2>Lockup, on light</h2><img class="lockup" src="../console/public/brand/lockup-light.svg" alt="Troi of Silo One"></section>
+<div class="stacked">
+  <div style="background: var(--space)"><img src="../console/public/brand/lockup-stacked-dark.svg" alt="Troi of Silo One, stacked"></div>
+  <div style="background: var(--paper)"><img src="../console/public/brand/lockup-stacked-light.svg" alt="Troi of Silo One, stacked"></div>
+</div>
+<section class="mist"><h2>The app icon</h2>
+  <div class="row">
+    <div class="size"><img src="../console/public/brand/icon.svg" alt="The Troi app icon" width="256" height="256">256</div>
+    <div class="size"><img src="../console/public/brand/icon.svg" alt="" width="128" height="128">128</div>
+    <div class="size"><img src="../console/public/brand/icon.svg" alt="" width="64" height="64">64</div>
+    <div class="size"><img src="../console/public/brand/favicon.svg" alt="" width="32" height="32">32</div>
+    <div class="size"><img src="../console/public/brand/favicon.svg" alt="" width="16" height="16">16</div>
+  </div>
+</section>
+<section class="mist"><h2>The mark</h2>
+  <div class="tiles">
+    <div class="tile"><div style="background: var(--space)"><img src="../console/public/brand/mark.svg" alt="The mark in colour, on dark"></div>Colour, on dark</div>
+    <div class="tile"><div style="background: var(--paper)"><img src="../console/public/brand/mark-on-light.svg" alt="The mark in colour, on light"></div>Colour, on light</div>
+    <div class="tile"><div style="background: var(--space)"><img src="../console/public/brand/mark-white.svg" alt="The mark in white"></div>White</div>
+    <div class="tile"><div style="background: var(--paper)"><img src="../console/public/brand/mark-ink.svg" alt="The mark in ink"></div>Ink</div>
+  </div>
+</section>
+<section><h2>Palette, on dark</h2>
+  <div class="swatches">
+    <span class="sw"><i style="background:#D6DCFF"></i>#D6DCFF</span><span class="sw"><i style="background:#8C95F7"></i>#8C95F7</span><span class="sw"><i style="background:#6457F2"></i>#6457F2</span>
+    <span class="sw"><i style="background:#FFE19A"></i>#FFE19A</span><span class="sw"><i style="background:#F4AE45"></i>#F4AE45</span><span class="sw"><i style="background:#D9761C"></i>#D9761C</span>
+    <span class="sw"><i style="background:#FFF4DA"></i>#FFF4DA</span><span class="sw"><i style="background:#F4F6FF"></i>#F4F6FF</span><span class="sw"><i style="background:#97A3D6"></i>#97A3D6</span>
+  </div>
+</section>
+<section class="light"><h2>Palette, on light</h2>
+  <div class="swatches">
+    <span class="sw"><i style="background:#7C84F2"></i>#7C84F2</span><span class="sw"><i style="background:#5B5CEB"></i>#5B5CEB</span><span class="sw"><i style="background:#3527B8"></i>#3527B8</span>
+    <span class="sw"><i style="background:#C98016"></i>#C98016</span><span class="sw"><i style="background:#B0641A"></i>#B0641A</span><span class="sw"><i style="background:#8E450B"></i>#8E450B</span>
+    <span class="sw"><i style="background:#BF7418"></i>#BF7418</span><span class="sw"><i style="background:#0B1020"></i>#0B1020</span><span class="sw"><i style="background:#4B5680"></i>#4B5680</span>
+  </div>
+</section>
+</body>
+</html>

@@ -19,7 +19,7 @@ Guards, all of them always on:
   keys           destructive shortcuts are refused outright (cmd+delete, cmd+shift+delete,
                  cmd+q, cmd+w, cmd+shift+q, cmd+opt+esc)
   no secrets     text that looks like a password prompt is refused
-  everything is logged to troi-console/logs/cursor.log
+  everything is logged to data/logs/cursor.log
 """
 import glob, json, os, re, subprocess, sys, time, urllib.request
 from pathlib import Path

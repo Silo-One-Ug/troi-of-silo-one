@@ -55,14 +55,18 @@ ROOT = Path(__file__).resolve().parents[1]
 # the safeguards, as they appear in a command line
 GUARDED = (r"(data/console\.json|data/prints\b|data/troi\.db|\.claude/settings|(?<![\w-])CLAUDE\.md"
            r"|troi-console/(guard|keychain|server|voice|telegram|setup|paths)\.py|troi-console/templates/)")
-WRITES = [r">{1,2}\s*[\"']?[^\s;&|]*" + GUARDED,                                     # a redirect into one
-          r"\b(tee|cp|mv|ln|install|rsync|ditto|truncate|patch)\b",                  # a tool that writes files
-          r"\bsed\b[^|;&]*\s-i|\bperl\s+-\w*i", r"write_text|\.write\(|\.dump\(|open\([^)]*[\"'][wa+]"]
+# a write reaches a safeguard when the safeguard is its target, not whenever both appear in one command line
+# (so `telegram.py send "npm install failed"` and `setup.py services install` stay allowed)
+WRITES = [r">{1,2}\s*[\"']?[^\s;&|]*" + GUARDED,                                                  # a redirect into one
+          r"\b(tee|cp|mv|ln|install|rsync|ditto|truncate|patch)\b[^;&|\n]*" + GUARDED,              # a file tool with one as an argument
+          r"\bsed\b[^;&|\n]*\s-i[^;&|\n]*" + GUARDED + r"|\bperl\s+-\w*i[^;&|\n]*" + GUARDED]  # edited in place
+CODE_WRITES = r"write_text|\.write\(|\.dump\(|open\([^)]*[\"'][wa+]"                              # inline code that writes, with one named
 SAFEGUARDS = [
     (r"\b(find|add|delete|set)-generic-password\b|\bdump-keychain\b|\bsecurity\s+(export|unlock-keychain)\b", "the owner's secrets in the Keychain"),
     (r"keychain\.py|\bimport\s+keychain\b|\bkeychain\.(get|put)\(", "the owner's secrets in the Keychain"),
     (r"(127\.0\.0\.1|localhost):8796/(approve|unlock|keychain|setup/|face-verify)", "the owner's approvals, unlocks and setup"),
     (r"troi-console/\.typed\b|(^|[\s>\"'])\.typed\b", "the voice line's typing pipe"),
+    (r"\bface\.py\s+enrol\b", "the owner's face print (learning a face is a protected change: the owner does it in Modes)"),
     (r"\bsqlite3\b[^|;&]*troi\.db(?=[^|;&]*\b(UPDATE|INSERT|REPLACE|ALTER|CREATE|ATTACH|VACUUM)\b)", "the agent's record (troi.db)"),
 ]
 
@@ -108,7 +112,7 @@ def main():
         for pat, what in SAFEGUARDS:
             if re.search(pat, cmd, re.M | re.I):
                 return refuse(what)
-        if re.search(GUARDED, cmd) and any(re.search(w, cmd, re.M) for w in WRITES):
+        if any(re.search(w, cmd, re.M) for w in WRITES) or (re.search(GUARDED, cmd) and re.search(CODE_WRITES, cmd)):
             return refuse("the agent's safeguards (settings, prints, record, boot file or guard code)")
     elif name in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         if guarded_path(inp.get("file_path") or inp.get("notebook_path") or ""):

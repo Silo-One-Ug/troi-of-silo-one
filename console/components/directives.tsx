@@ -26,10 +26,10 @@ export function Directives() {
       if (d.go && PLACES.includes(d.go)) go(d.go);
       if (d.view && ["face", "hands", "files", "apps", "vault"].includes(d.view)) go(d.view);
       if (d.vault === "show") go("vault"); if (d.vault === "clear") go("face");
-      if (d.files) { router.push("/files?path=" + encodeURIComponent(d.files)); }
+      if (d.files) { if (path.startsWith("/files")) toGalaxy({ files: d.files }); else router.push("/files?path=" + encodeURIComponent(d.files)); }
       if (d.focus) { const inVault = false; if (!path.startsWith("/files") && !path.startsWith("/vault")) go(inVault ? "vault" : "files"); toGalaxy({ focus: d.focus }); }
       if (d.refresh) toGalaxy({ refresh: d.refresh });
-      if (d.gestures !== undefined) { emit("hands", !!d.gestures); toGalaxy({ hands: !!d.gestures }); toGalaxy({ boardCamera: d.gestures ? "on" : "off" }); }
+      if (d.gestures !== undefined) { try { localStorage.setItem("silo.hands", d.gestures ? "1" : "0"); } catch {} emit("hands", !!d.gestures); }   // the open view passes it on
       if (d.apps === "open") go("apps");
       if (d.images === "open") go("library"); if (d.images === "close" && path.startsWith("/library")) go("conversation");
       for (const k of ["modes", "routines", "approvals", "reports"]) { if (d[k] === "open" || d[k] === "toggle") go(k); if (d[k] === "close" && path.startsWith("/" + k)) go("conversation"); }

@@ -1,5 +1,7 @@
 # Troubleshooting & Gesture Tuning
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its port, name and orbs are set by `setup.py` on every render.
+
 This file is written for humans AND for AI assistants. If you're an AI helping someone debug barehands: read this whole file, then follow THE TUNING CLINIC's method exactly: measure first, edit second. Never adjust a threshold from theory; every number in stage.html was fitted from real-hand samples, and yours should be too.
 
 ## Quick fixes first

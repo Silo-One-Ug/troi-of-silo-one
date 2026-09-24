@@ -7,9 +7,9 @@ type: index
 
 Read this file at the start of every conversation. It has two jobs: **the profile of the person you work for** (who I am, how I think, how to work with me) and **the map of this vault** (the structure, the indexes, and the rules for maintaining it). Your own identity is not here — that lives in the boot file (CLAUDE.md), which survives compaction.
 
-(This is a starter template. Every spot that needs your information is marked **[FILL IN: ...]**. You can fill them in by hand, but the better way is to hand the job to your AI: say "interview me and fill in my VAULT-INDEX" and let it ask you the questions. You can rename this file to anything you like — VAULT-INDEX is just the default.)
+(This is a starter template. Every spot that needs your information is marked **[FILL IN: ...]**. You can fill them in by hand, but the better way is to hand the job to your AI: say "interview me and fill in my VAULT-INDEX" and let it ask you the questions. Keep its name: the agent's backups, its check-up and the welcome look for `VAULT-INDEX.md` at the vault root.)
 
-(**AI:** if you are reading this file and any [FILL IN: ...] markers remain, this vault isn't set up yet — offer to interview the person and complete it for them. Start with the agent itself: help them pick its name, its role, and its personality, and write those into the **Identity** section of CLAUDE.md (the boot file), not this note. Then ask about one topic at a time, conversationally. Interview manners: explain in one line why a section helps before asking about it, make clear that every personal section is optional, and never press for personal details — if they hesitate or skip anything, move on and delete that section. Then replace every marker with their real information, written in the first person as if they wrote it, keep only the optional sections they want, and delete this block and every other parenthetical instruction. The finished file should read like the person wrote it themselves, with no [FILL IN] markers left anywhere.)
+(**AI:** if you are reading this file and any [FILL IN: ...] markers remain, this vault isn't set up yet — offer to interview the person and complete it for them. The agent's own identity (its name, role and personality) already lives in the boot file, which is the person's to change, so start with the person: ask about one topic at a time, conversationally. Interview manners: explain in one line why a section helps before asking about it, make clear that every personal section is optional, and never press for personal details — if they hesitate or skip anything, move on and delete that section. Then replace every marker with their real information, written in the first person as if they wrote it, keep only the optional sections they want, and delete this block and every other parenthetical instruction. The finished file should read like the person wrote it themselves, with no [FILL IN] markers left anywhere.)
 
 ---
 
@@ -169,7 +169,7 @@ Every folder that holds substantial content (5+ notes, or a distinct area) gets 
 
 ### Checkpoint Persistence
 
-Whenever something changes that a future session would need to know, persist it without being asked: update the relevant note, today's daily note, and (only for a new always-on rule) CLAUDE.md. Then scan the touched folder's index and any cross-referenced notes for drift and fix it in the same pass. The vault is the memory — keeping it current is not busywork, it's maintaining the system itself.
+Whenever something changes that a future session would need to know, persist it without being asked: update the relevant note and today's daily note; a new always-on rule is proposed to me for the boot file (CLAUDE.md), which is mine to change. Then scan the touched folder's index and any cross-referenced notes for drift and fix it in the same pass. The vault is the memory — keeping it current is not busywork, it's maintaining the system itself.
 
 ### Archiving
 
@@ -185,7 +185,7 @@ Rules the AI always follows when it writes for me. One worth stealing for everyo
 
 Daily notes capture what happened across all of my work sessions for a day. They live in `01 - Daily Notes/`, in month subfolders named `NN - Month YYYY` (`01 - Daily Notes/06 - June 2026/`) from the very first note, never once the folder fills up -- a convention that starts later means two sessions reading two files disagree about where today's note goes. Filename `YYYY-MM-DD.md`. Frontmatter `status: active`, `project: personal`, `type: log`.
 
-Start the body with a human-readable date heading (`# Monday, June 8, 2026`). Then, right after it, an **`## Index`** block: one bold-topic line per session/entry with a one-sentence outcome. The index makes a day with many entries scannable instead of a wall of prose. Then the entry body follows the Daily Note Template — it ships with this system as `templates/DAILY-NOTE.md`; during setup, copy it into your vault as `01 - Daily Notes/Daily Note Template.md`. Its sections: **What Got Done · What's Still In Progress · Decisions Made · Notes Touched · Profile Updates**. Create every daily note FROM the template; never hand-roll one.
+Start the body with a human-readable date heading (`# Monday, June 8, 2026`). Then, right after it, an **`## Index`** block: one bold-topic line per session/entry with a one-sentence outcome. The index makes a day with many entries scannable instead of a wall of prose. Then the entry body follows the Daily Note Template, `01 - Daily Notes/Daily Note Template.md`, which comes with the vault. Its sections: **What Got Done · What's Still In Progress · Decisions Made · Notes Touched · Profile Updates**. Create every daily note FROM the template; never hand-roll one.
 
 If today's note already exists from an earlier session, append a new session section (`## Session 2`, `## Evening Session`) and add a line to the Index block — don't overwrite. Timestamp each entry with my local time.
 

@@ -130,7 +130,7 @@ def cleanup(wt, clone):
 
 
 def job_text():
-    try: return (Path(cfg()["vault"]) / "10 - Resources" / "Jobs" / "Code Review.md").read_text()
+    try: return next(Path(cfg()["vault"]).glob("*Resources/Jobs/Code Review.md")).read_text()      # 08 - Resources in the starter vault
     except Exception: return "Review for correctness first (logic, edge cases, error handling, races, data loss), then security, then the project's conventions, then simplification. Rank findings by severity with file:line and a concrete failure scenario."
 
 
@@ -155,7 +155,7 @@ Follow your Code Review job below to the letter. Read the WHOLE diff, every file
 
 Write the report in Markdown, in this shape and nothing else:
 # Review: {title}
-**Verdict:** one line (ready / needs changes / do not merge) with the single most important reason.
+**Verdict:** one line (ship / fix first / rethink) with the single most important reason.
 ## Findings
 Ranked, most severe first. Each: `path:line` — what is wrong — a concrete failure scenario — the fix. Skip nitpicks unless nothing else is wrong.
 ## Looks good

@@ -7,13 +7,13 @@ Run with backtalk's Python (it has the ears, the mouth and the Agora SDK):
   check            what is configured, what is missing
   link             print a fresh call link (a channel + a 24 h token)
   answer <channel> join that channel as the agent and talk until the caller leaves
-  call             link + send it to the owner on Telegram + answer   ("the agent, call me")
+  call             link + send it to the owner on Telegram + answer   ("call me")
 
-Credentials live in the macOS keychain, never in files:
-    keychain.py set agora-appid   (paste the App ID)
-    keychain.py set agora-cert    (paste the App Certificate)
-The phone side is call.html (served by the console at /call.html; host it
-anywhere static for use away from home and set "call_page" in console.json).
+Credentials live in the macOS Keychain, never in files (the welcome's Extras step keeps them, or):
+    troi-console/keychain.py set agora-appid   (paste the App ID)
+    troi-console/keychain.py set agora-cert    (paste the App Certificate)
+The phone side is console/public/call.html, served by the console app at http://<this Mac>:3100/call.html, which
+works on your own network; host it anywhere static for use away from home and set "call_page" in data/console.json.
 """
 import json
 import os
@@ -40,9 +40,17 @@ def _cfg_names():
     except Exception: owner = "the owner"
     return name, owner
 AGENT, OWNER = _cfg_names()
+
+
+def call_word():
+    """How the agent addresses the owner mid-conversation (the welcome's choice)."""
+    try:
+        return json.loads(_Pa.CONFIG.read_text()).get("call") or "sir"
+    except Exception:
+        return "sir"
 import os as _os2, json as _j2
-try: VAULT = _j2.load(open(str(_Pa.CONFIG))).get("vault", _os2.path.expanduser("~/Vault"))
-except Exception: VAULT = _os2.path.expanduser("~/Vault")
+try: VAULT = _j2.load(open(str(_Pa.CONFIG))).get("vault", str(_Pa.DATA / "vault"))
+except Exception: VAULT = str(_Pa.DATA / "vault")
 
 HERE = Path(__file__).resolve().parent
 HOME = HERE.parent
@@ -93,7 +101,7 @@ def token_for(channel, uid, hours=24):
 
 def make_link():
     channel = "troi-" + secrets.token_hex(3)
-    base = settings().get("call_page") or f"http://{lan_ip()}:8796/call.html"
+    base = settings().get("call_page") or f"http://{lan_ip()}:3100/call.html"
     from urllib.parse import quote
     url = (f"{base}?appid={quote(secret('agora-appid'))}&channel={quote(channel)}&uid={OWNER_UID}"
            f"&token={quote(token_for(channel, OWNER_UID), safe='')}")
@@ -103,8 +111,8 @@ def make_link():
 # ---------------- the brain, the ears and the mouth for a call ----------------
 def ask_troi(text, session):
     """One turn in the ONE shared conversation: via the live voice line if it is up (silent in the room), else resume it."""
-    prompt = (f"(via call) {text} (the owner is talking to you on a voice call from his phone. Reply as speech: short, plain, "
-              f"no lists or markdown, one to three sentences unless he asks for detail.)")
+    prompt = (f"(via call) {text} ({OWNER} is talking to you on a voice call from their phone. Reply as speech: short, plain, "
+              f"no lists or markdown, one to three sentences unless they ask for detail.)")
     try:
         import urllib.request
         req = urllib.request.Request("http://127.0.0.1:8796/ask", data=json.dumps({"text": prompt, "timeout": 120}).encode(), headers={"Content-Type": "application/json"})
@@ -127,9 +135,9 @@ def ask_troi(text, session):
         out = json.loads(r.stdout)
         if out.get("session_id"):
             (HOME / "backtalk" / ".backtalk_session").write_text(out["session_id"])
-        return out.get("result") or "Sorry, sir, I lost that one."
+        return out.get("result") or f"Sorry, {call_word()}, I lost that one."
     except Exception:
-        log(f"claude error: {r.stderr[-200:]}"); return "Something went wrong on my end, sir."
+        log(f"claude error: {r.stderr[-200:]}"); return f"Something went wrong on my end, {call_word()}."
 
 
 def synth16k(text):
@@ -254,7 +262,7 @@ def answer(channel):
 
     session = {}
     synth16k("Ready.")                              # load the voice now, not on the first sentence
-    FILLERS = ("One moment, sir.", "Working on it.", "Give me a second.", "Let me check.")
+    FILLERS = (f"One moment, {call_word()}.", "Working on it.", "Give me a second.", "Let me check.")
 
     def reply_with_fillers(text):
         """Ask the agent in the background; if the answer takes a while, say so instead of going quiet."""
@@ -266,16 +274,16 @@ def answer(channel):
             say(random.choice(FILLERS))
             th.join(20.0)
             if th.is_alive():
-                say("Still on it, sir. This one is taking a while.")
+                say(f"Still on it, {call_word()}. This one is taking a while.")
                 th.join(240.0)
-        return box.get("r") or "Sorry, sir, that took too long. Ask me again."
+        return box.get("r") or f"Sorry, {call_word()}, that took too long. Ask me again."
 
     vad = webrtcvad.Vad(2)
     level_frames = 0; level_sum = 0.0
     frames, speech_run, silence_run, in_utt = [], 0, 0, False
     started = time.time()
     heard_any = False
-    threading.Thread(target=lambda: (time.sleep(2), say("Hello the owner, the agent here. What do you need?")), daemon=True).start()
+    threading.Thread(target=lambda: (time.sleep(2), say(f"Hello {settings().get('address') or OWNER}, {AGENT} here. What do you need?")), daemon=True).start()
     while not state["gone"]:
         try:
             buf = inbox.get(timeout=0.5)
@@ -318,7 +326,7 @@ def answer(channel):
                         log(f"(dropped: {text!r})"); continue
                     log(f"[owner] {text}")
                     if any(w in text.lower() for w in ("goodbye troi", "hang up", "end the call", "bye troi")):
-                        say("Goodbye, sir."); state["gone"] = True; break
+                        say(f"Goodbye, {call_word()}."); state["gone"] = True; break
                     reply = reply_with_fillers(text)
                     log(f"[troi] {reply}")
                     say(reply)
@@ -333,8 +341,8 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
     if cmd == "check":
         print("App ID:", "set" if secret("agora-appid") else "MISSING (keychain.py set agora-appid)")
-        print("Certificate:", "set" if secret("agora-cert") else "not set: fine only if the Agora project is in testing mode (App ID only); with a certificate enabled, joins fail until it is in the keychain as troi-agora-cert")
-        print("call page:", settings().get("call_page") or f"http://{lan_ip()}:8796/call.html (LAN only until hosted)")
+        print("Certificate:", "set" if secret("agora-cert") else "not set: fine only if the Agora project is in testing mode (App ID only); with a certificate enabled, joins fail until it is in the Keychain (troi-console/keychain.py set agora-cert)")
+        print("call page:", settings().get("call_page") or f"http://{lan_ip()}:3100/call.html (your own network only, until hosted)")
         try:
             import agora.rtc.agora_service, agora_token_builder, webrtcvad  # noqa
             print("SDK: ok")

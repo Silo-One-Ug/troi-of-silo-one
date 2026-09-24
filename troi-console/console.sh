@@ -1,32 +1,31 @@
 #!/bin/bash
-# the agent's remote control for its own console page.
-#   console.sh view face|hands          what is behind the panel
+# The agent's remote control for its own console (http://localhost:3100): each command becomes a directive the console
+# follows on whichever page is open, or (*) a setting, which the server guards like any other.
+#   console.sh go <place>               conversation library modes routines reports approvals eyes browser face hands files apps vault
+#   console.sh view face|hands|files|apps|vault   a full-window view: the face, the hands board, a galaxy, the vault wall
 #   console.sh vault show|clear         the Vault view (the vault as a wall of cards) / back to the face
-#   console.sh tidy                     put the console's panes back in their places
-#   console.sh routines open|close      the Routines pane (schedules, reminders, end-of-day reports)
-#   console.sh camera open|close        the Eyes pane (the live frame, a look on demand, face ID)
-#   console.sh browser open|close       the Browser pane (the agent's Chrome, live, click-through)
-#   console.sh images open|close        the picture gallery
-#   console.sh panel hide|show          collapse or expand the panel
-#   console.sh eyes off|every|watch     the camera
-#   console.sh wake on|off              the wake word for hands-free
-#   console.sh face-gate on|off         hands-free only while the owner's face is at the camera (turning it off is protected)
-#   console.sh voice-id off|on|learn    voice identification
-#   console.sh voice list|kokoro|elevenlabs ["<voice name or id>"]   which voice speaks (ElevenLabs needs the key in the Keychain)
-#   console.sh mode "<phrase>"          a voice-console phrase, sent once the voice line is idle:
-#                                       "push to talk mode" / "go hands free" / "start asking again" /
-#                                       "stop asking for permission" / "switch to the deep model" /
-#                                       "back to the fast model" / "set effort to low|medium|high|max"
-#   console.sh files "<folder>"        open that folder as a galaxy in the Files view
-#   console.sh focus "<path>"          light up that file or folder in the galaxy
-#   console.sh gestures on|off         hand tracking on the Files galaxy
-#   console.sh apps open               the Apps galaxy;  console.sh modes open|close|toggle
-#   console.sh hands <pinch_close|pinch_open|ext|dwell_ms|magnet> <value>   tune the hand tracking
-#   console.sh hint "<text>"            a line under the typing box
+#   console.sh files "<folder>"         open that folder as a galaxy in the Files view
+#   console.sh focus "<path>"           light up that file or folder in the galaxy
+#   console.sh apps open                the Apps galaxy
+#   console.sh images open|close        the Library
+#   console.sh modes|routines|approvals|reports open|close   those pages ("close" goes back to the conversation)
+#   console.sh camera open|close        the Eyes page (the live frame, a look on demand, face ID)
+#   console.sh browser open|close       the Browser page (the agent's Chrome, live, click-through)
 #   console.sh talk column|floating     the conversation as a full column, or a floating pane over every page
-#   console.sh approvals open|close     the Approvals page;  console.sh reports open|close   the Reports page
-#   console.sh go <place>               any place: conversation library modes routines reports approvals eyes browser
-#                                       face hands files apps vault
+#   console.sh panel hide|show          hide or show the floating conversation (in the column shape, show opens it)
+#   console.sh tidy                     put the floating conversation back in its place and show it
+#   console.sh hint "<text>"            a short note above the bar, for nine seconds
+#   console.sh gestures on|off          hand tracking: the hands board's camera and the galaxies' hands
+#   console.sh hands <pinch_close|pinch_open|ext|dwell_ms|magnet> <value>   * tune the hand tracking
+#   console.sh eyes off|every|watch|screen   * the camera and screen sight (turning them on is protected)
+#   console.sh wake on|off              * the wake word for hands-free (turning it off is protected)
+#   console.sh face-gate on|off         * hands-free only while the owner's face is at the camera (off is protected)
+#   console.sh voice-id off|on|learn    * voice identification (off and learn are protected)
+#   console.sh voice list|kokoro|elevenlabs ["<voice name or id>"]   * which voice speaks (ElevenLabs needs its key)
+#   console.sh mode "<phrase>"          a voice-console phrase, sent once the voice line is idle: "push to talk mode",
+#                                       "go hands free", "start asking again", "stop asking for permission",
+#                                       "switch to the deep model", "back to the fast model", "set effort to low|medium|high|max"
+#                                       (going hands-free and dropping the permission prompt are protected)
 C="http://127.0.0.1:8796"; J="Content-Type: application/json"
 post() { curl -s -m 10 -X POST -H "$J" -H "Origin: $C" -d "$2" "$C$1"; echo; }
 case "$1" in
@@ -73,5 +72,5 @@ PY
       ;;
       *) echo "console.sh voice list | kokoro | elevenlabs [name or id]";;
     esac;;
-  *) sed -n 2,26p "$0";;
+  *) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0";;
 esac

@@ -12,8 +12,8 @@ Two things always pass without the wake word, because they are answers to a
 question the agent just asked out loud: a pending permission check, and a
 pending "say confirm".
 
-The setting lives in troi-console/console.json and is re-read on every
-utterance, so the console page can flip it live.
+The setting lives in data/console.json and is re-read on every
+utterance, so the console can flip it live.
 """
 import json
 import os
@@ -133,7 +133,7 @@ def listen_once(self, *args, **kwargs):
 Ears.listen_once = listen_once
 
 
-# ---- a silent stop. "the agent, stop" (or the console's Stop button) must cut the
+# ---- a silent stop. "<name>, stop" (or the console's Stop button) must cut the
 # reply off WITHOUT starting a new one. backtalk interrupts the current reply
 # for any new input, then asks console_match() whether the text is a control
 # phrase; a verb it has no handler for runs as a no-op and says nothing. So
@@ -275,7 +275,7 @@ def ask_stream(self, utterance):
 
 WarmBrain.ask_stream = ask_stream
 
-# ---- the living greeting. backtalk speaks the fixed "Hello Mr <owner>." the moment it starts; once the
+# ---- the living greeting. backtalk speaks the rendered greeting ("Hello <address>.") the moment it starts; once the
 # brain is warm, ONE "(session start ...)" line goes in through the typing pipe and the agent adds the
 # human part itself: the time of day, the shape of the day, a dry remark. Never the same line twice.
 _FIFO = HERE / ".typed"
@@ -547,7 +547,7 @@ def console_match(text):
 bt_main.console_match = console_match
 
 
-# ---- help the transcriber spell the name. Whisper has never seen "the agent", so
+# ---- help the transcriber spell the name. Whisper has never seen the agent's name, so
 # it writes "Troy", "Hi" or nothing; a short initial prompt biases it toward
 # the name without changing anything else it hears.
 try:
@@ -764,7 +764,7 @@ def _refuse(verb, how, why):
     log(f"[guard] refused {label} ({how}: {why})")
     try:
         if _MOUTHS:
-            _MOUTHS[-1].say_chunk(f"That needs {OWNER}'s say-so. I have sent it to his phone.", None)
+            _MOUTHS[-1].say_chunk(f"That needs {OWNER}'s say-so. I have sent it to their phone.", None)
     except Exception:
         pass
     try:

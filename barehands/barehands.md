@@ -5,6 +5,9 @@ version: 1.0
 author: Jared Rhodenizer (@jaredrhod)
 ---
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its port, name and orbs are set by `setup.py` on every render.
+
+
 # barehands: setup
 
 By **Jared Rhodenizer** (@jaredrhod) · github.com/jaredrhod/barehands

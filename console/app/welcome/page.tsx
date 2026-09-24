@@ -64,7 +64,7 @@ function Story({ onDone }: { onDone: () => void }) {
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="flex items-center justify-between px-6 py-5 sm:px-10">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.3em] text-white/60"><Sparkles className="h-3.5 w-3.5" />Silo One</div>
+          <div className="flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.3em] text-white/60"><img src="/brand/mark.svg" alt="" className="h-6 w-6" />Troi of Silo One</div>
           <button onClick={onDone} className="text-sm text-white/60 transition hover:text-white">Skip to setup</button>
         </header>
         <main className="flex flex-1 items-center px-6 sm:px-10 lg:px-20">
@@ -72,6 +72,7 @@ function Story({ onDone }: { onDone: () => void }) {
             <motion.section key={i} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.8, ease }} className="max-w-2xl">
               {i === 0 ? (
                 <div className="grid gap-6">
+                  <motion.img src="/brand/mark.svg" alt="" initial={{ opacity: 0, scale: 0.7, rotate: -12 }} animate={{ opacity: 1, scale: 1, rotate: 0, y: [0, -6, 0] }} transition={{ opacity: { duration: 1.2, ease }, scale: { duration: 1.4, ease }, rotate: { duration: 1.6, ease }, y: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.6 } }} className="h-24 w-24 drop-shadow-[0_0_28px_rgba(140,149,247,0.35)] sm:h-28 sm:w-28" />
                   <h1 className="font-semibold leading-[0.9] tracking-tight text-white"><Letters text="Troi" className="text-[clamp(5rem,16vw,12rem)]" /></h1>
                   <motion.div initial={{ opacity: 0, letterSpacing: "0.1em" }} animate={{ opacity: 1, letterSpacing: "0.6em" }} transition={{ delay: 0.9, duration: 1.6, ease }} className="text-sm font-medium uppercase text-sky-200/80">of Silo One</motion.div>
                   <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.4, duration: 0.9, ease }} className="max-w-md text-xl text-white/75">A chief of staff that lives on your Mac.</motion.p>
@@ -220,7 +221,7 @@ function Setup() {
       <div className="pointer-events-none fixed inset-0 bg-black/55" />
       <div className="relative z-10 mx-auto grid min-h-screen max-w-6xl gap-8 px-5 py-8 md:grid-cols-[240px_1fr] md:py-14">
         <aside className="hidden md:block">
-          <div className="mb-8 text-xs font-medium uppercase tracking-[0.3em] text-white/60">Troi · setup</div>
+          <div className="mb-8 flex items-center gap-2.5 text-xs font-medium uppercase tracking-[0.3em] text-white/60"><img src="/brand/mark.svg" alt="" className="h-6 w-6" />Troi · setup</div>
           <ol className="grid gap-1">{STEPS.map((s, i) => { const Icon = s.icon; const on = i === step; return (
             <li key={s.key}><button onClick={() => { setMsg(null); setStep(i); }} className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition", on ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/[0.05] hover:text-white")}>
               <span className={cn("grid h-7 w-7 place-items-center rounded-full border", done[s.key] ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : on ? "border-white/40" : "border-white/15")}>{done[s.key] ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}</span>{s.title}</button></li>); })}</ol>
@@ -232,9 +233,9 @@ function Setup() {
               {k === "you" && (<>
                 <div><h2 className="text-3xl font-semibold tracking-tight text-white">First, who does Troi work for?</h2><p className="mt-2 text-white/60">Troi uses this to greet you and to know you from everyone else.</p></div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="First name"><Input className={input} value={you.owner} onChange={e => setYou({ ...you, owner: e.target.value })} placeholder="Paul" autoFocus /></Field>
-                  <Field label="Full name" hint="For anything written for other people."><Input className={input} value={you.owner_full} onChange={e => setYou({ ...you, owner_full: e.target.value })} placeholder="Paul Ayesiga" /></Field>
-                  <Field label="The greeting" hint="How Troi says hello."><Input className={input} value={you.address} onChange={e => setYou({ ...you, address: e.target.value })} placeholder={you.owner ? `Mr ${you.owner}` : "Mr Paul"} /></Field>
+                  <Field label="First name"><Input className={input} value={you.owner} onChange={e => setYou({ ...you, owner: e.target.value })} placeholder="Alex" autoFocus /></Field>
+                  <Field label="Full name" hint="For anything written for other people."><Input className={input} value={you.owner_full} onChange={e => setYou({ ...you, owner_full: e.target.value })} placeholder="Alex Morgan" /></Field>
+                  <Field label="The greeting" hint="How Troi says hello."><Input className={input} value={you.address} onChange={e => setYou({ ...you, address: e.target.value })} placeholder={you.owner || "Alex"} /></Field>
                   <Field label="In the flow" hint="What Troi calls you mid-conversation."><div className="flex flex-wrap gap-2">{["sir", "boss", "madam", you.owner || "your name"].map(c => <button key={c} onClick={() => setYou({ ...you, call: c === "your name" ? you.owner : c })} className={cn("rounded-full border px-3.5 py-1.5 text-sm transition", you.call === c || (c === you.owner && you.call === you.owner) ? "border-white bg-white text-black" : "border-white/20 text-white/75 hover:border-white/50")}>{c}</button>)}</div></Field>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white/80"><div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/45">You will hear</div>&ldquo;Hello {you.address || (you.owner ? you.owner : "…")}.&rdquo; &nbsp;…&nbsp; &ldquo;Right away, {you.call || "sir"}.&rdquo;</div>
@@ -318,7 +319,7 @@ function Setup() {
       <AnimatePresence>{waking && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9, ease }} className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm">
           <div className="grid justify-items-center gap-6 text-center">
-            <div className="relative h-24 w-24">{[0, 1, 2].map(i => <motion.span key={i} className="absolute inset-0 rounded-full border border-sky-200/50" animate={{ scale: [0.6, 1.8], opacity: [0.9, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: "easeOut" }} />)}<span className="absolute inset-8 rounded-full bg-sky-200/80 blur-[2px]" /></div>
+            <div className="relative h-24 w-24">{[0, 1, 2].map(i => <motion.span key={i} className="absolute inset-0 rounded-full border border-sky-200/50" animate={{ scale: [0.6, 1.8], opacity: [0.9, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: "easeOut" }} />)}<img src="/brand/mark.svg" alt="" className="absolute inset-3" /></div>
             <div className="text-2xl font-semibold tracking-tight text-white">{waking === "on" ? "Troi is waking up" : "All set"}</div>
             <div className="max-w-sm text-white/60">{waking === "on" ? "with your name, your memory and your voice. It will introduce itself in a moment." : "Start Troi from the Desktop and it will introduce itself."}</div>
           </div>

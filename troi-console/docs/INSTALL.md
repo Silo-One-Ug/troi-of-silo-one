@@ -48,12 +48,12 @@ Open **System Settings › Privacy & Security** and give **Terminal** (the app t
 | Permission | Needed for |
 |---|---|
 | Microphone | hearing you |
-| Camera | "look at me", face ID, the hands board |
+| Camera | "look at me", face ID, the face gate |
 | Screen Recording | "what's on my screen" |
 | Accessibility | the guarded cursor (it reads the label of the control under the pointer before clicking) |
 | Input Monitoring | the talk key (Right Option) |
 
-Quit and reopen Terminal after granting them. The welcome checks each one, and `troi-console/doctor.sh` shows a red cross for any still missing.
+Quit and reopen Terminal after granting them. The welcome checks Screen Recording, Accessibility and the talk key, and `troi-console/doctor.sh` checks Accessibility and Screen Recording. macOS asks for the camera and the microphone the first time Troi uses them. Hand tracking on the board and in the galaxies runs in Chrome, which asks for its own camera permission.
 
 ## 4. Start, and the welcome
 
@@ -81,24 +81,24 @@ To run the setup again, open http://localhost:3100/welcome?step=setup. Once you 
 2. Paste it in the welcome's **Your phone** step, or run `troi-console/keychain.py set telegram` and then `python3 troi-console/setup.py services restart telegram`.
 3. Send your bot the pairing code the welcome shows (it is also in `data/logs/telegram.log`). From then on only your chat is accepted.
 
-Text, photos and voice notes work both ways. Reply "approve" or "reject" to approval requests. `/call` starts a voice call.
+Text, photos and voice notes work both ways. Send "approve" or "reject" to decide the newest request that is waiting. `/call` starts a voice call.
 
 ### Voice calls (Agora)
 
-1. Create a free project at [console.agora.io](https://console.agora.io) with **App ID + Token** authentication. Copy the App ID and the App Certificate into the welcome's **Extras** step, or run `keychain.py set agora-appid` and `keychain.py set agora-cert`.
-2. Host `troi-console/call.html` somewhere static (GitHub Pages works: a public repo with just that file), and put its URL in `data/console.json` as `call_page`. Without it, the call page is served from the console, which only works on your own network.
+1. Create a free project at [console.agora.io](https://console.agora.io) with **App ID + Token** authentication. Copy the App ID and the App Certificate into the welcome's **Extras** step, or run `troi-console/keychain.py set agora-appid` and `troi-console/keychain.py set agora-cert`.
+2. Host `console/public/call.html` on an https address (any static host works, such as GitHub Pages on a public repo holding just that file), and put its URL in `data/console.json` as `call_page`. A phone allows its microphone only on an https page: without `call_page` the console serves the page on your own network at http://\<this Mac\>:3100/call.html, but phones will refuse the microphone there.
 3. `backtalk/.venv/bin/python troi-console/agora_call.py check` says what is configured. Then say "call me": Troi sends a link on Telegram and answers.
 
 ### GitHub CI watch
 
-Run `gh auth login`, then set the org in the welcome's **Extras** step. The pulse checks the newest run on `main` of every repo every three minutes and reports failures in the console and on Telegram.
+Run `gh auth login`, then set the org in the welcome's **Extras** step and restart the pulse (`python3 troi-console/setup.py services restart pulse`). The pulse checks the newest run on `main` of every repo every three minutes: failures are spoken by the agent, or sent to Telegram when the voice line is down.
 
 ### Backups
 
 Both run at 23:30 and go to private repos in the `Silo-One-Ug` organization, written as the GitHub account `ayesigapaul`. They use that account's gh token whichever account is active (`github_account` and `backup_org` in `data/console.json`). Sign it in once with `gh auth login`.
 
-- **The vault** is committed and pushed to `troi-vault` in the organization, or to the vault's own remote if it already has one (`vault_repo` in `data/console.json` sets another). The repo is created on the first run, and pushes never force.
-- **Troi's record**, the database and any new files, goes as one release a night to `troi-of-silo-one-backups`, or to `backup_repo` from the welcome's **Memory** step. Starting Troi never runs a backup; Routines › Backup › Run now does.
+- **The vault** is committed and pushed to its own git remote. A vault without one gets `troi-vault` in the organization (or `vault_repo` from `data/console.json`), created on the first run. Pushes never force.
+- **Troi's record**, the database and any new files, goes as one release a night to `troi-of-silo-one-backups`, or to `backup_repo` from the welcome's **Memory** step. Starting Troi never runs a backup; Routines › Vault backup › Run now does (it backs up the record too).
 
 ### Folders Troi may organise
 
@@ -149,9 +149,9 @@ Run `troi-console/doctor.sh` first. Then:
 | "Accessibility missing" | System Settings › Privacy & Security › Accessibility: add Terminal. Start Troi again. |
 | Troi hears itself or the TV | Turn on the wake word and Voice ID in Modes. Learn your voice with about a minute of push-to-talk speech. |
 | Garbled transcription with a Bluetooth headset | Set `mic_device` in `backtalk/backtalk.json` to the Mac's own microphone. |
-| A file you asked it to trash is still there | That is the design: the request waits in Approvals. Unlock with your PIN and approve it, or approve on Telegram. |
-| "Approving needs you" | Unlock the console with your PIN (or your face) on the Approvals page, or approve on Telegram. |
-| The hands board shows only a ring | Chrome needs camera permission for http://127.0.0.1:8794. Reload the page. |
+| A file you asked it to trash is still there | That is the design: the request waits in Approvals, across restarts too. Unlock with your PIN and approve it, or send "approve" on Telegram. |
+| "Approving needs you" | Unlock the console: the PIN box on the Approvals page, or **Check it's me** on the Eyes page. Or send "approve" on Telegram. |
+| The hands board shows only a ring | That is the board at rest: its camera stays off until you switch Hands on (the Eyes page, or "hands on"). If it still sees no hands, allow the camera for http://localhost:3100 in Chrome's site settings. |
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |
 | Anything else | Describe it to Troi in the console. It reads the troubleshooting guide that ships with each piece. |

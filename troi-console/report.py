@@ -7,10 +7,10 @@
   report.py --no-narrative  facts only (no call to the brain)
 
 Facts: commits today in every git repo under the browsable folders (who, what, when), commits and
-CI runs today in the GitHub org from console.json, notes changed in the vault, reminders that fired,
+CI runs today in the GitHub org from the settings, notes changed in the vault, reminders that fired,
 files touched, and how much talking went on. The brain writes the narrative (the same shared
-session, so it knows the day). Output: reports/<date>.html, .pdf and .json; the console's Routines
-pane lists them; the PDF goes to Telegram. Runs on the system python, standard library only.
+session, so it knows the day). Output: data/blobs/reports/<date>.html, .pdf and .json; the console's Reports
+page lists them; the PDF goes to Telegram. Runs on the system python, standard library only.
 """
 import argparse
 import datetime as dt

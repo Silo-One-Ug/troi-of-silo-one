@@ -42,7 +42,7 @@ DEFAULTS = {
     "living_greeting": True, "guard_settings": True, "cues": True, "duck_music": False, "call_page": "",
     "tts": "kokoro", "elevenlabs_voice": "", "welcomed": False, "board_label": "Chief of Staff",
     "file_roots": [], "projects": {}, "projects_root": str(Path.home() / "Projects"),
-    "hand_tuning": {"pinch_close": 0.32, "pinch_open": 0.48, "ext": 1.45, "dwell_ms": 1300, "magnet": 16},
+    "hands": {"pinch_close": 0.32, "pinch_open": 0.48, "ext": 1.45, "dwell_ms": 1300, "magnet": 16},
 }
 
 
@@ -51,6 +51,8 @@ def load() -> dict:
         cur = json.loads(P.CONFIG.read_text())
     except Exception:
         cur = {}
+    if "hand_tuning" in cur:                                        # the old name for the hand tuning; the server reads "hands"
+        cur.setdefault("hands", cur.pop("hand_tuning"))
     return {**DEFAULTS, **cur}
 
 
@@ -130,15 +132,15 @@ def render() -> list:
                                    "To remember something, write it to its place in the vault, never here.\n")
     done.append("Claude's memory pointer")
     # Claude Code trusts this folder (its hooks and settings apply)
-    cj = Path.home() / ".claude.json"
+    claude_json = Path.home() / ".claude.json"
     try:
-        d = json.loads(cj.read_text())
+        d = json.loads(claude_json.read_text())
     except Exception:
         d = {}
     proj = d.setdefault("projects", {}).setdefault(str(ROOT), {})
     if not proj.get("hasTrustDialogAccepted"):                      # write the shared file only when something changes
         proj["hasTrustDialogAccepted"] = True
-        tmp = cj.with_name(".claude.json.troi-tmp"); tmp.write_text(json.dumps(d, indent=2)); os.replace(tmp, cj)
+        tmp = claude_json.with_name(".claude.json.troi-tmp"); tmp.write_text(json.dumps(d, indent=2)); os.replace(tmp, claude_json)
     done.append("trusted by Claude Code")
     return done
 
@@ -198,10 +200,21 @@ def services(action: str, name: str | None = None) -> list:
     return out
 
 
+def _set_icon(path: Path, png: Path) -> bool:
+    """Give a file its own Finder icon (the Desktop shortcut wears the app icon), through AppKit in the globe's environment."""
+    py = P.CONSOLE / ".venv-ring" / "bin" / "python"
+    if not (py.exists() and png.exists()):
+        return False
+    code = ("import sys, AppKit; img = AppKit.NSImage.alloc().initWithContentsOfFile_(sys.argv[1]); "
+            "sys.exit(0 if img and AppKit.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(img, sys.argv[2], 0) else 1)")
+    return subprocess.run([str(py), "-c", code, str(png), str(path)], capture_output=True).returncode == 0
+
+
 def shortcut() -> str:
     p = Path.home() / "Desktop" / f"{AGENT}.command"
     p.write_text(f'#!/bin/bash\nexport PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"\nexec "{ROOT}/start.sh"\n')
     p.chmod(0o755)
+    _set_icon(p, ROOT / "console" / "public" / "brand" / "icon-1024.png")
     return str(p)
 
 

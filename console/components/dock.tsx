@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, Bot, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
+import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
 import { UnlockBox } from "./approvals";
 import { notifyOn, setNotify } from "./alerts";
 import { ThemeToggle } from "./theme-toggle";
@@ -39,7 +39,7 @@ export function Dock({ name }: { name: string }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-2 z-40 flex justify-center px-2 sm:bottom-4">{/* centring lives on this wrapper: Framer Motion owns the bar's transform */}
     <motion.nav initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="glass no-scrollbar pointer-events-auto flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl px-2 py-2 shadow-2xl sm:px-3">{/* narrow windows: the bar scrolls sideways instead of spilling off */}
-      <div className="flex shrink-0 items-center gap-2 pr-1 sm:pr-2"><span className={cn("h-2.5 w-2.5 rounded-full", state === "off" ? "bg-muted-foreground/40" : state === "idle" ? "bg-emerald-500" : state === "listening" ? "bg-emerald-400 animate-pulse" : state === "speaking" ? "bg-primary animate-pulse" : "bg-amber-400 animate-pulse")} /><b className="text-xs tracking-[.12em]">{name.toUpperCase()}</b><span className="hidden w-14 text-xs text-muted-foreground md:inline">{state}</span><span className="hidden lg:inline"><Wave samples={st?.wave || []} state={state} /></span></div>
+      <div className="flex shrink-0 items-center gap-2 pr-1 sm:pr-2"><span className={cn("h-2.5 w-2.5 rounded-full", state === "off" ? "bg-muted-foreground/40" : state === "idle" ? "bg-emerald-500" : state === "listening" ? "bg-emerald-400 animate-pulse" : state === "speaking" ? "bg-primary animate-pulse" : "bg-amber-400 animate-pulse")} /><img src="/brand/mark.svg" alt="" className="hidden h-5 w-5 dark:block" /><img src="/brand/mark-on-light.svg" alt="" className="h-5 w-5 dark:hidden" /><b className="text-xs tracking-[.12em]">{name.toUpperCase()}</b><span className="hidden w-14 text-xs text-muted-foreground md:inline">{state}</span><span className="hidden lg:inline"><Wave samples={st?.wave || []} state={state} /></span></div>
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-1">{GROUND.map(([h, l, I]) => item(h, l, I))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />

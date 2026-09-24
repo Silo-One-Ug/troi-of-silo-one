@@ -7,7 +7,7 @@ import { edgeUrl, eget, epost } from "@/lib/edge";
 
 export function Reports() {
   const [rows, setRows] = useState<any[]>([]); const [open, setOpen] = useState<string>(""); const [msg, setMsg] = useState("");
-  const load = () => eget("/reports").then(d => setRows(d.reports || [])).catch(() => setMsg("The console server is not answering."));
+  const load = () => eget("/reports").then(d => setRows(d.reports || [])).catch(() => setMsg("Troi's server is not answering: start Troi from the Desktop."));
   useEffect(() => { load(); }, []);
   return (
     <div className="grid grid-cols-[260px_1fr] gap-6">

@@ -76,7 +76,7 @@ if not a or a[0] == "list":
         print(f"{cfstr(d, kUID):<42} in:{channels(d, INPUT)} out:{channels(d, OUTPUT)}  {cfstr(d, kName)}")
 elif a[0] == "create" and len(a) == 4:
     mic, bh, out = a[1:]
-    print(create("Meeting In", "cj-meeting-in", [mic, bh], mic, False))
-    print(create("Meeting Out", "cj-meeting-out", [out, bh], out, True))
+    print(create("Meeting In", "troi-meeting-in", [mic, bh], mic, False))
+    print(create("Meeting Out", "troi-meeting-out", [out, bh], out, True))
 else:
     print(__doc__)

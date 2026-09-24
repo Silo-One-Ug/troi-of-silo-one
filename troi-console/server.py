@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""troi-console: a typing box and a live transcript on top of the face.
+"""The agent's server: the API the console app (http://localhost:3100) and the tools talk to, on 127.0.0.1:8796 only.
 
-Standard library only. It never touches the voice, face or hands repos:
-  - the transcript is read from backtalk's own log (logs/backtalk.log)
-  - typed text is written into a named pipe (.typed) that start.sh hands
-    to backtalk as its stdin, the same path a line typed in its terminal takes
+Standard library only.
+  - the transcript is read from backtalk's own log (backtalk/logs/backtalk.log) and kept in data/troi.db
+  - typed text is written into a named pipe (.typed) that start.sh hands to the voice line as its stdin,
+    the same path a line typed in its terminal takes
+  - settings live in data/console.json; protected ones wait for the owner (the PIN, the face, Telegram)
 
-  GET  /                 the console page
-  GET  /config           agent name + the face and hands URLs
-  GET  /transcript?pos=N new transcript lines since byte offset N
+A few of its routes:
+  GET  /config, /state   the agent, its settings and what it is doing now
+  GET  /history, /transcript?pos=N, /events   the conversation (AG-UI on POST /agent)
   POST /say              {"text": "..."} -> sent to the agent as a typed line
-  POST /settings         {"wake_word": true|false} -> saved to console.json, read live by voice.py
+  POST /settings         {"wake_word": true|false, ...} -> data/console.json, read live by voice.py
+  POST /ui               a directive for the console (console.sh), followed at GET /ui?since=N
+  GET  /                 sends a browser on to the console app
 """
 import json
 import os
@@ -522,7 +525,28 @@ def related_links(d, kids):
 
 # ---------------- file operations (move / rename / copy / mkdir / trash-with-approval) ----------------
 FSLOG = P.LOGS / "fs.log"
-PENDING = []            # trash requests waiting for the owner: {"id", "src", "why", "at"}
+PENDING = []            # requests waiting for the owner: {"id", "kind", "src", "why", "at", ...}; kept in troi.db too
+
+
+def file_request(req):
+    """File a request for the owner: waiting here, and in the record with everything needed to carry it out later."""
+    PENDING.append(req); DB.approval_add(req["id"], req.get("kind", "trash"), req.get("src", ""), req.get("why", ""), req.get("at"), req)
+
+
+def restore_requests():
+    """At start: requests still open in the record wait again. A risky click is not restored (the screen has moved on)."""
+    try:
+        for row in DB.approvals_open():
+            try:
+                req = json.loads(row.get("meta") or "{}")
+            except Exception:
+                req = {}
+            if row.get("kind") in ("trash", "kill", "setting") and req.get("id") == row["id"]:
+                PENDING.append(req)
+            else:
+                DB.approval_expire(row["id"])
+    except Exception:
+        pass
 HISTORY = []            # done operations, newest last, for undo
 
 
@@ -584,7 +608,7 @@ def fs_op(body):
         return {"ok": True, "done": f"renamed to {name}", "to": str(D)}
     if op == "trash":
         rid = f"{int(time.time())}-{len(PENDING) + 1}"
-        PENDING.append({"id": rid, "src": src, "why": body.get("why", ""), "at": time.time()}); DB.approval_add(rid, "trash", src, body.get("why", ""))
+        file_request({"id": rid, "kind": "trash", "src": src, "why": body.get("why", ""), "at": time.time()})
         fslog(f"trash requested {rid}: {src} ({body.get('why', '')})")
         try:
             subprocess.Popen([str(HOME / "backtalk" / ".venv" / "bin" / "python"), str(HERE / "telegram.py"), "send",
@@ -869,7 +893,7 @@ def apply_settings(body, cur):
 def queue_setting(src, why, apply):
     """File a protected change for the owner: a card on the console (approve needs the PIN) and a Telegram message."""
     rid = f"{int(time.time())}-{len(PENDING) + 1}"
-    PENDING.append({"id": rid, "kind": "setting", "src": src, "why": why, "apply": apply, "at": time.time()}); DB.approval_add(rid, "setting", src, why)
+    file_request({"id": rid, "kind": "setting", "src": src, "why": why, "apply": apply, "at": time.time()})
     fslog(f"setting requested {rid}: {src} ({why})")
     try:
         subprocess.Popen([str(HOME / "backtalk" / ".venv" / "bin" / "python"), str(HERE / "telegram.py"), "send",
@@ -906,8 +930,8 @@ def launchd_jobs():
     try:
         for line in subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=10).stdout.splitlines():
             parts = line.split("\t")
-            if len(parts) == 3 and parts[2].startswith("com.troi."):
-                out[parts[2][9:]] = {"loaded": True, "running": parts[0] != "-"}
+            if len(parts) == 3 and parts[2].startswith("com.troi-of-silo-one."):
+                out[parts[2][len("com.troi-of-silo-one."):]] = {"loaded": True, "running": parts[0] != "-"}
     except Exception:
         pass
     return out
@@ -947,11 +971,11 @@ def routines():
     jobs = [
         {"id": "brief", "name": "Morning brief", "when": cfg.get("brief_time", "08:00"), "editable": True, "enabled": cfg.get("brief_enabled", True) is not False, "last": st.get("brief_done", ""), "detail": "spoken, from the Morning Brief job in the vault"},
         {"id": "report", "name": "End-of-day report", "when": cfg.get("report_time", "18:30"), "editable": True, "enabled": cfg.get("report_enabled", True) is not False, "last": st.get("report_done", ""), "detail": "what changed today: commits, CI, notes, files; the PDF goes to Telegram"},
-        {"id": "ci", "name": "CI watch", "when": "every 3 min", "enabled": bool(org), "last": "", "detail": (f"{org}: {green} green, {red} failed" if org else "no GitHub org set (github_org in console.json)")},
+        {"id": "ci", "name": "CI watch", "when": "every 3 min", "enabled": bool(org), "last": "", "detail": (f"{org}: {green} green, {red} failed" if org else "no GitHub org set (the welcome's Extras step)")},
         {"id": "servers", "name": "Server watch", "when": "every 15 min", "enabled": bool((_read_json(P.DATA / "servers.json") or {}).get("servers")), "last": "", "detail": (lambda sv, iss: f"{len(sv)} servers, {len(iss)} open issue(s)" + (": " + "; ".join(iss[:3]) if iss else "") if sv else "no servers yet (servers.py add <name> <ssh-host>)")((_read_json(P.DATA / "servers.json") or {}).get("servers", []), st.get("servers") or [])},
         {"id": "calendar", "name": "Calendar", "when": "every minute", "enabled": True, "last": "", "detail": "a heads-up 15 minutes before each event in Calendar.app; the brief lists the day"},
-        {"id": "backup", "name": "Vault backup", "when": "23:30", "enabled": ld.get("vault-backup", {}).get("loaded", False), "last": last_log_line(P.LOGS / "backup.log"), "detail": "adds and pushes the vault; never force-pushes"},
-        {"id": "housekeeping", "name": "Housekeeping", "when": "03:00", "enabled": ld.get("pulse", {}).get("running", False), "last": st.get("housekept", ""), "detail": "rotates logs, clears old captures"},
+        {"id": "backup", "name": "Vault backup", "when": "23:30", "enabled": ld.get("vault-backup", {}).get("loaded", False), "last": last_log_line(P.LOGS / "backup.log"), "detail": "commits and pushes the vault, then sends the record to its backup repo; never force-pushes"},
+        {"id": "housekeeping", "name": "Housekeeping", "when": "03:00", "enabled": ld.get("pulse", {}).get("running", False), "last": st.get("housekept", ""), "detail": "rotates logs; captures older than 14 days go to the Trash (starred ones stay)"},
         {"id": "compact", "name": "Session compaction", "when": "03:30", "enabled": ld.get("pulse", {}).get("running", False), "last": st.get("compacted", ""), "detail": "shrinks the shared conversation's memory, keeps the thread"},
         {"id": "telegram", "name": "Telegram bridge", "when": "always on", "enabled": ld.get("telegram", {}).get("running", False), "last": "", "detail": "text, photos, voice notes, approvals, /call"},
         {"id": "globe", "name": "The globe", "when": "always on", "enabled": ld.get("ring", {}).get("running", False), "last": "", "detail": "on every Space; double-click opens the console"},
@@ -1151,7 +1175,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path, _, query = self.path.partition("?")
-        if path in ("/", "/index.html"):
+        if path == "/":                                             # people belong in the console app
+            self.send_response(302); self.send_header("Location", os.environ.get("TROI_CONSOLE_URL", "http://localhost:3100")); self.end_headers()
+        elif path == "/index.html":                                 # the old single-page console, kept only as a fallback
             body = (HERE / "index.html").read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -1199,7 +1225,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200); self.send_header("Content-Type", "application/javascript; charset=utf-8"); self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
         elif path == "/call.html":
-            body = (HERE / "call.html").read_bytes()
+            body = (HOME / "console" / "public" / "call.html").read_bytes()     # the console app serves it too, on your network
             self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
         elif path == "/config":
@@ -1661,7 +1687,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": ok, "error": err}, 200 if ok else 400)
         if self.path == "/pending-click":
             rid = f"{int(time.time())}-{len(PENDING) + 1}"
-            PENDING.append({"id": rid, "kind": "click", "src": body.get("src", ""), "why": body.get("why", ""), "action": body.get("action"), "at": time.time()}); DB.approval_add(rid, "click", body.get("src", ""), body.get("why", ""))
+            file_request({"id": rid, "kind": "click", "src": body.get("src", ""), "why": body.get("why", ""), "action": body.get("action"), "at": time.time()})
             fslog(f"click requested {rid}: {body.get('src')} ({body.get('why')})")
             try:
                 subprocess.Popen([str(HOME / "backtalk" / ".venv" / "bin" / "python"), str(HERE / "telegram.py"), "send",
@@ -1673,7 +1699,7 @@ class Handler(BaseHTTPRequestHandler):
             op, name = body.get("op"), body.get("name", "")
             if op == "kill":                      # force-quit can lose unsaved work: the owner's approval, like the Trash
                 rid = f"{int(time.time())}-{len(PENDING) + 1}"
-                PENDING.append({"id": rid, "kind": "kill", "src": name, "why": body.get("why", "force quit"), "at": time.time()}); DB.approval_add(rid, "kill", name, body.get("why", "force quit"))
+                file_request({"id": rid, "kind": "kill", "src": name, "why": body.get("why", "force quit"), "at": time.time()})
                 try:
                     subprocess.Popen([str(HOME / "backtalk" / ".venv" / "bin" / "python"), str(HERE / "telegram.py"), "send",
                                       f"{AGENT} wants to FORCE QUIT {name}: {body.get('why', '')}\nReply 'approve' or 'reject'."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1780,8 +1806,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    restore_requests()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"troi-console on http://127.0.0.1:{PORT}/", flush=True)
+    print(f"the agent's server (API) on http://127.0.0.1:{PORT}/", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

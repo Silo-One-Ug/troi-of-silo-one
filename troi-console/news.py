@@ -9,7 +9,7 @@ Google News, YouTube channels, and the social handles for the browser).
   news.py social <source>                                          its handles (X, Facebook, YouTube), for the browser
   news.py sources                                                  what is configured, and which feeds answered last time
 
-Standard library only; fetched feeds are cached for five minutes in cache/news.json.
+Standard library only; fetched feeds are cached for five minutes in data/cache/news.json.
 """
 import argparse
 import html

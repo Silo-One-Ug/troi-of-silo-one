@@ -1,5 +1,7 @@
 # ai-visualizer
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its port and signal folder are set by `setup.py` on every render.
+
 > **Never used Claude Code?** Start at [jaredrhod.com](https://jaredrhod.com): pick your situation and it routes you to the right path.
 
 **Runs on:** Python 3 and a browser; works with any AI. Pair it with backtalk (Claude Code) for the live show; demo mode works standalone.

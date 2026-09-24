@@ -126,4 +126,4 @@ if __name__ == "__main__":
     elif cmd in ("open", "quit", "focus", "kill") and len(sys.argv) > 2:
         print(json.dumps(do(cmd, " ".join(sys.argv[2:]))))
     else:
-        print("apps.py list | running | open <name> | focus <name> | quit <name>")
+        print("apps.py list | running | open <name> | focus <name> | quit <name> | kill <name>")

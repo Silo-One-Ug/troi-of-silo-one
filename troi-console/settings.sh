@@ -9,12 +9,12 @@ v=c.get(sys.argv[2], sys.argv[3] if len(sys.argv)>3 else "")
 print(v if not isinstance(v, (list, dict)) else json.dumps(v))' "$@"; }
 AGENT="$(_get "$ROOT/backtalk/backtalk.json" name Troi)"
 OWNER="$(_get "$CONFIG" owner "the owner")"
-VAULT="$(_get "$CONFIG" vault "$HOME/Vault")"
+VAULT="$(_get "$CONFIG" vault "$DATA/vault")"
 GH_ORG="$(_get "$CONFIG" github_org "")"
 VAULT_REPO="$(_get "$CONFIG" vault_repo "")"
 GITHUB_ACCOUNT="$(_get "$CONFIG" github_account "ayesigapaul")"     # the gh account every Troi repo is written as
 BACKUP_ORG="$(_get "$CONFIG" backup_org "Silo-One-Ug")"             # where the backups live
-# act on GitHub as that account, whichever gh account is active (Paul-Ayesiga may be, for other work): exports GH_TOKEN,
+# act on GitHub as that account, whichever gh account is active (another may be, for other work): exports GH_TOKEN,
 # which gh and "gh auth git-credential" both honour, and makes every commit carry that same account (its name and its
 # public email, or its GitHub noreply address), so GitHub credits the account that pushed. Fails when it is not signed in.
 use_github_account() {

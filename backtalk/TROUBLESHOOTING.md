@@ -1,5 +1,7 @@
 # Troubleshooting
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its ElevenLabs key is the Keychain item `troi-of-silo-one.elevenlabs` (the welcome keeps it), and a bare `uv sync` would drop the extras `./install.sh` adds for voice ID and calls.
+
 Written for humans AND for AI assistants. If you're an AI helping someone debug backtalk: read this whole file first, then `logs/backtalk.log`; every load-bearing event (what was heard, what was said, interrupts, engine fallbacks, session rebuilds) is in there. Diagnose from the log, not from guesses.
 
 ## Quick fixes

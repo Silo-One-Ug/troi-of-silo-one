@@ -1,5 +1,5 @@
 /* board.css — Silo One's look for the hands board (injected by patch-board.sh; upstream files untouched).
-   The camera stays on for hand tracking but is no longer the backdrop: the stage is a calm dark
+   The camera is off until hand tracking is switched on, and it is never the backdrop: the stage is a calm dark
    gradient that takes any content, and pictures keep their true colours. */
 #cam { width: 2px !important; height: 2px !important; opacity: .01 !important; pointer-events: none !important; }
 body:not(.overlay):not(.keybg) {

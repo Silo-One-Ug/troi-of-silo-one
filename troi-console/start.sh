@@ -1,11 +1,10 @@
 #!/bin/bash
-# troi: ONE command that starts everything. The face, the hands board, the
-# console page (typing box, transcript, mode switches) and the voice line all
-# come up together; from then on everything is done in the console page.
-# Nothing in the voice, face or hands repos is modified:
+# The agent's own processes, started by the root start.sh (which serves the console app on :3100 first):
+# the agent's server (the API on :8796), the face, the hands board, the eyes, the browser bridge, and the
+# voice line in the foreground:
 #   - typed text reaches the voice line through a named pipe that is its stdin
-#   - voice.py wraps backtalk to add the hands-free wake word
-# Ctrl-C in this window stops everything.
+#   - voice.py wraps backtalk (the wake word, voice ID, the guard, the welcome's quiet)
+# Ctrl-C in this window stops everything; the background services keep running.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 HERE="$(cd "$(dirname "$0")" && pwd)"; source "$HERE/paths.sh"
 HOME_DIR="$(dirname "$HERE")"
@@ -19,6 +18,7 @@ cleanup() {
   for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null; done
   pkill -P $$ 2>/dev/null
   exec 3>&- 2>/dev/null
+  printf off > "$HOME_DIR/backtalk/.voice_state" 2>/dev/null   # the globe and the face show the agent is off
   # the pipe is left in place on purpose: a newer launch may already own it
   [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"
   echo
@@ -26,7 +26,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# only one the agent at a time: shut a previous launch down fully before starting,
+# only one agent at a time: shut a previous launch down fully before starting,
 # so two launchers never fight over the ports or the typing pipe
 OLD="$(cat "$PIDFILE" 2>/dev/null)"
 if [ -n "$OLD" ] && [ "$OLD" != "$$" ] && kill -0 "$OLD" 2>/dev/null; then
@@ -84,7 +84,7 @@ URL="${TROI_CONSOLE_URL:-http://localhost:3100/}"
 echo "  console: $URL   (the agent API: http://127.0.0.1:8796/)"
 echo "  voice:   starting (Ctrl-C here stops everything)"
 
-# the same preparation backtalk/run.sh does, then our wrapper instead of backtalk.main
+# the voice line: backtalk's environment, then our wrapper (voice.py) instead of backtalk.main
 cd "$HOME_DIR/backtalk" || exit 1
 if pkill -f "backtalk[.]main|troi-console/voice[.]py" 2>/dev/null; then
   echo "[backtalk] replaced a previous voice session"

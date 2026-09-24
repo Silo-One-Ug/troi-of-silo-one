@@ -1,6 +1,13 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="console/public/brand/lockup-dark.svg">
+    <img src="console/public/brand/lockup-light.svg" alt="Troi of Silo One" width="420">
+  </picture>
+</p>
+
 # Troi of Silo One
 
-A chief of staff that lives on your Mac. Troi listens (hold a key, or say its name), sees when you ask (camera or screen), and does the work: files, apps, its own browser, your calendar, meetings, code reviews, servers, reminders and reports. It keeps its memory in a vault you own and its record on this Mac. It never deletes anything, and nobody but you can change how it behaves.
+A chief of staff that lives on your Mac. Troi listens (hold a key, or say its name), sees when you ask (camera or screen), and does the work: files, apps, its own browser, your calendar, meetings, code reviews, servers, reminders and reports. It keeps its memory in a vault you own and its record on this Mac. It never deletes anything of yours: what should go waits for your approval, then goes to the macOS Trash. Nobody but you can change how it behaves.
 
 ## Get started
 
@@ -11,9 +18,9 @@ git clone https://github.com/Silo-One-Ug/troi-of-silo-one ~/troi-of-silo-one
 cd ~/troi-of-silo-one && ./install.sh
 ```
 
-The installer adds what is missing and skips what is already there, so it is safe to run again. Then double-click **Troi** on the Desktop, or type `troi` in a terminal. The first run opens the welcome: who Troi is, then the setup (your name, this Mac, a memory, a voice, your phone, a PIN). Every step can be skipped and done later.
+The installer adds what is missing and skips what is already there, so it is safe to run again. Then double-click **Troi** on the Desktop, or type `troi` in a terminal. The first run opens the welcome: who Troi is, then the setup (your name, this Mac, a memory, a voice, your phone, a PIN). Your name and a memory are needed; everything else can be skipped and done later. Until you finish, Troi hears but does not answer.
 
-In **System Settings › Privacy & Security**, give Terminal (the app that runs Troi) these permissions: Microphone, Camera, Screen Recording, Accessibility and Input Monitoring. Input Monitoring is what lets the talk key work. The welcome checks each one.
+In **System Settings › Privacy & Security**, give Terminal (the app that runs Troi) these permissions: Microphone, Camera, Screen Recording, Accessibility and Input Monitoring. Input Monitoring is what lets the talk key work. The welcome checks Screen Recording, Accessibility and the talk key; macOS asks for the camera and the microphone the first time Troi uses them.
 
 **Updating:** `git pull && ./install.sh`, then start Troi again.
 
@@ -26,6 +33,7 @@ In **System Settings › Privacy & Security**, give Terminal (the app that runs 
 | `backtalk/` | The voice line: speech in, the agent's session, speech out |
 | `ai-visualizer/`, `barehands/` | The face and the hands board |
 | `vault-template/` | The starting vault the welcome creates when you have none |
+| `brand/` | The logo: its generator and typeface; the files it makes are in `console/public/brand/` |
 | `data/` | Everything Troi keeps (not tracked; see below) |
 
 `start.sh` starts everything. `install.sh` installs it. `troi-console/setup.py` renders the per-Mac files (the agent's boot file `CLAUDE.md`, `.mcp.json`, `.claude/settings.json` and the components' configs) from `troi-console/templates/`, and installs the background services.
@@ -40,6 +48,8 @@ Everything Troi keeps lives in `data/`, one folder that you can back up, move or
 | `data/blobs/<kind>/` | Every file it makes or receives: `looks`, `screens`, `research`, `imagined`, `telegram`, `meetings`, `reports`, `reviews`, `board`, `uploads` |
 | `data/console.json` | Your settings (written by the welcome and the Modes page) |
 | `data/vault/` | Your vault, if the welcome made one (you can point Troi at an existing vault instead) |
+| `data/backups/` | The previous version of every file edited in the console (to the Trash after 30 days) |
+| `data/servers.json` | The servers the pulse watches (`troi-console/servers.py add`) |
 | `data/prints/` | Your voice and face prints (they never leave the Mac) |
 | `data/logs/`, `data/cache/`, `data/models/`, `data/browser/` | Logs, throwaway files, speech models, and the agent's own Chrome profile |
 
@@ -63,9 +73,9 @@ The welcome sets them. From a terminal, run `troi-console/keychain.py list` to s
 
 ## Safety
 
-- **Troi never deletes.** Anything bound for the Trash, a force-quit or a risky click becomes an approval. You approve it with the console unlocked (PIN or face) or with a tap on Telegram.
-- **Only you change how it behaves.** Protected settings (auto-approve, hands-free, clearing the session, voice ID, the wake word, the camera, the guard itself) need your PIN, your face, your verified voice or your Telegram approval. The agent cannot reach its own safeguards. That covers the Keychain, approvals and unlocks, the settings file, the prints, the record, its boot file and Claude Code settings, and the guard's code. `troi-console/guard.py` blocks the attempt whatever the permission mode.
-- **Senses stay local.** The camera is off until you switch it on. Photos, screenshots and prints stay on the Mac.
+- **Troi never deletes.** Anything bound for the Trash, a force-quit or a risky click becomes an approval. You approve it with the console unlocked (PIN or face), or by sending "approve" on Telegram (it decides the newest request). Requests wait across restarts; risky clicks expire.
+- **Only you change how it behaves.** Auto-approve, hands-free and clearing the session go through in your verified voice (or your face), from a console you unlocked, or with your Telegram approval. The protected settings (voice ID, the wake word, the camera and screen sight, learning a face, the face gate, the guard itself) change only from a console you unlocked, with your PIN or your face, or with your Telegram approval. The agent cannot reach its own safeguards. That covers the Keychain, approvals and unlocks, the settings file, the prints, the record, its boot file and Claude Code settings, and the guard's code. `troi-console/guard.py` blocks the attempt whatever the permission mode.
+- **Senses stay yours.** The camera is off until you switch it on. Photos and screenshots stay on the Mac and in your private nightly backup; voice and face prints never leave the Mac.
 
 ## Services
 
@@ -84,3 +94,4 @@ Troi of Silo One is licensed under the GNU Affero General Public License v3.0 ([
 - `vault-template/` is adapted from [ai-memory-vault](https://github.com/jaredrhod/ai-memory-vault) by jaredrhod (CC BY-SA 4.0); the adapted template is shared under the same licence.
 - `console/public/space/earth-clouds-4k.jpg` and `milky-way-8k.jpg`: [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0; the Milky Way is based on ESO imagery).
 - `console/public/space/earth-blue-marble.jpg`, `earth-night.jpg`, `earth-topology.png` and `earth-water.png`: NASA Visible Earth imagery (public domain), as prepared for the [three-globe](https://github.com/vasturiano/three-globe) examples.
+- The wordmark is set in [Sora](https://github.com/sora-xor/sora-font) (SIL Open Font License 1.1, `brand/OFL.txt`); the logo itself was made for Troi of Silo One.

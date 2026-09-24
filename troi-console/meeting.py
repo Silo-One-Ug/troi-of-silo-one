@@ -37,8 +37,8 @@ HOME = P.ROOT
 OUT = P.blob_dir("meetings")
 PIDF = OUT / ".recording.json"
 FFMPEG = "/opt/homebrew/bin/ffmpeg" if os.path.exists("/opt/homebrew/bin/ffmpeg") else "ffmpeg"
-MIC = "MacBook Pro Microphone"
-MEETING_IN, MEETING_OUT = "Meeting In", "cj-meeting-out"          # the aggregate input's name, the multi-output's uid
+MIC = "Microphone"                      # without Meeting In: the first input with this in its name (the Mac's own)
+MEETING_IN, MEETING_OUT = "Meeting In", "troi-meeting-out"          # the aggregate input's name, the multi-output's uid
 API = "https://api.elevenlabs.io/v1"
 
 

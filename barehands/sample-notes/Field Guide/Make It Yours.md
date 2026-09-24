@@ -1,5 +1,7 @@
 # Make It Yours
 
+> In Troi of Silo One, `troi-console/setup.py` writes barehands.json (the port, the name and the orbs) on every render.
+
 Everything here is a starting point. The whole system is one HTML page, one small Python server, and one config file. No build step, no framework, no dependencies to install.
 
 ## The config (`barehands.json`)

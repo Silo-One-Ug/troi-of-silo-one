@@ -39,7 +39,7 @@ export function Modes() {
   const [model, setModel] = useState("fast"); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
   const noteTimer = useRef<any>(0); const cfg = useRef<Config | null>(null);
   const tell = useCallback((tone: Tone, text: string) => { setNote({ tone, text }); clearTimeout(noteTimer.current); noteTimer.current = setTimeout(() => setNote(null), tone === "warn" ? 12000 : 6000); }, []);
-  const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown("The console server is not answering. Start the agent with the Desktop shortcut."); return null; } }, []);
+  const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown("Troi's server is not answering: start Troi from the Desktop."); return null; } }, []);
   useEffect(() => { load(); try { setModel(localStorage.getItem("silo.model") || "fast"); } catch {} const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
   // wait for the agent to confirm a change (the config reads back the new value); a short, quick poll

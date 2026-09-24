@@ -1,5 +1,5 @@
-// V2 talks to the native agent on this Mac: troi-console's server (stdlib Python) and the parts it fronts. The
-// interface is new; every call here is one the native console already makes (troi-console/docs/USAGE.md).
+// The console talks to the agent's server on this Mac (troi-console/server.py, http://127.0.0.1:8796) and the parts it
+// fronts; localStorage "silo.edge" (or NEXT_PUBLIC_EDGE_URL at build time) points it at another one, for tests.
 "use client";
 export function edgeUrl(): string { try { const u = typeof window !== "undefined" ? localStorage.getItem("silo.edge") : null; if (u) return u; } catch {} return process.env.NEXT_PUBLIC_EDGE_URL || "http://127.0.0.1:8796"; }
 export const unlockToken = () => { try { const j = JSON.parse(localStorage.getItem("silo.unlock") || "null"); return j && j.until * 1000 > Date.now() ? j.token : ""; } catch { return ""; } };

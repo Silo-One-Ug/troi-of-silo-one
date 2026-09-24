@@ -32,7 +32,10 @@ HOME = HERE.parent
 CONSOLE = P.CONFIG
 BACKTALK = HOME / "backtalk" / "backtalk.json"
 MOVIE = _DB.doc("movie")
-QUEUE = "CJ Queue"                      # the playlist the agent fills for "play some <words>"
+try:                                    # the playlist the agent fills for "play some <words>", named after the agent
+    QUEUE = json.loads((P.BACKTALK / "backtalk.json").read_text()).get("name", "Troi") + " Queue"
+except Exception:
+    QUEUE = "Troi Queue"
 PORT = 8796
 
 

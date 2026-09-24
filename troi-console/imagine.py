@@ -116,7 +116,7 @@ BACKENDS = {"openai": via_openai, "gemini": via_gemini}
 
 
 def available():
-    return [b for b in PREFER if keychain("troi-" + b)]
+    return [b for b in PREFER if keychain(b)]
 
 
 # ---------------------------------------------------------------- the tool
@@ -124,7 +124,7 @@ def imagine(prompt, size="1024x1024", name="", source="", show=False, backend=""
     OUT.mkdir(parents=True, exist_ok=True)
     order = [backend] if backend else available()
     if not order:
-        return {"ok": False, "error": "no image backend is set up. Put a key in the keychain: keychain.py set openai (or gemini)  (or troi-gemini)"}
+        return {"ok": False, "error": "no image backend is set up. Keep a key in the Keychain: the welcome's Extras step, or troi-console/keychain.py set openai (or gemini)"}
     errors = []
     for b in order:
         data, err = BACKENDS[b](prompt, size, source)

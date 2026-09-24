@@ -43,7 +43,7 @@ echo "5. the larger speech model (1.5 GB, resumable, in the background)"
 cat <<TXT
 
 Done. Double-click "Troi" on the Desktop (or type  troi  in a terminal): the welcome takes it from there.
-Once, in System Settings > Privacy & Security, give Terminal: Accessibility, Input Monitoring (the talk key),
-Screen Recording, Camera and Microphone. The welcome checks each one for you.
+Once, in System Settings > Privacy & Security, give Terminal: Accessibility, Input Monitoring (the talk key)
+and Screen Recording (the welcome checks these), and allow the Camera and Microphone when macOS asks.
 Everything the agent keeps lives in $DATA (one SQLite record, one blob folder); secrets live in the Keychain.
 TXT

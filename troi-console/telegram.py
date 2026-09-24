@@ -1,25 +1,23 @@
 #!/usr/bin/env python3
-"""the agent on Telegram, two-way. Stdlib only.
+"""The agent on Telegram, two-way. Stdlib only.
 
   you -> the agent   messages to the bot are answered by the agent (a Claude Code
                 session in the agent's folder (the repo root): same identity, memory and rules,
                 the deletion guard included). Photos are looked at too.
   the agent -> you   anything can send you a message with `telegram.py send "text"`
-                or a voice note with `telegram.py say "text"` (the pulse uses
-                them for reminders, failed builds and the morning brief).
+                or a voice note with `telegram.py say "text"` (the pulse sends
+                reminders, CI and server changes and calendar heads-ups this way).
   voice notes   a voice note you send is transcribed with the agent's own ears and
                 answered with text AND a voice note in the agent's voice.
                 Run with backtalk's Python so the ears and voice are available.
 
 Setup, once:
   1. In Telegram, talk to @BotFather: /newbot, pick a name; it gives a token.
-  2. In a terminal, store the token in the macOS keychain (never in a file):
-       keychain.py set telegram     (or onboarding)
-     and paste the token at the prompt.
-  3. Start the agent (or `launchctl load ~/Library/LaunchAgents/com.troi.telegram.plist`).
-  4. Message the bot the 6-digit pairing code shown in the the agent window and in
-     data/logs/telegram.log. That Telegram account becomes the owner;
-     everyone else is ignored forever.
+  2. Keep the token in the macOS Keychain (never in a file): the welcome's "Your phone" step,
+     or troi-console/keychain.py set telegram and paste the token at the prompt.
+  3. Restart the bridge: python3 troi-console/setup.py services restart telegram (the welcome does it).
+  4. Message the bot the 6-digit pairing code the welcome shows (it is also in data/logs/telegram.log).
+     That Telegram account becomes the owner; everyone else is ignored forever.
 """
 import json
 import os
@@ -56,8 +54,8 @@ def CALL():
     except Exception:
         return "sir"
 import os as _os2, json as _j2
-try: VAULT = _j2.load(open(str(_Pa.CONFIG))).get("vault", _os2.path.expanduser("~/Vault"))
-except Exception: VAULT = _os2.path.expanduser("~/Vault")
+try: VAULT = _j2.load(open(str(_Pa.CONFIG))).get("vault", str(_Pa.DATA / "vault"))
+except Exception: VAULT = str(_Pa.DATA / "vault")
 
 HERE = Path(__file__).resolve().parent
 HOME = HERE.parent

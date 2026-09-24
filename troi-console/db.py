@@ -42,6 +42,8 @@ def connect():
     c = sqlite3.connect(str(PATH), timeout=10, isolation_level=None)
     c.execute("pragma journal_mode=wal"); c.execute("pragma synchronous=normal")
     c.executescript(SCHEMA)
+    if "meta" not in [r[1] for r in c.execute("pragma table_info(approvals)")]:      # the request itself, so it survives a restart
+        c.execute("alter table approvals add column meta text default '{}'")
     c.row_factory = sqlite3.Row
     return c
 
@@ -83,9 +85,21 @@ def last_id():
 
 
 # ---- approvals
-def approval_add(rid, kind, src, why, at=None):
+def approval_add(rid, kind, src, why, at=None, meta=None):
     with connect() as c:
-        c.execute("insert or replace into approvals(id, kind, src, why, status, at) values(?,?,?,?, 'open', ?)", (rid, kind or "trash", src, why, at or time.time()))
+        c.execute("insert or replace into approvals(id, kind, src, why, status, at, meta) values(?,?,?,?, 'open', ?, ?)",
+                  (rid, kind or "trash", src, why, at or time.time(), _j(meta or {})))
+
+
+def approvals_open():
+    """Requests still waiting for the owner, with what each one would do (the server restores them at start)."""
+    with connect() as c:
+        return [dict(r) for r in c.execute("select * from approvals where status='open' order by at")]
+
+
+def approval_expire(rid):
+    with connect() as c:
+        c.execute("update approvals set status='expired', decided_by='restart', decided_at=? where id=?", (time.time(), rid))
 
 
 def approval_decide(rid, ok, by="owner"):

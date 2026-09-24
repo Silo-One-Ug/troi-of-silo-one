@@ -5,6 +5,9 @@ version: 1.0
 author: Jared Rhodenizer (@jaredrhod)
 ---
 
+> **In Troi of Silo One** this component is part of the repo: `./install.sh` installs it, `start.sh` starts it, and `troi-console/setup.py` writes its config. The install, update and launcher steps below were written for using it on its own and do not apply here; to update, run `git pull && ./install.sh` at the repo root. Its ElevenLabs key is the Keychain item `troi-of-silo-one.elevenlabs` (the welcome keeps it), and a bare `uv sync` would drop the extras `./install.sh` adds for voice ID and calls.
+
+
 # backtalk: setup
 
 By **Jared Rhodenizer** (@jaredrhod) · github.com/jaredrhod/backtalk

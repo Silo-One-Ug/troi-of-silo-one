@@ -2,7 +2,8 @@
 # The agent's browser tools (Playwright MCP) drive ONE visible Chrome of the agent's own: its own
 # profile (data/browser), a debugging port, the same instance the console's Browser pane
 # shows. This wrapper makes sure that Chrome is up, then hands over to the MCP server pointed at it.
-# Used by the repo's .mcp.json; start.sh also calls "browser-mcp.sh chrome" to open the browser early.
+# Used by the repo's .mcp.json; start.sh runs "browser-mcp.sh bridge" (the console's live view), and the server
+# runs "browser-mcp.sh chrome" when the Browser page asks to open the browser.
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 HERE="$(cd "$(dirname "$0")" && pwd)"; source "$HERE/paths.sh"
 PORT=9223

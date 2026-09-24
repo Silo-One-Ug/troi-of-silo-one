@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""the agent's pulse: the things that happen without being asked. Runs beside the
-voice line (started by start.sh) and speaks to the agent through the console's pipe.
+"""The agent's pulse: the things that happen without being asked. A background service (launchd,
+com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's typing pipe.
 
-  reminders     the reminders document in data/troi.db, written by remind.sh; each fires
-                once at its time as "(reminder: ...)" and the agent says it out loud
-  github watch  every 3 minutes, the newest CI run on main in each repo of your GitHub org
-                branch; a run that finished since the last check is reported
-                (failures always, successes only if the previous state failed)
-  morning brief at console.json "brief_time" (default 08:00), once a day, only
-                if the voice line is up; the agent runs its Morning Brief job
+  reminders     the reminders document in data/troi.db, written by remind.sh; each fires once at its
+                time as "(reminder: ...)" and the agent says it out loud (to Telegram when the voice line is down)
+  CI watch      every 3 minutes, the newest run on main of each repo in the GitHub org (github_org in the
+                settings); a run that finished since the last check is reported (failures always,
+                successes only when the previous run failed)
+  server watch  every 15 minutes, servers.py checks the servers in data/servers.json; only changes are told
+                (all of these go to Telegram instead when the voice line is down)
+  calendar      a heads-up 15 minutes before each event in the Mac's Calendar (agenda.py)
+  morning brief at "brief_time" (default 08:00), once a day, only if the voice line is up; the agent runs
+                its Morning Brief job
+  day's report  at "report_time" (default 18:30), report.py builds the end-of-day report
+  nightly       03:00 housekeeping.sh (logs, retention), 03:30 compaction of the shared session
 
 Stdlib only. Never deletes anything but its own fired reminders.
 """
@@ -120,7 +125,7 @@ def check_reminders():
         return                       # try again next tick, after the agent finishes
     for r in due:
         log(f"[pulse]  reminder due: {r.get('text')}")
-        tell(f"(reminder, set by the owner earlier: \"{r.get('text')}\". Say it to him now in one short sentence, as a reminder.)",
+        tell(f"(reminder, set by the owner earlier: \"{r.get('text')}\". Say it to them now in one short sentence, as a reminder.)",
              phone=f"Reminder: {r.get('text')}")
     keep = [r for r in items if r not in due]
     REMINDERS.write_text(json.dumps(keep, indent=2))
