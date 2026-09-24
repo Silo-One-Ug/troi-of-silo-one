@@ -190,11 +190,13 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   async function send(t: string) {
     const full = [t.trim(), ...files.map(f => mention(f.path))].filter(Boolean).join(" ");   // attached files go as @ mentions, after the words
     if (!full || busy) return;
+    if (busyRef.current) { try { agent.abortRun(); } catch {} }                            // a reply still streaming: let it go; its sentences come through the record
     setBusy(true); busyRef.current = true; setText(""); setFiles([]); setPick(null); setMsgs(ms => [...ms, { id: nid(), role: "user", text: full }]); skip.current.add("you|" + full.slice(0, 60));
     agent.messages = [{ id: nid(), role: "user", content: full }];
-    const said: string[] = [];
+    const said: string[] = []; const free = setTimeout(() => setBusy(false), 6000);          // the field is free once the run has started, or after six seconds whatever happens
     try {
       await agent.runAgent({}, {
+        onRunStartedEvent: () => { clearTimeout(free); setBusy(false); },
         onTextMessageStartEvent: ({ event }) => setMsgs(ms => [...ms, { id: event.messageId, role: "assistant", text: "", live: true }]),
         onTextMessageContentEvent: ({ event }) => upsert(event.messageId, m => ({ ...m, text: m.text + event.delta })),
         onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.map(m => { if (m.id === event.messageId) { said.push(m.text); return { ...m, live: false }; } return m; })),
@@ -203,9 +205,9 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
           if (event.name === "silo.approval") setMsgs(ms => [...ms, { id: nid(), role: "note", text: `waiting for your approval: ${(event.value as any).kind} · ${(event.value as any).subject}` }]); },
         onRunErrorEvent: ({ event }) => setMsgs(ms => [...ms, { id: nid(), role: "note", text: event.message }]),
       });
-    } catch (e: any) { setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
+    } catch (e: any) { if (!/abort/i.test(String(e?.name || e?.message || e))) setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
     for (const s of said) for (const sent of s.split(/(?<=[.!?])\s+/)) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
-    setBusy(false); busyRef.current = false;
+    clearTimeout(free); setBusy(false); busyRef.current = false;
   }
   const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off"); const something = text.trim().length > 0 || files.length > 0;
   const field = "w-full border border-border bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";

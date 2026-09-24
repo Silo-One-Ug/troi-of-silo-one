@@ -467,6 +467,101 @@ def _options_with_buffer(*a, **k):
 _brain_mod.ClaudeAgentOptions = _options_with_buffer
 _TURN = {"result": False}
 
+# ---- the brain speaks first. A background agent's report, or anything else the CLI hands the brain between turns,
+#      is answered without a question from the owner; that answer sat in the SDK's one message pipe until the next
+#      turn read it, which then paired every reply with the wrong question, one turn late, for the rest of the session
+#      (the "(0.0s to first)" replies). So the pipe is read while the line is idle, and a finished unprompted turn is
+#      spoken and logged as its own; before a question goes out, whatever waits is cleared the same way.
+_PIPE = {"busy": False, "open": False, "texts": [], "task": None, "opened": 0.0}
+_STAGE = re.compile(r"<<.*?>>", re.S)
+
+
+def _messages_waiting(brain):
+    """Everything in the SDK's message pipe right now, without blocking; [] when nothing waits or there is no pipe."""
+    stream = getattr(getattr(getattr(brain, "_client", None), "_query", None), "_message_receive", None)
+    out = []
+    if stream is None:
+        return out
+    try:
+        from anyio import WouldBlock
+    except Exception:
+        return out
+    while len(out) < 500:
+        try:
+            out.append(stream.receive_nowait())
+        except WouldBlock:
+            break
+        except Exception:
+            break
+    return out
+
+
+def _absorb(msgs):
+    """Fold raw pipe messages into the unprompted turn: its text, and whether its result has come."""
+    done = False
+    for m in msgs:
+        if not isinstance(m, dict):
+            continue
+        t = m.get("type")
+        if t == "assistant":
+            for b in (m.get("message") or {}).get("content") or []:
+                if isinstance(b, dict) and b.get("type") == "text" and (b.get("text") or "").strip():
+                    _PIPE["texts"].append(b["text"].strip())
+        if t in ("assistant", "user", "stream_event") and not _PIPE["open"]:
+            _PIPE["open"] = True; _PIPE["opened"] = time.time()
+        if t == "result":
+            done = True
+    return done
+
+
+def _speak_unprompted():
+    """What the brain said on its own: into the log as its lines, and out loud unless the line is silent."""
+    texts, _PIPE["texts"], _PIPE["open"] = _PIPE["texts"], [], False
+    text = " ".join(" ".join(_STAGE.sub(" ", t).replace("`", "").split()) for t in texts).strip()
+    if not text:
+        return
+    name = getattr(bt_main, "NAME", "Troi")
+    sents = [x for x in re.split(r"(?<=[.!?])\s+", text) if x.strip()]
+    for x in sents:
+        log(f"[{name}] {x}")
+    mouth = _MOUTHS[-1] if _MOUTHS else None
+    if mouth is not None and not globals().get("SILENT", {}).get("on"):
+        for i in range(0, len(sents), 2):
+            try:
+                mouth.say_chunk(" ".join(sents[i:i + 2]), [])
+            except Exception as ex:
+                log(f"[mouth] unprompted line not spoken: {ex!r}")
+
+
+async def _clear_pipe(brain):
+    """Before a question goes out: nothing of an earlier, unasked turn may pair with it. A turn still under way is
+    given up to a minute to finish; what there is by then is spoken and the question goes."""
+    t0 = time.time()
+    while True:
+        if _absorb(_messages_waiting(brain)):
+            _speak_unprompted()
+        if not _PIPE["open"] or time.time() - t0 > 60:
+            break
+        await asyncio.sleep(0.2)
+    if _PIPE["open"]:
+        _speak_unprompted()
+
+
+async def _idle_reader(brain):
+    """Twice a second while no turn is running and none awaits its drain: read the pipe; a finished unprompted turn is
+    spoken at once, and one that never ends is spoken after two minutes as far as it got."""
+    while True:
+        await asyncio.sleep(0.5)
+        try:
+            if _PIPE["busy"] or getattr(brain, "_dirty", False) or getattr(brain, "_client", None) is None:
+                continue
+            if _absorb(_messages_waiting(brain)):
+                _speak_unprompted()
+            elif _PIPE["open"] and time.time() - _PIPE["opened"] > 120:
+                _speak_unprompted()
+        except Exception as ex:
+            log(f"[brain] idle reader: {ex!r}")
+
 
 async def _rebuild(brain):
     log("[brain] the message reader died; rebuilding the connection on the same session")
@@ -491,17 +586,27 @@ _ask_before_guard = ask_stream
 def ask_stream(self, utterance):                                   # noqa: F811
     async def run():
         _TURN["result"] = False
+        _PIPE["busy"] = True
+        if _PIPE["task"] is None or _PIPE["task"].done():
+            _PIPE["task"] = asyncio.get_event_loop().create_task(_idle_reader(self))
         n = 0
         try:
-            async for s in _ask_before_guard(self, utterance):
-                n += 1
-                yield s
-        except Exception as ex:
-            log(f"[brain] turn failed: {ex!r}")
-            await _rebuild(self)
-            return
-        if not _TURN["result"] and n == 0:
-            await _rebuild(self)
+            try:
+                await _clear_pipe(self)
+            except Exception as ex:
+                log(f"[brain] pipe not cleared: {ex!r}")
+            try:
+                async for s in _ask_before_guard(self, utterance):
+                    n += 1
+                    yield s
+            except Exception as ex:
+                log(f"[brain] turn failed: {ex!r}")
+                await _rebuild(self)
+                return
+            if not _TURN["result"] and n == 0:
+                await _rebuild(self)
+        finally:
+            _PIPE["busy"] = False
     return run()
 
 
