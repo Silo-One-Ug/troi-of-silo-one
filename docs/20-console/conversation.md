@@ -5,8 +5,17 @@ order: 2
 ---
 
 Everything the agent hears and says, live, in the same session as your voice, Telegram and calls.
+The window takes the console's full width; the words keep a reading column in the middle.
 
-- A reply grows word by word in a dashed bubble, then settles into the finished text.
+- **Your lines** are bubbles on the right, with your initials beside them and the time in the
+  corner. **The agent's replies** sit straight on the page, and under each one a copy button takes
+  the reply as written, with the time beside it.
+- A reply grows word by word, then settles into the finished text.
+- **What it is doing.** While the agent works, one line under your message shows the tool in its
+  hands and what it is on: the command, the file, the search, the page. The line shimmers, and each
+  new step takes the last one's place, so the conversation never fills with them. When the reply
+  comes, the line settles into a count of the steps by kind (commands, files, searches); click it to
+  see them all.
 - Faint **"ignored"** lines show what the filters dropped and why: a rejected voice shows its
   similarity score, and a line with no wake word says so.
 - **Type** and press Enter. A typed turn is answered here and out loud on the Mac, like a spoken

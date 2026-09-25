@@ -626,11 +626,8 @@ def brain_now():
         st = "off"
     if st == "idle" and voice_busy():
         st = "working"
-    try:
-        tool = (HOME / "backtalk" / ".voice_tool").read_text().strip()
-    except Exception:
-        tool = ""
-    return {"name": AGENT, "state": st if FIFO.exists() else "off", "doing": _tool_note(tool)}
+    ti = voice_tool_info() or {}
+    return {"name": AGENT, "state": st if FIFO.exists() else "off", "doing": _tool_note(ti.get("name", "")), "detail": ti.get("detail", "")}
 
 
 # ---- voice notes from the console page: the agent's own ears, in a resident worker (stt.py --serve) that keeps the
@@ -1285,11 +1282,26 @@ def voice_state():
     return "working" if st == "idle" and voice_busy() else st
 
 
-def voice_tool():
+def voice_tool_info():
+    """The tool in the brain's hands right now, {"name", "detail"} (voice.py mirrors it), or None."""
     try:
-        return (HOME / "backtalk" / ".voice_tool").read_text().strip()
+        raw = (HOME / "backtalk" / ".voice_tool").read_text().strip()
     except Exception:
-        return ""
+        return None
+    if not raw:
+        return None
+    if raw.startswith("{"):
+        try:
+            d = json.loads(raw)
+            return {"name": str(d.get("name") or ""), "detail": str(d.get("detail") or "")} if d.get("name") else None
+        except ValueError:
+            return None
+    return {"name": raw, "detail": ""}                       # a bare name, as an older voice line writes it
+
+
+def voice_tool():
+    t = voice_tool_info()
+    return t["name"] if t else ""
 
 
 def agent_run(thread_id, run_id, text, silent=False, timeout=300):
@@ -1324,15 +1336,20 @@ def agent_run(thread_id, run_id, text, silent=False, timeout=300):
         st = voice_state()
         if st != box["state"]:
             box["state"] = st; box["pending_state"] = st
-        # the tool in use
-        tn = voice_tool()
-        if tn and not box["tool"]:
+        # the tool in use, and what it is on (its input, once the brain has finished writing it): a new call when the
+        # tool changes or the same tool is on something else; the detail alone when it arrives for the call in flight
+        ti = voice_tool_info(); tn = ti["name"] if ti else ""; td = ti["detail"] if ti else ""
+        cur = box["tool"]
+        new_call = bool(tn) and (not cur or tn != cur[1] or bool(td and cur[2] and td != cur[2]))
+        if cur and (not tn or new_call):
+            yield agui("TOOL_CALL_END", toolCallId=cur[0]); box["tool"] = cur = None; yield gap()
+        if new_call:
             yield close_text(); yield gap()
-            box["tool"] = (uuid.uuid4().hex, tn); yield agui("TOOL_CALL_START", toolCallId=box["tool"][0], toolCallName=tn)
-        elif box["tool"] and (not tn or tn != box["tool"][1]):
-            yield agui("TOOL_CALL_END", toolCallId=box["tool"][0]); box["tool"] = None; yield gap()
-            if tn:
-                box["tool"] = (uuid.uuid4().hex, tn); yield agui("TOOL_CALL_START", toolCallId=box["tool"][0], toolCallName=tn)
+            cur = box["tool"] = (uuid.uuid4().hex, tn, td); yield agui("TOOL_CALL_START", toolCallId=cur[0], toolCallName=tn)
+            if td:
+                yield agui("TOOL_CALL_ARGS", toolCallId=cur[0], delta=json.dumps({"detail": td}))
+        elif cur and td and not cur[2]:
+            box["tool"] = cur = (cur[0], tn, td); yield agui("TOOL_CALL_ARGS", toolCallId=cur[0], delta=json.dumps({"detail": td}))
         # cards and approvals: between messages, never inside one or inside a tool call
         cards, cpos = read_cards(cpos)
         news = [agui("CUSTOM", name=c["name"], value=c.get("value")) for c in cards]
@@ -1644,7 +1661,7 @@ class Handler(BaseHTTPRequestHandler):
                 agents = sum(1 for a in agents_snapshot(light=True) if a["status"] == "active")
             except Exception:
                 agents = 0
-            self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p, "agents": agents})
+            self._json({"state": st, "voice": FIFO.exists(), "ui": ui, "settings": settings(), "pending": PENDING, "partial": partial_text(), "wave": wave, "live": live_p, "tool": voice_tool_info(), "agents": agents})
         elif path == "/agents":
             sid, f, _ = brain_paths(); ag = agents_snapshot()
             self._json({"brain": brain_now(), "agents": ag, "session": sid, "record": bool(f and f.exists()), "archived": sum(1 for a in ag if a["archived"])})

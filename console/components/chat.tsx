@@ -2,6 +2,10 @@
 // The conversation. Typed turns go through AG-UI (POST /agent on the native server) and render as they stream:
 // text, the tool in use, cards, approvals. Spoken turns arrive through the voice log (/transcript) and the live
 // reply through /state.partial, as the native console shows them. The record comes back from /history on open.
+// The owner's lines are bubbles on the right, with initials and the time in the corner; the agent's replies sit
+// straight on the page, Markdown rendered, with a copy button and the time under each. While the agent works, one
+// line shows the tool in its hands and what it is on (the command, the file, the search, the page); each step takes
+// the last one's place, and when the reply comes the line settles into a count of the steps, opened with a click.
 // Files travel as @ mentions: "@" in the composer picks a file on the Mac (the file roots), and a file attached,
 // dropped or pasted is uploaded to data/blobs/uploads and mentioned the same way; the agent reads what it is pointed at.
 // On a phone the composer is a messenger's: the field grows with the lines, the microphone stands where the send
@@ -12,7 +16,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowDown, Columns2, FileText, Folder, Mic, Paperclip, PictureInPicture2, Send, Square, X } from "lucide-react";
+import { AppWindow, ArrowDown, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, FilePen, FilePlus, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Mail, Mic, Paperclip, PictureInPicture2, Plug, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
@@ -21,13 +25,27 @@ import { edgeUrl, eget, epost, img, setTalkShape, talkShape, type Card, type Row
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
-type Msg = { id: string; role: "user" | "assistant" | "note" | "ignored" | "headlines" | "pictures" | "ui"; text: string; t?: string; live?: boolean; data?: any };
+type Step = { id: string; tool: string; label: string; detail?: string };
+type Msg = { id: string; role: "user" | "assistant" | "note" | "ignored" | "headlines" | "pictures" | "ui" | "steps"; text: string; t?: string; live?: boolean; data?: any; steps?: Step[]; open?: boolean };
 type Found = { name: string; path: string; kind: "dir" | "file"; ext: string };
 type Attached = { name: string; path: string };
 type Rec = { start: number; media: MediaRecorder; chunks: Blob[]; stream: MediaStream };
 const nid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-const NOTE: Record<string, string> = { Bash: "running a command", Read: "reading a file", Write: "writing a file", Edit: "editing a file", Glob: "looking through files", Grep: "searching files", WebSearch: "searching the web", WebFetch: "reading a page", Task: "delegating", Agent: "delegating", ToolSearch: "" };
-const note = (tool: string) => tool in NOTE ? NOTE[tool] : tool.startsWith("mcp__playwright") ? "in the browser" : "using " + tool.replace(/^mcp__/, "").replace(/__/g, " ");
+const stamp = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+// ---- the tools, each with a few words and a small icon
+const NOTE: Record<string, string> = { Bash: "running a command", Read: "reading a file", Write: "writing a file", Edit: "editing a file", MultiEdit: "editing a file", NotebookEdit: "editing a notebook", Glob: "looking through files", Grep: "searching files", WebSearch: "searching the web", WebFetch: "reading a page", Task: "delegating", Agent: "delegating", ToolSearch: "" };
+const TOOL_ICON: Record<string, any> = { Bash: Terminal, Read: FileText, Write: FilePlus, Edit: FilePen, MultiEdit: FilePen, NotebookEdit: FilePen, Glob: FolderSearch, Grep: TextSearch, WebSearch: Globe, WebFetch: Link2, Task: Bot, Agent: Bot };
+const GOOGLE: [RegExp, string, any][] = [[/calendar|event/, "in Google Calendar", CalendarDays], [/gmail|mail|message|draft|label|thread/, "in Gmail", Mail], [/task/, "in Google Tasks", ListChecks], [/contact|people/, "in Google Contacts", Users], [/drive|doc|sheet|form|slide|file|folder/, "in Google Drive", HardDrive]];
+function kind(tool: string): { label: string; Icon: any } {
+  if (tool in NOTE) return { label: NOTE[tool], Icon: TOOL_ICON[tool] || Wrench };
+  if (!tool.startsWith("mcp__")) return { label: "using " + tool, Icon: Wrench };
+  const [, server = "", ...rest] = tool.split("__"); const fn = rest.join(" ").replace(/_/g, " ");
+  if (server === "google") { const g = GOOGLE.find(([re]) => re.test(fn)); return g ? { label: g[1], Icon: g[2] } : { label: "in Google", Icon: Plug }; }
+  if (/playwright|browser|chrome/.test(server)) return { label: "in the browser", Icon: AppWindow };
+  if (/hands/.test(server)) return { label: "using the hands", Icon: Hand };
+  return { label: "using " + server.replace(/[-_]/g, " "), Icon: Plug };
+}
 const fixPics = (v: any) => !v || !Array.isArray(v.items) ? v : { ...v, items: v.items.map((i: any) => ({ ...i, url: i.url && i.url.startsWith("/img?") ? img(i.url) : i.url })) };
 function fromCard(c: Card): Msg | null {
   if (c.name === "silo.pictures") return { id: nid(), role: "pictures", text: "", data: fixPics(c.value) };
@@ -45,7 +63,7 @@ function fromRow(r: Row): Msg | null {
 }
 const STAGE = /<<[^>]*>>|\s*<directions:[^>]*>/g;                 // stage directions are for the face, never for the page
 const clean = (t: string) => t.replace(STAGE, "").replace(/[ \t]+\n/g, "\n").trim();
-/** Consecutive replies of one turn are one bubble: a reply arrives from the record a line at a time, the same minute.
+/** Consecutive replies of one turn are one reply: it arrives from the record a line at a time, the same minute.
  *  The record keeps a reply's lines but not its blank lines, so a block (a table, a heading, a fence, a list after
  *  prose) gets the blank line Markdown needs; sentences of prose join as one paragraph. */
 const block = (l: string) => /^(\||#{1,6}\s|```|>|[-*+]\s|\d+[.)]\s)/.test(l.trim());
@@ -61,6 +79,14 @@ function append(ms: Msg[], m: Msg): Msg[] {
   return [...ms, m];
 }
 const group = (rows: Msg[]) => rows.reduce<Msg[]>((acc, m) => append(acc, m), []);
+/** The steps of a turn are one line: a new step joins the live group at the end, or opens one. */
+function addStep(ms: Msg[], s: Step): Msg[] {
+  const last = ms[ms.length - 1];
+  if (last && last.role === "steps" && last.live) return [...ms.slice(0, -1), { ...last, steps: [...(last.steps || []), s] }];
+  return [...ms, { id: nid(), role: "steps", text: "", live: true, steps: [s] }];
+}
+const withDetail = (ms: Msg[], id: string, detail: string) => ms.map(m => m.role === "steps" && m.steps?.some(s => s.id === id) ? { ...m, steps: m.steps!.map(s => s.id === id ? { ...s, detail } : s) } : m);
+const settle = (ms: Msg[]) => ms.some(m => m.role === "steps" && m.live) ? ms.map(m => m.role === "steps" && m.live ? { ...m, live: false } : m) : ms;   // the turn's steps are done: the line becomes their count
 const Md = ({ text }: { text: string }) => <div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown></div>;
 export const globeState = (s: string) => (s === "thinking" || s === "working" ? "thinking" : s === "speaking" ? "speaking" : s === "listening" ? "listening" : "idle") as "idle" | "thinking" | "speaking" | "listening";
 
@@ -70,6 +96,7 @@ const mention = (p: string) => "@" + (/\s/.test(p) ? `"${p}"` : p);
 const short = (p: string) => p.replace(/^\/Users\/[^/]+/, "~");
 const base = (p: string) => p.replace(/\/+$/, "").split("/").pop() || p;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const initials = (n: string) => n.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
 function WithMentions({ text }: { text: string }) {          // a line as written, its @ mentions shown as small file chips
   const parts: ReactNode[] = []; const re = new RegExp(MENTION.source, "g"); let last = 0; let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
@@ -80,21 +107,56 @@ function WithMentions({ text }: { text: string }) {          // a line as writte
   parts.push(text.slice(last));
   return <>{parts}</>;
 }
+async function copyText(t: string) {                          // the clipboard, or the old way over plain http (a phone on the network)
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(t); return true; } } catch {}
+  try { const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch { return false; }
+}
+function CopyButton({ text }: { text: string }) {
+  const [ok, setOk] = useState(false);
+  return <button type="button" onClick={async () => { if (await copyText(text)) { setOk(true); setTimeout(() => setOk(false), 1500); } }} aria-label="Copy the reply" title={ok ? "Copied" : "Copy"}
+    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground">{ok ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}</button>;
+}
+function Avatar({ name }: { name: string }) {                // the owner's initials by their lines
+  const i = initials(name);
+  return <span title={name || undefined} aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-1 ring-primary/30">{i || <User className="h-3.5 w-3.5" />}</span>;
+}
+const Detail = ({ d }: { d?: string }) => d ? <code className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/75" title={d}>{d}</code> : null;
+/** The steps of a turn: while it runs, the step under way (shimmering, with what it is on), each replacing the last;
+ *  done, the count of steps per kind, opened with a click to the list. */
+function Steps({ m, onToggle }: { m: Msg; onToggle: () => void }) {
+  const steps = m.steps || []; const cur = steps[steps.length - 1]; if (!cur) return null;
+  if (m.live || steps.length === 1) {
+    const { Icon } = kind(cur.tool);
+    return <div className="flex min-w-0 items-center gap-2 px-1 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5 shrink-0" /><span className={cn("shrink-0", m.live && "shimmer")}>{cur.label}</span><Detail d={cur.detail} /></div>;
+  }
+  const counts: [string, number][] = []; for (const s of steps) { const c = counts.find(x => x[0] === s.tool); if (c) c[1]++; else counts.push([s.tool, 1]); }
+  return (
+    <div className="min-w-0 px-1 text-xs text-muted-foreground">
+      <button type="button" onClick={onToggle} aria-expanded={!!m.open} title={m.open ? "Fold the steps away" : "What it did, step by step"} className="flex items-center gap-2.5 rounded-md py-0.5 transition-colors hover:text-foreground">
+        {m.open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {counts.map(([tool, n]) => { const { Icon, label } = kind(tool); return <span key={tool} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" />{n}</span>; })}
+        <span className="text-muted-foreground/70">{steps.length} steps</span>
+      </button>
+      {m.open && <ul className="mt-1 space-y-0.5 border-l border-border pl-3">{steps.map(s => { const { Icon } = kind(s.tool); return <li key={s.id} className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0" /><span className="shrink-0">{s.label}</span><Detail d={s.detail} /></li>; })}</ul>}
+    </div>);
+}
 
 export function Chat({ name, embedded = false, onState }: { name: string; embedded?: boolean; onState?: (s: string) => void }) {
   const agent = useMemo(() => new HttpAgent({ url: edgeUrl() + "/agent", threadId: "console" }), []);
-  const [msgs, setMsgs] = useState<Msg[]>([]); const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [state, setState] = useState("off"); const [hint, setHint] = useState("");
+  const [msgs, setMsgs] = useState<Msg[]>([]); const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [state, setState] = useState("off"); const [hint, setHint] = useState(""); const [owner, setOwner] = useState("");
   const [files, setFiles] = useState<Attached[]>([]); const [uploading, setUploading] = useState(0); const [drag, setDrag] = useState(false);
   const [pick, setPick] = useState<{ start: number; q: string; items: Found[]; i: number; loading: boolean } | null>(null);   // the @ picker: where the mention starts, what is typed so far, what was found
   const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0);
   const [below, setBelow] = useState(0); const [tail, setTail] = useState(true);        // at the end of the conversation, or reading above; lines that arrived meanwhile
   const scroller = useRef<HTMLDivElement>(null); const atBottom = useRef(true); const seen = useRef(0);
   const pos = useRef(0), cpos = useRef(0), live = useRef<{ id: string; final: string[] } | null>(null), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
+  const liveStep = useRef<{ id: string; name: string; detail: string } | null>(null), args = useRef<Record<string, string>>({});   // the step under way in a spoken turn; a typed turn's tool inputs as they stream
   const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
+  const quiet = (m: Msg) => m.role === "note" || m.role === "ignored" || m.role === "steps";
   useEffect(() => {                                              // follow the conversation only while the owner is at its end
     if (atBottom.current) { end.current?.scrollIntoView({ behavior: "smooth" }); seen.current = msgs.length; setBelow(0); }
-    else setBelow(Math.max(0, msgs.filter(m => m.role !== "note" && m.role !== "ignored").length - seen.current));
+    else setBelow(Math.max(0, msgs.filter(m => !quiet(m)).length - seen.current));
   }, [msgs]);
   const onScroll = () => { const el = scroller.current; if (!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 48; atBottom.current = near; setTail(near); if (near) { seen.current = msgs.length; setBelow(0); } };
   const toBottom = () => { atBottom.current = true; setTail(true); end.current?.scrollIntoView({ behavior: "smooth" }); seen.current = msgs.length; setBelow(0); };
@@ -108,6 +170,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   useEffect(() => {
     let stop = false;
     (async () => {
+      eget("/config").then(c => setOwner(c.owner || "")).catch(() => {});
       try { const h = await eget("/history?limit=120"); setMsgs(group(h.items.map(fromRow).filter(Boolean) as Msg[])); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
       const poll = async () => {
         if (stop) return;
@@ -117,8 +180,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
             if (it.role === "ctl") continue;
             const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             if (it.role === "agent" && live.current) { live.current.final.push(it.text); continue; }
-            if (it.role === "agent" && busyRef.current) continue;                        // the same reply is streaming into its own bubble
-            const m = fromRow(it); if (m) setMsgs(ms => append(ms, m));
+            if (it.role === "agent" && busyRef.current) continue;                        // the same reply is streaming into its own place
+            const m = fromRow(it); if (m) setMsgs(ms => append(m.role === "assistant" ? settle(ms) : ms, m));
           }
           for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
         } catch {}
@@ -129,10 +192,19 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         try {
           const d: State = await eget("/state"); setState(d.voice ? d.state : "off");
           const part = clean(d.partial || "");
+          if (!busyRef.current) {                                    // a spoken turn (or one typed elsewhere): the tool in the brain's hands, from the state
+            const tl = d.tool && d.tool.name ? d.tool : null, cur = liveStep.current;
+            if (tl && (!cur || cur.name !== tl.name || (tl.detail && cur.detail && tl.detail !== cur.detail))) {
+              const id = nid(); liveStep.current = { id, name: tl.name, detail: tl.detail || "" }; const { label } = kind(tl.name);
+              if (label) setMsgs(ms => addStep(ms, { id, tool: tl.name, label, detail: tl.detail || undefined }));
+            } else if (tl && cur && tl.detail && !cur.detail) { cur.detail = tl.detail; setMsgs(ms => withDetail(ms, cur.id, tl.detail)); }
+            else if (!tl && cur) liveStep.current = null;
+            if (!tl && !part && (d.state === "idle" || !d.voice)) setMsgs(settle);
+          }
           if (part && !busyRef.current) {
-            if (!live.current) { const id = nid(); live.current = { id, final: [] }; setMsgs(ms => [...ms, { id, role: "assistant", text: part, live: true }]); }
+            if (!live.current) { const id = nid(); live.current = { id, final: [] }; setMsgs(ms => [...settle(ms), { id, role: "assistant", text: part, live: true }]); }
             else upsert(live.current.id, m => ({ ...m, text: part }));
-          } else if (!part && live.current) { const l = live.current; live.current = null; upsert(l.id, m => ({ ...m, live: false, text: clean(m.text) || l.final.join("\n") })); }   // the reply as written, its structure kept
+          } else if (!part && live.current) { const l = live.current; live.current = null; upsert(l.id, m => ({ ...m, live: false, t: m.t || stamp(), text: clean(m.text) || l.final.join("\n") })); }   // the reply as written, its structure kept
         } catch { setState("off"); }
         setTimeout(pollState, 500);
       };
@@ -220,40 +292,54 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     const full = [t.trim(), ...files.map(f => mention(f.path))].filter(Boolean).join(" ");   // attached files go as @ mentions, after the words
     if (!full || busy) return;
     if (busyRef.current) { try { agent.abortRun(); } catch {} }                            // a reply still streaming: let it go; its sentences come through the record
-    setBusy(true); busyRef.current = true; setText(""); setFiles([]); setPick(null); setMsgs(ms => [...ms, { id: nid(), role: "user", text: full }]); skip.current.add("you|" + full.slice(0, 60));
+    setBusy(true); busyRef.current = true; setText(""); setFiles([]); setPick(null); setMsgs(ms => [...settle(ms), { id: nid(), role: "user", text: full, t: stamp() }]); skip.current.add("you|" + full.slice(0, 60));
     agent.messages = [{ id: nid(), role: "user", content: full }];
     const said: string[] = []; const free = setTimeout(() => setBusy(false), 6000);          // the field is free once the run has started, or after six seconds whatever happens
     try {
       await agent.runAgent({}, {
         onRunStartedEvent: () => { clearTimeout(free); setBusy(false); },
-        onTextMessageStartEvent: ({ event }) => setMsgs(ms => [...ms, { id: event.messageId, role: "assistant", text: "", live: true }]),
+        onTextMessageStartEvent: ({ event }) => setMsgs(ms => [...settle(ms), { id: event.messageId, role: "assistant", text: "", live: true }]),
         onTextMessageContentEvent: ({ event }) => upsert(event.messageId, m => ({ ...m, text: m.text + event.delta })),
-        onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.map(m => { if (m.id === event.messageId) { said.push(m.text); return { ...m, live: false, text: clean(m.text) }; } return m; })),
-        onToolCallStartEvent: ({ event }) => { const n = note(event.toolCallName); if (n) setMsgs(ms => [...ms, { id: nid(), role: "note", text: n }]); },
+        onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.flatMap(m => { if (m.id !== event.messageId) return [m]; const txt = clean(m.text); if (!txt) return []; said.push(m.text); return [{ ...m, live: false, t: stamp(), text: txt }]; })),
+        onToolCallStartEvent: ({ event }) => { const { label } = kind(event.toolCallName); if (label) setMsgs(ms => addStep(ms, { id: event.toolCallId, tool: event.toolCallName, label })); },
+        onToolCallArgsEvent: ({ event }) => { const buf = (args.current[event.toolCallId] = (args.current[event.toolCallId] || "") + event.delta); try { const d = JSON.parse(buf); if (d && typeof d.detail === "string" && d.detail) setMsgs(ms => withDetail(ms, event.toolCallId, d.detail)); } catch {} },   // what the tool is on, once the brain has said
+        onToolCallEndEvent: ({ event }) => { delete args.current[event.toolCallId]; },
         onCustomEvent: ({ event }) => { if (event.name === "silo.state") setState(String(event.value)); const m = fromCard({ name: event.name, value: event.value }); if (m) setMsgs(ms => [...ms, m]);
           if (event.name === "silo.approval") setMsgs(ms => [...ms, { id: nid(), role: "note", text: `waiting for your approval: ${(event.value as any).kind} · ${(event.value as any).subject}` }]); },
         onRunErrorEvent: ({ event }) => setMsgs(ms => [...ms, { id: nid(), role: "note", text: event.message }]),
       });
     } catch (e: any) { if (!/abort/i.test(String(e?.name || e?.message || e))) setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
     for (const s of said) for (const sent of s.split(/(?<=[.!?])\s+/)) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
-    clearTimeout(free); setBusy(false); busyRef.current = false;
+    clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
   const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off"); const something = text.trim().length > 0 || files.length > 0;
   const field = "w-full border border-border bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
+  const col = embedded ? "w-full" : "mx-auto w-full max-w-[880px]";                       // the window is the page's full width; the words keep a reading column
   return (
     <div className={cn("flex h-full min-h-0 flex-col", embedded ? "" : "md:hairline")}>
       {/* the header is the desktop's: on a phone the top bar already says who is speaking and in what state */}
       <div className="hidden items-center gap-2 border-b border-border px-3 py-2 text-sm md:flex"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
         <button className="ml-auto text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
-      <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 md:p-4">
+      <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-6 md:py-4">
         {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
-        <AnimatePresence initial={false}>
-          {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} /> : (
-            <motion.div key={m.id} {...rise} className={m.role === "user" ? "ml-auto max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[75%] md:rounded-md md:text-sm" : m.role === "note" || m.role === "ignored" ? "px-1 text-xs italic text-muted-foreground" : cn("max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-surface/85 px-3.5 py-2 text-[15px] leading-6 md:max-w-[85%] md:rounded-md md:bg-transparent md:text-sm", m.live && "border-dashed")}>
-              {m.role === "user" ? <WithMentions text={m.text} /> : m.role === "assistant" ? <Md text={m.text} /> : m.text}{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}{m.t && !m.live && m.role !== "note" && <span className="ml-2 text-[10px] text-muted-foreground">{m.t}</span>}
-            </motion.div>))}
-        </AnimatePresence>
-        <div ref={end} />
+        <div className={cn(col, "space-y-3")}>
+          <AnimatePresence initial={false}>
+            {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} />
+              : m.role === "steps" ? <motion.div key={m.id} {...rise}><Steps m={m} onToggle={() => upsert(m.id, x => ({ ...x, open: !x.open }))} /></motion.div>
+              : m.role === "user" ? (
+                <motion.div key={m.id} {...rise} className="flex items-end justify-end gap-2">
+                  <div className="max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap"><WithMentions text={m.text} /></span>{m.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{m.t}</span>}</div>
+                  <Avatar name={owner} />
+                </motion.div>)
+              : m.role === "assistant" ? (
+                <motion.div key={m.id} {...rise} className="min-w-0 text-[15px] leading-6 md:text-sm">
+                  <Md text={m.text} />{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}
+                  {!m.live && <div className="mt-1 flex items-center gap-1.5"><CopyButton text={m.text} />{m.t && <span className="text-[10px] text-muted-foreground">{m.t}</span>}</div>}
+                </motion.div>)
+              : <motion.div key={m.id} {...rise} className="px-1 text-xs italic text-muted-foreground">{m.text}</motion.div>)}
+          </AnimatePresence>
+          <div ref={end} />
+        </div>
       </div>
       {!tail && msgs.length > 0 && (
         <div className="pointer-events-none relative"><button type="button" onClick={toBottom} aria-label="Back to the latest" className="glass pointer-events-auto absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium shadow-lg">
@@ -261,39 +347,41 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       {/* the composer: the clip, the field (with the @ picker above it), then the plane, or the microphone while the field is empty on a phone; Stop shows while a reply is under way */}
       <form className={cn("relative border-t border-border p-2.5 md:p-3", drag && "bg-accent/40")} onSubmit={e => { e.preventDefault(); send(text); }}
         onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDrag(true); } }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}>
-        {pick && pick.items.length > 0 && (
-          <div role="listbox" aria-label="Files on the Mac" className="absolute bottom-full left-2.5 right-2.5 z-20 mb-1 max-h-60 overflow-y-auto rounded-md border border-border bg-background/95 p-1 shadow-lg backdrop-blur md:left-3 md:right-3">
-            {pick.items.map((it, k) => (
-              <button type="button" role="option" aria-selected={k === pick.i} key={it.path} onMouseDown={e => { e.preventDefault(); choose(it); }} onMouseEnter={() => setPick(p => p ? { ...p, i: k } : p)}
-                className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm", k === pick.i ? "bg-accent text-accent-foreground" : "text-foreground")}>
-                {it.kind === "dir" ? <Folder className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                <span className="truncate">{it.name}</span><span className="ml-auto hidden max-w-[50%] truncate text-xs text-muted-foreground sm:block">{short(it.path).replace(/\/[^/]*$/, "")}</span>
-              </button>))}
-          </div>)}
-        <div className="flex items-end gap-2">
-          <input ref={fileIn} type="file" multiple className="hidden" onChange={e => { upload(e.target.files); e.target.value = ""; }} />
-          {rec ? (
-            <div className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-background px-4 md:h-9 md:rounded-sm">
-              <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" /><span className="font-mono text-sm tabular-nums">{mmss(recT)}</span><span className="truncate text-sm text-muted-foreground">Recording</span>
-              <button type="button" aria-label="Throw the recording away" onClick={() => stopRec(false)} className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-            </div>
-          ) : (<>
-            <Button type="button" variant="outline" aria-label="Attach a file" title="Attach a file: choose one, drop it here, or paste it. Type @ to point at a file on the Mac." disabled={uploading > 0} onClick={() => fileIn.current?.click()} className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-9 md:rounded-sm"><Paperclip className={cn("h-[18px] w-[18px] md:h-4 md:w-4", uploading > 0 && "animate-pulse")} /></Button>
-            <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
-              placeholder={mobile ? `Message ${name}` : `Type to ${name} and press Enter · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
-              className={cn(field, "max-h-40 min-h-11 flex-1 resize-none rounded-[22px] px-4 py-2.5 text-base leading-6 md:min-h-9 md:rounded-sm md:px-3 md:py-1.5 md:text-sm")} />
-          </>)}
-          {rec ? <Button type="button" onClick={() => stopRec(true)} aria-label="Send the recording" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>
-            : mobile && !something ? <Button type="button" onClick={startRec} disabled={busy || uploading > 0} aria-label="Record a voice note" className="h-11 w-11 shrink-0 rounded-full p-0"><Mic className="h-5 w-5" /></Button>
-            : <Button type="submit" disabled={busy || uploading > 0 || !something} aria-label="Send" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>}
-          <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)" aria-label="Stop the reply" className={cn("h-11 w-11 shrink-0 rounded-full p-0 md:inline-flex md:h-9 md:w-auto md:rounded-sm md:px-3", talking ? "inline-flex" : "hidden")}><Square className="h-4 w-4" /></Button>
+        <div className={cn(col, "relative")}>
+          {pick && pick.items.length > 0 && (
+            <div role="listbox" aria-label="Files on the Mac" className="absolute bottom-full left-0 right-0 z-20 mb-3 max-h-60 overflow-y-auto rounded-md border border-border bg-background/95 p-1 shadow-lg backdrop-blur md:mb-4">
+              {pick.items.map((it, k) => (
+                <button type="button" role="option" aria-selected={k === pick.i} key={it.path} onMouseDown={e => { e.preventDefault(); choose(it); }} onMouseEnter={() => setPick(p => p ? { ...p, i: k } : p)}
+                  className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm", k === pick.i ? "bg-accent text-accent-foreground" : "text-foreground")}>
+                  {it.kind === "dir" ? <Folder className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                  <span className="truncate">{it.name}</span><span className="ml-auto hidden max-w-[50%] truncate text-xs text-muted-foreground sm:block">{short(it.path).replace(/\/[^/]*$/, "")}</span>
+                </button>))}
+            </div>)}
+          <div className="flex items-end gap-2">
+            <input ref={fileIn} type="file" multiple className="hidden" onChange={e => { upload(e.target.files); e.target.value = ""; }} />
+            {rec ? (
+              <div className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-background px-4 md:h-9 md:rounded-sm">
+                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" /><span className="font-mono text-sm tabular-nums">{mmss(recT)}</span><span className="truncate text-sm text-muted-foreground">Recording</span>
+                <button type="button" aria-label="Throw the recording away" onClick={() => stopRec(false)} className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+              </div>
+            ) : (<>
+              <Button type="button" variant="outline" aria-label="Attach a file" title="Attach a file: choose one, drop it here, or paste it. Type @ to point at a file on the Mac." disabled={uploading > 0} onClick={() => fileIn.current?.click()} className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-9 md:rounded-sm"><Paperclip className={cn("h-[18px] w-[18px] md:h-4 md:w-4", uploading > 0 && "animate-pulse")} /></Button>
+              <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
+                placeholder={mobile ? `Message ${name}` : `Type to ${name} and press Enter · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
+                className={cn(field, "max-h-40 min-h-11 flex-1 resize-none rounded-[22px] px-4 py-2.5 text-base leading-6 md:min-h-9 md:rounded-sm md:px-3 md:py-1.5 md:text-sm")} />
+            </>)}
+            {rec ? <Button type="button" onClick={() => stopRec(true)} aria-label="Send the recording" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>
+              : mobile && !something ? <Button type="button" onClick={startRec} disabled={busy || uploading > 0} aria-label="Record a voice note" className="h-11 w-11 shrink-0 rounded-full p-0"><Mic className="h-5 w-5" /></Button>
+              : <Button type="submit" disabled={busy || uploading > 0 || !something} aria-label="Send" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>}
+            <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)" aria-label="Stop the reply" className={cn("h-11 w-11 shrink-0 rounded-full p-0 md:inline-flex md:h-9 md:w-auto md:rounded-sm md:px-3", talking ? "inline-flex" : "hidden")}><Square className="h-4 w-4" /></Button>
+          </div>
+          {files.length > 0 && <div className="flex flex-wrap gap-1.5 pt-2">{files.map(f => (
+            <span key={f.path} title={f.path} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{f.name}</span>
+              <button type="button" aria-label={`Leave ${f.name} out`} onClick={() => setFiles(fs => fs.filter(x => x.path !== f.path))} className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button></span>))}
+          </div>}
         </div>
-        {files.length > 0 && <div className="flex flex-wrap gap-1.5 pt-2">{files.map(f => (
-          <span key={f.path} title={f.path} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{f.name}</span>
-            <button type="button" aria-label={`Leave ${f.name} out`} onClick={() => setFiles(fs => fs.filter(x => x.path !== f.path))} className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button></span>))}
-        </div>}
       </form>
-      {hint && <div className="px-4 pb-3 text-xs text-muted-foreground">{hint}</div>}
+      {hint && <div className={cn(col, "px-4 pb-3 text-xs text-muted-foreground")}>{hint}</div>}
     </div>
   );
 }

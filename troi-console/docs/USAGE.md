@@ -54,10 +54,11 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   - the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is waiting), Eyes, Browser and Agents (with a count of the agents at work);
   - then the bell, the lock and the light/dark switch.
 - **Conversation**: everything the agent hears and says, live.
-  - A reply grows word by word in a dashed bubble, then settles into the finished text.
+  - A reply grows word by word, straight on the page, then settles into the finished text with a copy button and the time under it; your own lines are bubbles on the right, with your initials and the time in the corner.
+  - While the agent works, one line shows the tool in its hands and what it is on (the command, the file, the search, the page), each step taking the last one's place; when the reply comes the line settles into a count of the steps, opened with a click.
   - Faint "ignored" lines show what the filters dropped and why: a rejected voice shows its similarity score, and a line with no wake word says so.
   - Type and press Enter; a typed turn is answered here and out loud. Charts, tables, pictures and players the agent draws appear right in the conversation.
-  - A reply of several sentences is one bubble, rendered as Markdown (headings, lists, tables, code, links) when the agent shapes it so; the voice reads the words, never the marks.
+  - A reply of several sentences is one reply, rendered as Markdown (headings, lists, tables, code, links) when the agent shapes it so; the voice reads the words, never the marks.
   - Point it at a file: type `@` and pick one from your folders, or attach one with the clip (drop it on the composer, or paste it). Spreadsheets, documents, pictures and PDFs all work: the agent reads the file before it answers, with `read.py` for what its Read tool cannot open. Attached files are kept in `data/blobs/uploads/`.
   - It comes in two shapes, switched with the icon on its header, and your choice is remembered. The **column** is the Conversation page itself. The **floating** pane follows you onto every other page: drag it by the grip above its header, resize it from its corner, and double-click the grip to put it back.
 - **Modes**:

@@ -17,7 +17,7 @@ export async function epost<T = any>(path: string, body: any = {}): Promise<T> {
 }
 export const img = (p: string) => p.startsWith("/img?") ? edgeUrl() + p : edgeUrl() + "/img?p=" + encodeURIComponent(p);
 export type Config = { name: string; key: string; mic_mode: string; permission_mode: string; model: string; deep_model: string; effort: string; wake_word: boolean; eyes: string; voice_id: string; voice_print: boolean; voice_id_threshold: number; pin_set: boolean; guard: boolean; guarded: boolean; face_env: boolean; face_print: boolean; face_id_threshold: number; vault: string; brief_time: string; wake_names: string[]; face: string; hands: string; tts: string; elevenlabs_voice: string; elevenlabs_voice_name?: string; elevenlabs_key: boolean; kokoro_voice: string; welcomed: boolean; owner: string; lan?: boolean | "tailscale"; tailscale?: { name: string; ip: string; https?: boolean } | null };
-export type State = { state: string; voice: boolean; ui: any[]; settings: any; pending: Pending[]; partial: string; wave: number[]; live: string; agents?: number };
+export type State = { state: string; voice: boolean; ui: any[]; settings: any; pending: Pending[]; partial: string; wave: number[]; live: string; agents?: number; tool?: { name: string; detail: string } | null };
 export type Pending = { id: string; kind?: string; src: string; why: string; at: number };
 export type Row = { role: string; text: string; t?: string; why?: string; meta?: any };
 export type Card = { name: string; value: any; t?: number };

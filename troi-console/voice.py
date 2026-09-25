@@ -356,11 +356,37 @@ def _write_partial(text):
         pass
 
 
-def _write_tool(name):
+def _write_tool(tool):
+    """The tool in the brain's hands: {"name", "detail"} as JSON, or nothing."""
     try:
-        _TOOL.write_text(name or "")
-    except OSError:
+        _TOOL.write_text(json.dumps(tool) if tool else "")
+    except (OSError, TypeError):
         pass
+
+
+def _tool_detail(name, inp):
+    """What the tool is on, in a few words: the command, the file, the pattern, the query, the page."""
+    if not isinstance(inp, dict):
+        return ""
+    home = str(Path.home())
+    short = lambda p: str(p).replace(home, "~") if p else ""
+    one = lambda v, n=100: " ".join(str(v).split())[:n]
+    if name == "Bash":
+        return one(inp.get("command", ""), 120)
+    if name in ("Read", "Write", "Edit", "MultiEdit", "NotebookEdit"):
+        return short(inp.get("file_path") or inp.get("notebook_path") or "")
+    if name in ("Glob", "Grep"):
+        return one(inp.get("pattern", "")) + (" in " + short(inp["path"]) if inp.get("path") else "")
+    if name in ("WebSearch", "ToolSearch"):
+        return one(inp.get("query", ""))
+    if name == "WebFetch":
+        return one(inp.get("url", ""))
+    if name in ("Agent", "Task"):
+        return one(inp.get("description", ""))
+    for v in inp.values():                                    # any other tool: its first short string (a URL, a subject, a command)
+        if isinstance(v, str) and v.strip():
+            return one(v)
+    return ""
 
 
 def _tap(brain):
@@ -371,22 +397,38 @@ def _tap(brain):
 
     def receive_response(*a, **k):
         async def gen():
-            buf, last = "", 0.0
+            buf, last, tool = "", 0.0, None                # tool: the call in flight, kept until its result is back
             try:
                 async for msg in orig(*a, **k):
                     t = type(msg).__name__
                     if t == "StreamEvent":
-                        ev = getattr(msg, "event", {}) or {}
-                        if ev.get("type") == "content_block_delta":
+                        ev = getattr(msg, "event", {}) or {}; kind = ev.get("type")
+                        if kind == "content_block_delta":
                             d = ev.get("delta", {}) or {}
                             if d.get("type") == "text_delta":
                                 buf += d.get("text", "")
                                 if time.time() - last > 0.08:
                                     last = time.time(); _write_partial(buf)
-                        elif ev.get("type") == "content_block_start" and (ev.get("content_block") or {}).get("type") == "tool_use":
-                            _write_tool((ev.get("content_block") or {}).get("name", "tool"))
-                        elif ev.get("type") == "content_block_stop":
-                            _write_tool("")
+                        elif kind == "content_block_start":
+                            cb = ev.get("content_block") or {}
+                            if cb.get("type") == "tool_use":
+                                if buf and not buf.endswith("\n"):
+                                    buf += "\n"                             # the words before a tool and after it are two stretches
+                                _write_partial(buf); last = time.time()   # every word said so far, before the tool shows
+                                tool = {"name": cb.get("name") or "tool", "detail": ""}; _write_tool(tool)
+                            elif tool:                                     # the brain speaks again: the tool is done
+                                tool = None; _write_tool("")
+                        elif kind == "content_block_stop":
+                            _write_partial(buf); last = time.time()       # the throttle never leaves the last words behind
+                    elif t == "AssistantMessage":                          # the message complete: the tool's input is known
+                        for b in getattr(msg, "content", None) or []:
+                            if type(b).__name__ == "ToolUseBlock":
+                                nm = getattr(b, "name", "") or "tool"
+                                tool = {"name": nm, "detail": _tool_detail(nm, getattr(b, "input", None))}; _write_tool(tool)
+                    elif t == "UserMessage" and tool:                      # the tool's result is back
+                        c = getattr(msg, "content", None)
+                        if isinstance(c, list) and any(type(b).__name__ == "ToolResultBlock" for b in c):
+                            tool = None; _write_tool("")
                     elif t == "ResultMessage":
                         _TURN["result"] = True
                         _write_partial(""); _write_tool("")
