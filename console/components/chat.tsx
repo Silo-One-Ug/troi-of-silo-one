@@ -7,8 +7,9 @@
 // line shows the tool in its hands and what it is on (the command, the file, the search, the page); each step takes
 // the last one's place, and when the reply comes the line settles into a count of the steps, opened with a click.
 // The composer is one card: what is attached shows above the words (a photo as its thumbnail, a file as a small card),
-// the + opens a menu (files or photos, a screenshot of the Mac, a file pointed at with @), the model and the effort
-// stand on the right with the microphone and the send arrow, which becomes Stop while a reply is under way. Files
+// the + opens a menu (files or photos, a screenshot of the Mac, a file pointed at with @), and on the right stand the
+// microphone and the send arrow, which becomes Stop while a reply is under way. The eraser in the header (the top bar on
+// a phone) clears the page and remembers where it stood, so a reload stays clear; the record and the session stay. Files
 // travel as @ mentions: "@" picks a file on the Mac (the file roots); a file attached, dropped or pasted is uploaded
 // to data/blobs/uploads and mentioned the same way; the agent reads what it is pointed at. On a phone the composer is
 // a messenger's: the field grows with the lines, the microphone stands where the send button will be until there are
@@ -18,12 +19,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AppWindow, ArrowDown, ArrowUp, AtSign, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Loader2, Mail, Mic, Monitor, Paperclip, PictureInPicture2, Plug, Plus, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
+import { AppWindow, ArrowDown, ArrowUp, AtSign, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, Eraser, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Loader2, Mail, Mic, Monitor, Paperclip, PictureInPicture2, Plug, Plus, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
 import { rise } from "@/lib/motion";
-import { edgeUrl, eget, epost, img, setTalkShape, talkShape, type Card, type Row, type State } from "@/lib/edge";
+import { edgeUrl, eget, epost, img, on, setTalkShape, talkShape, type Card, type Row, type State } from "@/lib/edge";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -102,8 +103,6 @@ const initials = (n: string) => n.trim().split(/\s+/).filter(Boolean).slice(0, 2
 const IMAGE = /\.(png|jpe?g|gif|webp|heic|heif|bmp|tiff?|avif|svg)$/i;
 const SHEET = /\.(xlsx?|xlsm|csv|numbers|tsv)$/i;
 const kb = (n?: number) => !n ? "" : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
-const MODEL: Record<string, string> = { "claude-sonnet-5": "Sonnet 5", "claude-opus-5-5": "Opus 5.5", "claude-haiku-4-5-20251001": "Haiku 4.5", "claude-fable-5-1": "Fable 5.1" };
-const modelName = (id: string) => MODEL[id] || (() => { const m = /^claude-([a-z]+)-(\d+)(?:-(\d+))?/.exec(id || ""); return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? "." + m[3] : ""}` : id; })();
 function WithMentions({ text }: { text: string }) {          // a line as written, its @ mentions shown as small file chips
   const parts: ReactNode[] = []; const re = new RegExp(MENTION.source, "g"); let last = 0; let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
@@ -167,7 +166,7 @@ function Attachment({ f, onRemove }: { f: Attached; onRemove: () => void }) {
 export function Chat({ name, embedded = false, onState }: { name: string; embedded?: boolean; onState?: (s: string) => void }) {
   const agent = useMemo(() => new HttpAgent({ url: edgeUrl() + "/agent", threadId: "console" }), []);
   const [msgs, setMsgs] = useState<Msg[]>([]); const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [state, setState] = useState("off"); const [hint, setHint] = useState("");
-  const [cfg, setCfg] = useState<{ owner: string; model: string; effort: string }>({ owner: "", model: "", effort: "" });
+  const [owner, setOwner] = useState(""); const [cleared, setCleared] = useState(false); const since = useRef<{ pos: number; cpos: number } | null>(null);   // where the chat was cleared: the page shows the record from there
   const [files, setFiles] = useState<Attached[]>([]); const [drag, setDrag] = useState(false); const [menu, setMenu] = useState(false); const [shooting, setShooting] = useState(false);
   const [pick, setPick] = useState<{ start: number; q: string; items: Found[]; i: number; loading: boolean } | null>(null);   // the @ picker: where the mention starts, what is typed so far, what was found
   const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0); const [hearing, setHearing] = useState(false);
@@ -191,6 +190,15 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     const k = (e: KeyboardEvent) => { if (e.key !== "Escape" || e.defaultPrevented) return; if (menu) { setMenu(false); return; } if (state && state !== "idle" && state !== "off") epost("/say", { text: "stop" }); };
     addEventListener("keydown", k); return () => removeEventListener("keydown", k);
   }, [state, menu]);
+  const clear = () => {                                           // the page empties and remembers where it stood; the record and the session stay
+    since.current = { pos: pos.current, cpos: cpos.current }; try { localStorage.setItem("silo.chatSince", JSON.stringify(since.current)); } catch {}
+    live.current = null; liveStep.current = null; setMsgs([]); setCleared(true); setHint(""); setMenu(false);
+  };
+  const unclear = async () => {                                   // what came before, back on the page
+    since.current = null; try { localStorage.removeItem("silo.chatSince"); } catch {} setCleared(false);
+    try { const h = await eget("/history?limit=120"); setMsgs(group(h.items.map(fromRow).filter(Boolean) as Msg[])); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch {}
+  };
+  useEffect(() => on("chat-clear", clear), []);                   // the phone's top bar asks the same   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {                                               // the + menu closes on a click anywhere else
     if (!menu) return; const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false); };
     addEventListener("mousedown", h); return () => removeEventListener("mousedown", h);
@@ -198,8 +206,16 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   useEffect(() => {
     let stop = false;
     (async () => {
-      eget("/config").then(c => setCfg({ owner: c.owner || "", model: c.model || "", effort: c.effort || "" })).catch(() => {});
-      try { const h = await eget("/history?limit=120"); setMsgs(group(h.items.map(fromRow).filter(Boolean) as Msg[])); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
+      eget("/config").then(c => setOwner(c.owner || "")).catch(() => {});
+      try { since.current = JSON.parse(localStorage.getItem("silo.chatSince") || "null"); } catch {}
+      try {
+        const h = await eget("/history?limit=120"); let rows = h.items as Row[]; pos.current = h.pos || 0; cpos.current = h.cpos || 0;
+        const sc = since.current;
+        if (sc && sc.pos <= pos.current) {                                              // cleared earlier: only what came after
+          try { const d = await eget(`/transcript?pos=${sc.pos}&cpos=${sc.cpos}`); rows = (d.items as Row[]).filter(r => r.role !== "ctl").slice(-120); pos.current = d.pos; if (d.cpos !== undefined) cpos.current = d.cpos; setCleared(true); } catch {}
+        } else if (sc) { since.current = null; try { localStorage.removeItem("silo.chatSince"); } catch {} }   // the record started over since then
+        setMsgs(group(rows.map(fromRow).filter(Boolean) as Msg[]));
+      } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
       const poll = async () => {
         if (stop) return;
         try {
@@ -377,9 +393,10 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     <div className={cn("flex h-full min-h-0 flex-col", embedded ? "" : "md:hairline")}>
       {/* the header is the desktop's: on a phone the top bar already says who is speaking and in what state */}
       <div className="hidden items-center gap-2 border-b border-border px-3 py-2 text-sm md:flex"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
-        <button className="ml-auto text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
+        <button type="button" onClick={clear} disabled={msgs.length === 0} aria-label="Clear the chat" title="Clear the chat: the page empties; the record and the session stay" className="ml-auto text-muted-foreground hover:text-foreground disabled:opacity-40"><Eraser className="h-4 w-4" /></button>
+        <button className="text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
       <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-6 md:py-4">
-        {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
+        {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{cleared ? <span>Cleared. <button type="button" onClick={unclear} className="underline underline-offset-2 hover:text-foreground">Show what came before</button></span> : mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
         <div className={cn(col, "space-y-3")}>
           <AnimatePresence initial={false}>
             {msgs.map(m => m.role === "headlines" ? <HeadlinesCard key={m.id} {...m.data} /> : m.role === "pictures" ? <PicturesGrid key={m.id} {...m.data} /> : m.role === "ui" ? <UiBlock key={m.id} {...m.data} />
@@ -387,7 +404,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
               : m.role === "user" ? (
                 <motion.div key={m.id} {...rise} className="flex items-end justify-end gap-2">
                   <div className="max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap"><WithMentions text={m.text} /></span>{m.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{m.t}</span>}</div>
-                  <Avatar name={cfg.owner} />
+                  <Avatar name={owner} />
                 </motion.div>)
               : m.role === "assistant" ? (
                 <motion.div key={m.id} {...rise} className="min-w-0 text-[15px] leading-6 md:text-sm">
@@ -445,9 +462,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
                     </div>)}
                 </div>
                 <button type="button" onClick={() => fileIn.current?.click()} aria-label="Attach a file" title="Attach a file or a photo: choose one, drop it here, or paste it" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><Paperclip className={cn("h-4 w-4", uploading && "animate-pulse")} /></button>
-                {cfg.model && <span className="ml-auto hidden items-center gap-1.5 pr-1 text-xs text-muted-foreground sm:flex" title={`The model and the effort. Say "switch to the deep model", "back to the fast model" or "set effort to high" to change them.`}><span className="font-medium text-foreground/80">{modelName(cfg.model)}</span>{cfg.effort && <span className="capitalize">{cfg.effort}</span>}</span>}
-                {!rec && <button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" title="A voice note: speak, then send it" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50", !cfg.model && "ml-auto")}><Mic className="h-4 w-4" /></button>}
-                {rec ? <button type="submit" aria-label="Send the recording" title="Send the recording" className={cn(round, "bg-primary text-primary-foreground hover:bg-primary/90")}><ArrowUp className="h-4 w-4" /></button>
+                {!rec && <button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" title="A voice note: speak, then send it" className={cn(round, "ml-auto text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50")}><Mic className="h-4 w-4" /></button>}
+                {rec ? <button type="submit" aria-label="Send the recording" title="Send the recording" className={cn(round, "ml-auto bg-primary text-primary-foreground hover:bg-primary/90")}><ArrowUp className="h-4 w-4" /></button>
                   : talking && !something ? <button type="button" onClick={() => epost("/say", { text: "stop" })} aria-label="Stop the reply" title="Cut the reply off (Esc)" className={cn(round, "border border-border bg-background text-foreground hover:bg-accent/60")}><Square className="h-3.5 w-3.5" /></button>
                   : <button type="submit" disabled={busy || uploading || !something} aria-label="Send" title="Send (Enter)" className={cn(round, "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground")}><ArrowUp className="h-4 w-4" /></button>}
               </div>

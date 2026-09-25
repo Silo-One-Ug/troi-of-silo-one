@@ -6,10 +6,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChevronLeft, Image as ImageIcon, Layers, Lock, MessageSquare, MoreHorizontal, ShieldCheck, Unlock } from "lucide-react";
+import { ChevronLeft, Eraser, Image as ImageIcon, Layers, Lock, MessageSquare, MoreHorizontal, ShieldCheck, Unlock } from "lucide-react";
 import { Sheet } from "./sheet";
 import { UnlockBox } from "../approvals";
-import { eget, unlockToken, type State } from "@/lib/edge";
+import { eget, emit, unlockToken, type State } from "@/lib/edge";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +68,7 @@ export function MobileChrome({ name, title, canvas }: { name: string; title: str
           <span className="text-[11px] font-semibold tracking-[.14em]">{name.toUpperCase()}</span>
         </div>
         <div className="pointer-events-none absolute inset-x-24 text-center"><div className="truncate text-[16px] font-semibold leading-tight">{title}</div><div className="truncate text-[11px] leading-tight text-muted-foreground">{STATE_WORD[state] || state}</div></div>
-        <div className="ml-auto"><LockButton /></div>
+        <div className="ml-auto flex items-center gap-0.5">{path.startsWith("/conversation") && <button type="button" aria-label="Clear the chat" title="Clear the chat" onClick={() => emit("chat-clear")} className="grid h-10 w-10 place-items-center rounded-full text-muted-foreground active:text-foreground"><Eraser className="h-[18px] w-[18px]" /></button>}<LockButton /></div>
       </div>
     </header>
     <nav aria-label="Sections" className="glass fixed inset-x-0 bottom-0 z-40 rounded-none border-x-0 border-b-0 md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>

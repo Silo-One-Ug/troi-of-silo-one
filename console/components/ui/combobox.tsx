@@ -1,6 +1,7 @@
 "use client";
 // The one picker of the console: a button that opens a searchable list. Type to filter, arrows to move, Enter to pick,
-// Escape to close. No native <select> anywhere.
+// Escape to close. No native <select> anywhere. The list opens upward when there is more room above than below (a
+// picker near the foot of a page, where the bar would cover it).
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
@@ -11,11 +12,15 @@ export type ComboOption = { value: string; label: string; hint?: string };
 export function Combobox({ value, options, onChange, placeholder = "Choose…", empty = "Nothing matches.", loading, onOpen, className, disabled }: {
   value: string; options: ComboOption[]; onChange: (v: string) => void; placeholder?: string; empty?: string; loading?: boolean; onOpen?: () => void; className?: string; disabled?: boolean;
 }) {
-  const [open, setOpen] = React.useState(false); const [q, setQ] = React.useState(""); const [at, setAt] = React.useState(0);
+  const [open, setOpen] = React.useState(false); const [q, setQ] = React.useState(""); const [at, setAt] = React.useState(0); const [up, setUp] = React.useState(false);
   const root = React.useRef<HTMLDivElement>(null); const list = React.useRef<HTMLDivElement>(null); const input = React.useRef<HTMLInputElement>(null);
   const cur = options.find(o => o.value === value);
   const shown = React.useMemo(() => { const t = q.trim().toLowerCase(); return t ? options.filter(o => (o.label + " " + (o.hint || "")).toLowerCase().includes(t)) : options; }, [q, options]);
-  const show = () => { if (disabled) return; setOpen(true); setQ(""); setAt(Math.max(0, options.findIndex(o => o.value === value))); onOpen?.(); };
+  const show = () => {
+    if (disabled) return;
+    const r = root.current?.getBoundingClientRect(); if (r) { const below = innerHeight - r.bottom - 120; setUp(below < 320 && r.top > below); }   // the bar at the foot takes its share
+    setOpen(true); setQ(""); setAt(Math.max(0, options.findIndex(o => o.value === value))); onOpen?.();
+  };
   const pick = (o?: ComboOption) => { if (!o) return; onChange(o.value); setOpen(false); };
   React.useEffect(() => { if (!open) return; input.current?.focus(); const out = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); }; addEventListener("pointerdown", out); return () => removeEventListener("pointerdown", out); }, [open]);
   React.useEffect(() => { setAt(a => Math.min(a, Math.max(0, shown.length - 1))); }, [shown.length]);
@@ -34,7 +39,7 @@ export function Combobox({ value, options, onChange, placeholder = "Choose…", 
         {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" /> : <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
       </button>
       <AnimatePresence>{open && (
-        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.14 }} className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-background shadow-2xl">
+        <motion.div initial={{ opacity: 0, y: up ? 4 : -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: up ? 4 : -4 }} transition={{ duration: 0.14 }} className={cn("absolute left-0 right-0 z-50 overflow-hidden rounded-md border border-border bg-background shadow-2xl", up ? "bottom-full mb-1" : "top-full mt-1")}>
           <div className="flex items-center gap-2 border-b border-border px-3"><Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input ref={input} value={q} onChange={e => { setQ(e.target.value); setAt(0); }} onKeyDown={key} placeholder="Search…" role="combobox" aria-expanded aria-controls="combo-list" aria-activedescendant={shown[at] ? `combo-${at}` : undefined} className="h-9 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></div>
           <div ref={list} id="combo-list" role="listbox" className="max-h-64 overflow-y-auto p-1">

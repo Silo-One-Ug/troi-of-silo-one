@@ -16,6 +16,10 @@ The window takes the console's full width; the words keep a reading column in th
   new step takes the last one's place, so the conversation never fills with them. When the reply
   comes, the line settles into a count of the steps by kind (commands, files, searches); click it to
   see them all.
+- **Clear the chat.** The eraser in the header (in the top bar on a phone) empties the page and
+  remembers where it stood, so a reload stays clear; "Show what came before" brings the lines back.
+  The record and the agent's memory of the conversation are untouched: for a fresh start of those,
+  say or type "clear the session".
 - Faint **"ignored"** lines show what the filters dropped and why: a rejected voice shows its
   similarity score, and a line with no wake word says so.
 - **Type** and press Enter. A typed turn is answered here and out loud on the Mac, like a spoken
@@ -35,9 +39,8 @@ The window takes the console's full width; the words keep a reading column in th
 
 On the desktop the composer is one card. The words go on top; under them the **+** opens a menu
 (add files or photos, take a screenshot of the Mac, point at a file with `@`), the clip is a
-shortcut to files and photos, and on the right stand the model and the effort in use (say "switch
-to the deep model" or "set effort to high" to change them), the microphone for a voice note, and
-the arrow that sends. While a reply is under way the arrow becomes **Stop**.
+shortcut to files and photos, and on the right stand the microphone for a voice note and the
+arrow that sends. While a reply is under way the arrow becomes **Stop**.
 
 ## Files
 
