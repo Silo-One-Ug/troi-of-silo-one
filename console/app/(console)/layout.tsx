@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Dock } from "@/components/dock";
 import { FloatingChat } from "@/components/floating";
+import { Sounds } from "@/components/sounds";
 import { Directives } from "@/components/directives";
 import { Alerts } from "@/components/alerts";
 import { MobileChrome, TITLES } from "@/components/mobile/bars";
@@ -31,6 +32,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       <Directives />
       <Alerts />
       <MobileChrome name={name} title={TITLES[section] || name} canvas={canvas} />
+      <Sounds state={state} />
       <Dock name={name} />
     </div>
   );

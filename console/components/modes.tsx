@@ -9,6 +9,7 @@ import { CheckCircle2, Info, Loader2, Lock, RefreshCw, TriangleAlert } from "luc
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Combobox } from "./ui/combobox";
+import { setWorkSound, workSoundOn } from "./sounds";
 import { eget, epost, unlockToken, type Config } from "@/lib/edge";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,7 @@ export function Modes() {
   const loadVoices = async (force = false) => { if (voicesLoading || (voices.length && !force)) return; setVoicesLoading(true); try { const d = await eget("/voices"); if (d.ok) setVoices(d.voices || []); else tell("warn", d.error || "Could not load the voices."); } catch { tell("warn", "Could not load the voices."); } setVoicesLoading(false); };
   useEffect(() => { if (c?.elevenlabs_key) loadVoices(); }, [c?.elevenlabs_key]);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [sounds, setSounds] = useState(true); useEffect(() => { setSounds(workSoundOn()); }, []);   // this browser's own: the pad while it works, the chime when done
   if (!c) return <div className="hairline max-w-xl p-6 text-sm text-muted-foreground">{down || <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Reading the agent&apos;s modes…</span>}</div>;
   const perm = c.permission_mode === "bypassPermissions" ? "auto" : "ask", mic = c.mic_mode === "open" ? "open" : "ptt";
   const voiceOpts = voices.map(v => ({ value: v.voice_id, label: v.name, hint: typeof v.labels === "string" ? v.labels : Object.values(v.labels || {}).join(" · ") }));
@@ -99,6 +101,8 @@ export function Modes() {
             onPick={v => run("model", v, async () => { if (await say(v === "deep" ? "switch to the deep model" : "back to the fast model")) { setModel(v); try { localStorage.setItem("silo.model", v); } catch {} tell("ok", v === "deep" ? "Deep model for this session." : "Fast model."); } })} />
           <Seg label="Effort" value={c.effort || ""} busy={busy.effort} hint={c.effort ? undefined : "the model's default"} options={[{ v: "low", l: "Low" }, { v: "medium", l: "Medium" }, { v: "high", l: "High" }, { v: "max", l: "Max" }]}
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
+          <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: "A soft pad while Troi works, a chime when it is done" }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
+            hint="A soft pad plays from this browser while Troi works, and a chime when it is done. This device only; the first stretch after a fresh page is silent until you touch the page." />
           <Seg label="Your phone" value={c.lan === "tailscale" ? "tailscale" : c.lan ? "on" : "off"} busy={busy.lan}
             hint={c.lan === "tailscale" ? `Troi answers your own devices over Tailscale from its next start, and turns every other network away: open ${c.tailscale?.https ? `https://${c.tailscale.name}/` : `http://${c.tailscale?.ip || "100.x.y.z"}:3100`} on your phone, with Tailscale on${c.tailscale?.https ? "" : " (the Mac's Tailscale address, not its name: browsers insist on https for .ts.net names)"}.`
               : c.lan ? `Troi answers on this network from its next start: open http://${typeof location !== "undefined" ? location.hostname : "this-mac.local"}:3100 on your phone. Only on a network you trust: anyone on it can talk to Troi and read its record.`

@@ -53,3 +53,11 @@ See [On your phone](on-your-phone.md) for the steps.
 the deep model", "back to the fast model", "set effort to high": the agent sends the phrase to the
 voice line once it is idle. The protected ones go through only in your verified voice, from an
 unlocked console, or with your approve on Telegram.
+
+## Sounds
+
+While the agent works, the console plays a soft pad from the browser, a low warm chord under a slow
+filter with a breath of wind, and a small chime the moment the work is done and the answer is on its
+way. It is made in the browser, with no files, and it is on by default; **Sounds** in Modes (or in
+More on a phone) turns it off, for that device only. A browser plays nothing before the first click
+or key on a page, so the first stretch of work after a fresh page is silent until you touch it.
