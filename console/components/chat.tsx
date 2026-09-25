@@ -71,7 +71,7 @@ const clean = (t: string) => t.replace(STAGE, "").replace(/[ \t]+\n/g, "\n").tri
  *  prose) gets the blank line Markdown needs; sentences of prose join as one paragraph. */
 const block = (l: string) => /^(\||#{1,6}\s|```|>|[-*+]\s|\d+[.)]\s)/.test(l.trim());
 const item = (l: string) => /^([-*+]\s|\d+[.)]\s)/.test(l.trim());
-function join(a: string, b: string): string {
+export function join(a: string, b: string): string {
   const al = a.split("\n").pop() || "", bl = b.split("\n")[0] || "";
   const gap = (block(al) || block(bl)) && !(item(al) && item(bl));
   return a + (gap ? "\n\n" : "\n") + b;

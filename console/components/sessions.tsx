@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import { ChevronLeft, ChevronRight, History, Plus } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { join } from "./chat";
 import { eget, epost } from "@/lib/edge";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,12 @@ export function Sessions() {
   }, []);
   useEffect(() => {                                                  // the opened session, as it was said
     if (!open) { setLines(null); return; } let gone = false; setLines(null);
-    eget(`/history?session=${encodeURIComponent(open)}&limit=600`).then(d => { if (!gone) setLines((d.items || []).filter((l: Line) => l.role !== "ctl")); }).catch(() => { if (!gone) setLines([]); });
+    eget(`/history?session=${encodeURIComponent(open)}&limit=600`).then(d => {                    // a reply's sentences, one reply (as the conversation shows them)
+      if (gone) return;
+      const out: Line[] = [];
+      for (const l of (d.items || []) as Line[]) { if (l.role === "ctl") continue; const last = out[out.length - 1]; if (l.role === "agent" && last && last.role === "agent" && last.t === l.t) last.text = join(last.text, l.text); else out.push({ ...l }); }
+      setLines(out);
+    }).catch(() => { if (!gone) setLines([]); });
     return () => { gone = true; };
   }, [open]);
   const fresh = async () => {                                        // the owner's word, and only theirs: the same phrase the voice line takes
