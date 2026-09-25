@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { rise } from "@/lib/motion";
 import { eget, epost, rememberUnlock, unlockToken, type Pending } from "@/lib/edge";
-const LABEL: Record<string, string> = { trash: "Move to the Trash", kill: "Force-quit", click: "A risky click", setting: "Change a protected setting" };
+const LABEL: Record<string, string> = { trash: "Move to the Trash", kill: "Force-quit", click: "A risky click", setting: "Change a protected setting", session: "Delete a session" };
 
 /** The PIN box: inline in the desktop bar; big (a full-width field and button) in the phone's sheet. */
 export function UnlockBox({ big = false, onDone }: { big?: boolean; onDone?: () => void }) {

@@ -6,7 +6,8 @@ starred); reports and what the routines did; small documents the tools used to k
 pulse's state, Telegram's state). Nothing is deleted by the agent: captures past their retention go to the Trash.
 
   db.py tail [N]         the last N conversation lines
-  db.py sessions         sessions with their first line and size
+  db.py sessions [--deleted]   sessions with their title (written for them, or the first real line) and size
+  db.py title <id> <words>     name a session (the id, or the start of it)
   db.py stats            row counts and sizes
   db.py put <file> <kind> [title]    index a file in data/blobs (moves it there first if it is elsewhere); prints its path
   db.py index            index every file in data/blobs not yet known
@@ -44,6 +45,11 @@ def connect():
     c.executescript(SCHEMA)
     if "meta" not in [r[1] for r in c.execute("pragma table_info(approvals)")]:      # the request itself, so it survives a restart
         c.execute("alter table approvals add column meta text default '{}'")
+    cols = [r[1] for r in c.execute("pragma table_info(sessions)")]
+    if "summary" not in cols:                                                         # a title written for it (a small model, the agent or the owner)
+        c.execute("alter table sessions add column summary text default ''")
+    if "deleted" not in cols:                                                         # when the owner took it off the list; its lines stay
+        c.execute("alter table sessions add column deleted real default 0")
     c.row_factory = sqlite3.Row
     return c
 
@@ -74,9 +80,69 @@ def messages(session=None, limit=200, before=None):
     return [dict(r, meta=json.loads(r["meta"] or "{}")) for r in reversed(rows)]
 
 
-def sessions(limit=50):
+CONTROL = ("clear the session", "clear the context", "compact the session", "compact the context", "stop", "confirm", "usage report", "switch to the deep model",
+           "back to the fast model", "go hands free", "push to talk mode", "stop asking for permission", "start asking again")
+
+
+def _first_line(c, sid):
+    """The first thing the owner said that can stand as a title: not a control phrase, not a stage line, a few words at least."""
+    for r in c.execute("select text from messages where session=? and role='you' order by id limit 6", (sid,)):
+        t = " ".join((r["text"] or "").split())
+        if not t or t.startswith("(") or t.lower().rstrip(".!? ") in CONTROL or t.lower().startswith("set effort") or len(t.split()) < 3:
+            continue
+        return t[:100]
+    return ""
+
+
+def sessions(limit=50, deleted=False):
+    """The sessions, newest last-spoken first: id, when, how many lines, and a title (the one written for it, else the
+    owner's first real line, else the first line of all). deleted=True lists the ones the owner took off the list."""
     with connect() as c:
-        return [dict(r) for r in c.execute("select s.id, s.title, s.started, s.last, count(m.id) as n from sessions s left join messages m on m.session=s.id group by s.id order by s.last desc limit ?", (limit,))]
+        rows = [dict(r) for r in c.execute("select s.id, s.title, s.summary, s.deleted, s.started, s.last, count(m.id) as n from sessions s left join messages m on m.session=s.id "
+                                           "where s.id != '' and coalesce(s.deleted, 0) " + (">" if deleted else "=") + " 0 group by s.id order by s.last desc limit ?", (limit,))]
+        for s in rows:
+            s["first"] = _first_line(c, s["id"]); s["summary"] = s.get("summary") or ""; s["title"] = s["summary"] or s["first"] or s["title"]
+        return rows
+
+
+def session_find(ref):
+    """A session by its id or the start of it (as the agent quotes them); None unless it names exactly one."""
+    ref = (ref or "").strip()
+    if not ref:
+        return None
+    with connect() as c:
+        rows = c.execute("select id from sessions where id=? or id like ?", (ref, ref + "%")).fetchall()
+    return rows[0]["id"] if len(rows) == 1 else None
+
+
+def session_set(sid, **f):
+    if not f:
+        return False
+    with connect() as c:
+        return c.execute("update sessions set " + ", ".join(f"{k}=?" for k in f) + " where id=?", (*f.values(), sid)).rowcount > 0
+
+
+def session_delete(sid):
+    """Off the list, its lines kept: the owner's own act, or their approval of the agent's request."""
+    return session_set(sid, deleted=time.time())
+
+
+def session_restore(sid):
+    return session_set(sid, deleted=0)
+
+
+def session_title(sid, text):
+    return session_set(sid, summary=" ".join(str(text or "").split())[:120])
+
+
+def session_text(sid, limit=6000):
+    """What was said in a session, owner and agent, for a title: the start and the end when it is long."""
+    with connect() as c:
+        lines = [f"{'Owner' if r['role'] == 'you' else 'Agent'}: {' '.join((r['text'] or '').split())}"
+                 for r in c.execute("select role, text from messages where session=? and role in ('you', 'agent') order by id", (sid,))
+                 if (r["text"] or "").strip() and not (r["text"] or "").startswith("(")]
+    s = "\n".join(lines)
+    return s if len(s) <= limit else s[: limit * 2 // 3] + "\n…\n" + s[-limit // 3:]
 
 
 def last_id():
@@ -268,8 +334,10 @@ if __name__ == "__main__":
         for m in messages(limit=int(a[1]) if len(a) > 1 else 20):
             print(f"{time.strftime('%m-%d %H:%M', time.localtime(m['t']))}  {m['role']:6}  {m['text'][:110]}")
     elif a[:1] == ["sessions"]:
-        for s in sessions():
+        for s in sessions(deleted="--deleted" in a):
             print(f"{s['id'][:8]}  {time.strftime('%m-%d %H:%M', time.localtime(s['last'] or 0))}  {s['n']:4}  {s['title'][:80]}")
+    elif a[:1] == ["title"] and len(a) > 2:
+        sid = session_find(a[1]); print("titled" if sid and session_title(sid, " ".join(a[2:])) else "no such session (db.py sessions lists them)")
     elif a[:1] == ["stats"]:
         with connect() as c:
             for t in ("sessions", "messages", "approvals", "blobs", "reports", "runs", "docs"):

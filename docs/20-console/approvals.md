@@ -4,9 +4,9 @@ description: The page where requests wait for you, how approving works, and what
 order: 6
 ---
 
-Cards for trash, force-quit, risky-click and protected-setting requests, and a record of earlier
-decisions. The bar shows a count of what is waiting; so does the globe's badge, and a notification
-and a sound cue announce a new one.
+Cards for trash, force-quit, risky-click, protected-setting and session-deletion requests, and a
+record of earlier decisions. The bar shows a count of what is waiting; so does the globe's badge,
+and a notification and a sound cue announce a new one.
 
 - **Approving needs the console unlocked**: your PIN at the lock, or **Check it's me** on the Eyes
   page. Rejecting never does.

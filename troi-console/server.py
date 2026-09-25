@@ -202,6 +202,49 @@ def current_session():
         return ""
 
 
+# ---- a title for every session, written once by a small model from what was said (the agent or the owner can rename it)
+_SUMM = {"lock": threading.Lock(), "busy": set(), "tried": {}}
+CLAUDE_CLI = shutil.which("claude") or str(HOME / "backtalk" / ".venv" / "lib" / "python3.12" / "site-packages" / "claude_agent_sdk" / "_bundled" / "claude")
+
+
+def summarise_sessions(rows, current):
+    """Start a title for one session that has none yet: at least four lines, and either not the one in use or quiet for ten
+    minutes. One at a time, in the background; a failure is tried again an hour later."""
+    now = time.time()
+    with _SUMM["lock"]:
+        if _SUMM["busy"]:
+            return
+        due = [s for s in rows if not s.get("summary") and s.get("n", 0) >= 4 and (s["id"] != current or (s.get("last") or 0) < now - 600)
+               and _SUMM["tried"].get(s["id"], 0) < now - 3600]
+        if not due:
+            return
+        sid = due[0]["id"]; _SUMM["busy"].add(sid); _SUMM["tried"][sid] = now
+    threading.Thread(target=_summarise, args=(sid,), daemon=True).start()
+
+
+def _summarise(sid):
+    try:
+        text = DB.session_text(sid)
+        if len(text) < 80:
+            return
+        prompt = ("Below is a conversation between an owner and their chief-of-staff agent. Give it a title of at most eight words saying what it was "
+                  "about, the way a file in a cabinet is labelled: specific, plain words, no quotes, no full stop. Reply with the title only.\n\n"
+                  "<conversation>\n" + text + "\n</conversation>")
+        cwd = P.CACHE / "summaries"; cwd.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run([CLAUDE_CLI, "-p", "--no-session-persistence", "--model", "claude-haiku-4-5-20251001", "--output-format", "text", prompt],
+                           capture_output=True, text=True, timeout=120, cwd=str(cwd))
+        title = " ".join((r.stdout or "").strip().splitlines()[:1]).strip().strip('"\'').rstrip(".").strip()
+        if r.returncode == 0 and 2 < len(title) <= 100:
+            DB.session_title(sid, title); fslog(f"session titled {sid[:8]}: {title}")
+        else:
+            fslog(f"session title not written for {sid[:8]}: {(r.stderr or r.stdout).strip()[-160:]}")
+    except Exception as e:
+        fslog(f"session title failed {sid[:8]}: {e}")
+    finally:
+        with _SUMM["lock"]:
+            _SUMM["busy"].discard(sid)
+
+
 def read_cards(cpos):
     """Cards appended by the tools (cache/cards.jsonl) from byte offset cpos. Returns (cards, new_pos)."""
     if not CARDS.exists():
@@ -798,7 +841,7 @@ def restore_requests():
                 req = json.loads(row.get("meta") or "{}")
             except Exception:
                 req = {}
-            if row.get("kind") in ("trash", "kill", "setting") and req.get("id") == row["id"]:
+            if row.get("kind") in ("trash", "kill", "setting", "session") and req.get("id") == row["id"]:
                 PENDING.append(req)
             else:
                 DB.approval_expire(row["id"])
@@ -886,6 +929,9 @@ def fs_approve(rid, ok):
     if not ok:
         fslog(f"rejected {req['id']}: {req['src']}"); return {"ok": True, "done": "rejected"}
     src = req["src"]
+    if req.get("kind") == "session":                                    # the agent asked; the owner said yes: off the list, its lines kept
+        done = DB.session_delete(req.get("session", "")); fslog(f"session deleted {req['id']}: {src} (approved by the owner)")
+        return {"ok": bool(done), "done": f"deleted the session: {src}" if done else "", "error": "" if done else "no such session"}
     if req.get("kind") == "click":
         act = req.get("action") or {}
         verb = {"click": "c", "double": "dc", "right": "rc"}.get(act.get("kind"), "c")
@@ -1902,7 +1948,15 @@ class Handler(BaseHTTPRequestHandler):
             items = [{"id": r["id"], "role": r["role"], "text": r["text"], "t": (r["clock"] or "")[:5], "meta": r["meta"], "at": r["t"]} for r in rows]
             self._json({"items": items, "pos": LOG.stat().st_size if LOG.exists() else 0, "cpos": CARDS.stat().st_size if CARDS.exists() else 0, "session": current_session()})
         elif path == "/sessions":
-            self._json({"sessions": DB.sessions(), "current": current_session()})
+            q = dict(urllib.parse.parse_qsl(query)); cur = current_session(); rows = DB.sessions()
+            try:
+                summarise_sessions(rows, cur)
+            except Exception:
+                pass
+            out = {"sessions": rows, "current": cur}
+            if q.get("deleted"):
+                out["deleted"] = DB.sessions(deleted=True)
+            self._json(out)
         elif path == "/approvals":
             self._json({"approvals": DB.approvals()})
         elif path == "/events":
@@ -1956,7 +2010,7 @@ class Handler(BaseHTTPRequestHandler):
             dst = HOME / "barehands" / "media" / ("models" if Path(name).suffix.lower() in (".glb", ".gltf") else "misc") / name
             dst.write_bytes(self.rfile.read(n))
             return self._json({"ok": True, "path": str(dst)})
-        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star", "/agents"):
+        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star", "/agents", "/sessions"):
             return self._json({"error": "not found"}, 404)
         # localhost page only: refuse cross-site posts
         origin = self.headers.get("Origin", "")
@@ -2034,6 +2088,38 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/ask":
             r = ask_live(text, timeout=int(body.get("timeout", 240)))
             return self._json({"ok": r is not None, "reply": r or "", "live": FIFO.exists()})
+        if self.path == "/sessions":                                  # the Sessions page, and the agent's sessions.sh
+            cur = current_session()
+            if body.get("request_delete"):                            # the agent asks; the owner decides on the console or Telegram
+                sid = DB.session_find(str(body["request_delete"]))
+                if not sid:
+                    return self._json({"ok": False, "error": "no such session (sessions.sh list shows them)"}, 404)
+                if sid == cur:
+                    return self._json({"ok": False, "error": "that is the session in use: it cannot be deleted while it is on"}, 400)
+                row = next((s for s in DB.sessions() + DB.sessions(deleted=True) if s["id"] == sid), None); title = (row or {}).get("title") or sid[:8]
+                rid = f"{int(time.time())}-{len(PENDING) + 1}"
+                file_request({"id": rid, "kind": "session", "src": title, "session": sid, "why": str(body.get("why", "")), "at": time.time()})
+                fslog(f"session deletion requested {rid}: {title} ({body.get('why', '')})")
+                try:
+                    subprocess.Popen([str(HOME / "backtalk" / ".venv" / "bin" / "python"), str(HERE / "telegram.py"), "send",
+                                      f"{AGENT} wants to delete a session: {title}\n{body.get('why', '')}\nReply 'approve' or 'reject' (or use the console)."],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+                return self._json({"ok": True, "pending": rid, "done": "waiting for the owner's approval"})
+            ref = body.get("delete") or body.get("restore") or body.get("title")
+            sid = DB.session_find(str(ref)) if ref else None
+            if not sid:
+                return self._json({"ok": False, "error": "no such session"}, 404)
+            if body.get("delete") or body.get("restore"):             # the owner's own hand, proven the way an approval is: an unlocked console
+                if has_verifier() and not unlocked(body, self.headers):
+                    return self._json({"ok": False, "needs_unlock": True, "error": "deleting a session needs you: unlock with your PIN (or your face)"}, 403)
+                if body.get("delete") and sid == cur:
+                    return self._json({"ok": False, "error": "that is the session in use: start a new one first"}, 400)
+                done = DB.session_delete(sid) if body.get("delete") else DB.session_restore(sid)
+                fslog(f"session {'deleted' if body.get('delete') else 'restored'} by the owner: {sid[:8]}")
+                return self._json({"ok": bool(done)})
+            return self._json({"ok": DB.session_title(sid, str(body.get("text", "")))})
         if self.path == "/agents":                                    # the Agents page: archive a finished delegation off the chart, or all of them
             want = body.get("archive")
             done = {a["id"] for a in agents_snapshot(light=True) if a["status"] != "active"}
