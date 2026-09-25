@@ -81,6 +81,7 @@
               "20-console/eyes",
               "20-console/browser",
               "20-console/agents",
+              "20-console/sessions",
               "20-console/on-your-phone"
             ]
           },
@@ -270,6 +271,10 @@
     {
       "source": "/20-console/routines-and-reports.md",
       "destination": "/20-console/routines-and-reports"
+    },
+    {
+      "source": "/20-console/sessions.md",
+      "destination": "/20-console/sessions"
     },
     {
       "source": "/20-console/the-globe.md",

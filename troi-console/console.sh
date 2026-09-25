@@ -1,7 +1,7 @@
 #!/bin/bash
 # The agent's remote control for its own console (http://localhost:3100): each command becomes a directive the console
 # follows on whichever page is open, or (*) a setting, which the server guards like any other.
-#   console.sh go <place>               conversation library modes routines reports approvals eyes browser agents face hands files apps vault
+#   console.sh go <place>               conversation library modes routines reports approvals eyes browser agents sessions face hands files apps vault
 #   console.sh view face|hands|files|apps|vault   a full-window view: the face, the hands board, a galaxy, the vault wall
 #   console.sh vault show|clear         the Vault view (the vault as a wall of cards) / back to the face
 #   console.sh files "<folder>"         open that folder as a galaxy in the Files view

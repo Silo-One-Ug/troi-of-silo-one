@@ -1,7 +1,7 @@
 ---
 title: On your phone
 description: The console as an app on your phone, and the three ways to reach Troi from it, Tailscale first.
-order: 10
+order: 11
 ---
 
 Open the console's address on your phone and it lays itself out as an app:

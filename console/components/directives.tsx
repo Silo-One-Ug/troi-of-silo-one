@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { eget, emit, setTalkShape } from "@/lib/edge";
 import { isMobile } from "@/lib/mobile";
 
-const PLACES = ["conversation", "library", "modes", "routines", "reports", "approvals", "eyes", "browser", "agents", "face", "hands", "files", "apps", "vault"];
+const PLACES = ["conversation", "library", "modes", "routines", "reports", "approvals", "eyes", "browser", "agents", "sessions", "face", "hands", "files", "apps", "vault"];
 type D = Record<string, any> & { seq: number };
 
 function toGalaxy(msg: any, tries = 8) {                       // the galaxy frame may still be loading after a page change

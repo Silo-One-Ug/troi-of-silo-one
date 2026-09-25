@@ -4,7 +4,7 @@
 // way back to the welcome. Nothing the desktop can do is missing here.
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, ChevronRight, Clock, Eye, FileText, Globe, Lock, Monitor, Moon, Network, SlidersHorizontal, Sparkles, Sun, Unlock } from "lucide-react";
+import { Bell, ChevronRight, Clock, Eye, FileText, Globe, History, Lock, Monitor, Moon, Network, SlidersHorizontal, Sparkles, Sun, Unlock } from "lucide-react";
 import { Switch } from "./ui/switch";
 import { notifyOn, setNotify } from "./alerts";
 import { LockButton, useUnlocked } from "./mobile/bars";
@@ -19,6 +19,7 @@ const PAGES = [
   { href: "/eyes", title: "Eyes", note: "What it sees, the hands switch, face ID", Icon: Eye },
   { href: "/browser", title: "Browser", note: "Its browser, live; take over when a site needs you", Icon: Globe },
   { href: "/agents", title: "Agents", note: "Who it has put on a task, and how each is doing", Icon: Network },
+  { href: "/sessions", title: "Sessions", note: "Every conversation in the record; a new one when you say so", Icon: History },
 ] as const;
 const THEMES: [Theme, string, any][] = [["system", "Auto", Monitor], ["light", "Light", Sun], ["dark", "Dark", Moon]];
 

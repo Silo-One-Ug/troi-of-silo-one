@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, Image as ImageIcon, LayoutGrid, MessageSquare, Network, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
+import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, History, Image as ImageIcon, LayoutGrid, MessageSquare, Network, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
 import { UnlockBox } from "./approvals";
 import { notifyOn, setNotify } from "./alerts";
 import { LockButton } from "./mobile/bars";
@@ -15,7 +15,7 @@ import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
 const GROUND = [["/face", "Face", Smile], ["/hands", "Hands board", Hand], ["/files", "Files galaxy", FolderOpen], ["/apps", "Apps galaxy", LayoutGrid], ["/vault", "Vault", Orbit]] as const;
-const PANES = [["/conversation", "Conversation", MessageSquare], ["/library", "Library", ImageIcon], ["/modes", "Modes", SlidersHorizontal], ["/routines", "Routines", Clock], ["/reports", "Reports", FileText], ["/approvals", "Approvals", ShieldCheck], ["/eyes", "Eyes", Eye], ["/browser", "Browser", Globe], ["/agents", "Agents", Network]] as const;
+const PANES = [["/conversation", "Conversation", MessageSquare], ["/library", "Library", ImageIcon], ["/modes", "Modes", SlidersHorizontal], ["/routines", "Routines", Clock], ["/reports", "Reports", FileText], ["/approvals", "Approvals", ShieldCheck], ["/eyes", "Eyes", Eye], ["/browser", "Browser", Globe], ["/agents", "Agents", Network], ["/sessions", "Sessions", History]] as const;
 
 function Wave({ samples, state }: { samples: number[]; state: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
