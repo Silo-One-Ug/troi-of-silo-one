@@ -243,6 +243,23 @@ def blob_star(ref, on=True):
         return c.execute(f"update blobs set starred=? where {col}=?", (1 if on else 0, int(ref) if col == "id" else str(Path(ref).expanduser().resolve()))).rowcount
 
 
+def blob_trash(refs):
+    """The owner's own hand on the Library: these pictures go to the macOS Trash (recoverable there) and their rows are
+    marked archived. Returns how many went."""
+    n = 0
+    for ref in refs:
+        with connect() as c:
+            col = "id" if str(ref).isdigit() else "path"
+            r = c.execute(f"select id, path from blobs where archived=0 and {col}=?", (int(ref) if col == "id" else str(ref),)).fetchone()
+        if not r:
+            continue
+        if not Path(r["path"]).exists() or _to_trash(r["path"]):
+            with connect() as c:
+                c.execute("update blobs set archived=1 where id=?", (r["id"],))
+            n += 1
+    return n
+
+
 def _to_trash(path):
     """Finder's move to the Trash: recoverable until the owner empties it."""
     r = subprocess.run(["osascript", "-e", f'tell application "Finder" to delete POSIX file "{path}"'], capture_output=True, text=True, timeout=30)

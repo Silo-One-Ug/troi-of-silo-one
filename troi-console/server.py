@@ -2010,7 +2010,7 @@ class Handler(BaseHTTPRequestHandler):
             dst = HOME / "barehands" / "media" / ("models" if Path(name).suffix.lower() in (".glb", ".gltf") else "misc") / name
             dst.write_bytes(self.rfile.read(n))
             return self._json({"ok": True, "path": str(dst)})
-        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star", "/agents", "/sessions"):
+        if self.path not in ("/say", "/settings", "/board", "/show", "/ui", "/fs", "/approve", "/app", "/open", "/write", "/pending-click", "/ask", "/routines", "/unlock", "/pending-setting", "/face-verify", "/look", "/browser", "/agent", "/keychain", "/setup/profile", "/setup/vault", "/setup/services", "/setup/backup", "/setup/finish", "/star", "/agents", "/sessions", "/images"):
             return self._json({"error": "not found"}, 404)
         # localhost page only: refuse cross-site posts
         origin = self.headers.get("Origin", "")
@@ -2199,6 +2199,14 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass
             return self._json({"ok": True, "voice": restart_voice()})
+        if self.path == "/images":                                    # the Library's bin: the owner's own hand, proven the way an approval is
+            refs = [str(x) for x in (body.get("delete") or []) if x is not None][:500]
+            if not refs:
+                return self._json({"ok": False, "error": "nothing to delete"}, 400)
+            if has_verifier() and not unlocked(body, self.headers):
+                return self._json({"ok": False, "needs_unlock": True, "error": "deleting pictures needs you: unlock with your PIN (or your face)"}, 403)
+            n = DB.blob_trash(refs); fslog(f"pictures to the Trash by the owner: {n} of {len(refs)}")
+            return self._json({"ok": n > 0, "deleted": n, "error": "" if n else "nothing went: already gone, or not in the index"})
         if self.path == "/star":                                      # keep a capture past its retention (or let it go again)
             n = DB.blob_star(str(body.get("id") or body.get("path") or ""), bool(body.get("on", True)))
             return self._json({"ok": bool(n)})
