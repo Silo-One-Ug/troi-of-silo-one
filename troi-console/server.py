@@ -1543,7 +1543,7 @@ class Handler(BaseHTTPRequestHandler):
         # the preflight: end_headers() adds Access-Control-Allow-Origin for this Mac's own pages; it must not be sent twice
         # (a browser refuses a duplicated origin header, and every JSON POST from the console then fails without a word)
         self.send_response(204)
-        for k, v in (("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization"), ("Access-Control-Max-Age", "600")):
+        for k, v in (("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Filename, X-Kind"), ("Access-Control-Max-Age", "600")):
             self.send_header(k, v)
         self.end_headers()
 

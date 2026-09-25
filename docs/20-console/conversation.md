@@ -31,19 +31,32 @@ The window takes the console's full width; the words keep a reading column in th
 - Scroll up to read and the page stays where you are; a **Latest** pill (with a count of what has
   arrived meanwhile) takes you back to the end.
 
+## The composer
+
+On the desktop the composer is one card. The words go on top; under them the **+** opens a menu
+(add files or photos, take a screenshot of the Mac, point at a file with `@`), the clip is a
+shortcut to files and photos, and on the right stand the model and the effort in use (say "switch
+to the deep model" or "set effort to high" to change them), the microphone for a voice note, and
+the arrow that sends. While a reply is under way the arrow becomes **Stop**.
+
 ## Files
 
 A file can go with a line, and the agent reads it before it answers:
 
 - **Point at a file on the Mac.** Type `@` and the picker lists your folders (the file roots and the
   vault); keep typing to search by name, ↑ ↓ to move, Enter to pick. The line carries the file's
-  path as `@/path/to/file.xlsx`; a folder works too. - **Attach a file.** The clip opens the file
-  chooser (on a phone, Photos and Files); a file dropped on the composer or pasted into it is
-  attached the same way. It is uploaded into `data/blobs/uploads/` on the Mac, shown as a chip until
-  you send (× leaves it out), and travels as the same `@` mention. - **What the agent does with
-  it.** It reads every mentioned file before answering: text, code, pictures and PDFs directly;
-  spreadsheets (xlsx as tables, csv), slides and Word documents through `troi-console/read.py`,
-  which prints them as text. Say what you want done with it in the same line.
+  path as `@/path/to/file.xlsx`; a folder works too.
+- **Attach a file or a photo.** The + menu or the clip opens the file chooser (on a phone, Photos
+  and Files); a file dropped on the composer or pasted into it is attached the same way. A photo
+  shows as its thumbnail above the words, any other file as a small card with its type and size,
+  while it uploads into `data/blobs/uploads/` on the Mac; × leaves one out. It travels as the same
+  `@` mention.
+- **A screenshot.** "Take a screenshot" in the + menu captures the Mac's screen through the agent's
+  own eyes and attaches it like a photo.
+- **What the agent does with it.** It reads every mentioned file before answering: text, code,
+  pictures and PDFs directly; spreadsheets (xlsx as tables, csv), slides and Word documents through
+  `troi-console/read.py`, which prints them as text. Say what you want done with it in the same
+  line.
 
 Pictures you attach also appear in the Library under Uploads.
 

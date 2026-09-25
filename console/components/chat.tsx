@@ -6,17 +6,19 @@
 // straight on the page, Markdown rendered, with a copy button and the time under each. While the agent works, one
 // line shows the tool in its hands and what it is on (the command, the file, the search, the page); each step takes
 // the last one's place, and when the reply comes the line settles into a count of the steps, opened with a click.
-// Files travel as @ mentions: "@" in the composer picks a file on the Mac (the file roots), and a file attached,
-// dropped or pasted is uploaded to data/blobs/uploads and mentioned the same way; the agent reads what it is pointed at.
-// On a phone the composer is a messenger's: the field grows with the lines, the microphone stands where the send
-// button will be until there are words, and a voice note goes to the agent's own ears (POST /voice) and comes back
-// as the line it heard.
+// The composer is one card: what is attached shows above the words (a photo as its thumbnail, a file as a small card),
+// the + opens a menu (files or photos, a screenshot of the Mac, a file pointed at with @), the model and the effort
+// stand on the right with the microphone and the send arrow, which becomes Stop while a reply is under way. Files
+// travel as @ mentions: "@" picks a file on the Mac (the file roots); a file attached, dropped or pasted is uploaded
+// to data/blobs/uploads and mentioned the same way; the agent reads what it is pointed at. On a phone the composer is
+// a messenger's: the field grows with the lines, the microphone stands where the send button will be until there are
+// words, and a voice note goes to the agent's own ears (POST /voice) and comes back as the line it heard.
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as RKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AppWindow, ArrowDown, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, FilePen, FilePlus, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Mail, Mic, Paperclip, PictureInPicture2, Plug, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
+import { AppWindow, ArrowDown, ArrowUp, AtSign, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Loader2, Mail, Mic, Monitor, Paperclip, PictureInPicture2, Plug, Plus, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
@@ -28,7 +30,7 @@ import { cn } from "@/lib/utils";
 type Step = { id: string; tool: string; label: string; detail?: string };
 type Msg = { id: string; role: "user" | "assistant" | "note" | "ignored" | "headlines" | "pictures" | "ui" | "steps"; text: string; t?: string; live?: boolean; data?: any; steps?: Step[]; open?: boolean };
 type Found = { name: string; path: string; kind: "dir" | "file"; ext: string };
-type Attached = { name: string; path: string };
+type Attached = { id: string; name: string; path: string; kind: "image" | "file"; url?: string; size?: number; uploading?: boolean };
 type Rec = { start: number; media: MediaRecorder; chunks: Blob[]; stream: MediaStream };
 const nid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const stamp = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -97,11 +99,18 @@ const short = (p: string) => p.replace(/^\/Users\/[^/]+/, "~");
 const base = (p: string) => p.replace(/\/+$/, "").split("/").pop() || p;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const initials = (n: string) => n.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+const IMAGE = /\.(png|jpe?g|gif|webp|heic|heif|bmp|tiff?|avif|svg)$/i;
+const SHEET = /\.(xlsx?|xlsm|csv|numbers|tsv)$/i;
+const kb = (n?: number) => !n ? "" : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
+const MODEL: Record<string, string> = { "claude-sonnet-5": "Sonnet 5", "claude-opus-5-5": "Opus 5.5", "claude-haiku-4-5-20251001": "Haiku 4.5", "claude-fable-5-1": "Fable 5.1" };
+const modelName = (id: string) => MODEL[id] || (() => { const m = /^claude-([a-z]+)-(\d+)(?:-(\d+))?/.exec(id || ""); return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)} ${m[2]}${m[3] ? "." + m[3] : ""}` : id; })();
 function WithMentions({ text }: { text: string }) {          // a line as written, its @ mentions shown as small file chips
   const parts: ReactNode[] = []; const re = new RegExp(MENTION.source, "g"); let last = 0; let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     const p = m[1] || m[2]; parts.push(text.slice(last, m.index));
-    parts.push(<span key={m.index} title={p} className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background/40 px-1.5 py-0.5 align-middle text-xs"><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{base(p)}</span></span>);
+    const nm = base(p).replace(/^\d{4}-\d{2}-\d{2}-\d{6}-/, "");             // an upload's name, without the stamp the Mac keeps it under
+    parts.push(<span key={m.index} title={p} className="mx-0.5 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border/60 bg-background/40 px-1.5 py-0.5 align-middle text-xs">
+      {IMAGE.test(p) ? <img src={img(p)} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" onError={e => { e.currentTarget.style.display = "none"; }} /> : <FileText className="h-3 w-3 shrink-0" />}<span className="truncate">{nm}</span></span>);
     last = m.index + m[0].length;
   }
   parts.push(text.slice(last));
@@ -140,18 +149,33 @@ function Steps({ m, onToggle }: { m: Msg; onToggle: () => void }) {
       {m.open && <ul className="mt-1 space-y-0.5 border-l border-border pl-3">{steps.map(s => { const { Icon } = kind(s.tool); return <li key={s.id} className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0" /><span className="shrink-0">{s.label}</span><Detail d={s.detail} /></li>; })}</ul>}
     </div>);
 }
+/** What is attached, before it is sent: a photo as its thumbnail, anything else as a small card; × leaves it out. */
+function Attachment({ f, onRemove }: { f: Attached; onRemove: () => void }) {
+  const [broken, setBroken] = useState(false);
+  const Icon = SHEET.test(f.name) ? FileSpreadsheet : FileText;
+  const pic = f.kind === "image" && f.url && !broken;
+  return (
+    <div title={f.name} className={cn("relative shrink-0", pic ? "h-[72px] w-[72px]" : "flex max-w-[240px] items-center gap-2.5 rounded-xl border border-border bg-surface/80 py-2 pl-2.5 pr-3")}>
+      {pic ? <img src={f.url} alt={f.name} onError={() => setBroken(true)} className="h-full w-full rounded-xl border border-border object-cover" />
+        : <><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/60 text-accent-foreground"><Icon className="h-4 w-4" /></span>
+          <span className="min-w-0"><span className="block truncate text-xs font-medium">{f.name}</span><span className="block text-[10px] text-muted-foreground">{f.uploading ? "uploading…" : [f.name.split(".").pop()?.toUpperCase(), kb(f.size)].filter(Boolean).join(" · ")}</span></span></>}
+      {f.uploading && pic && <span className="absolute inset-0 grid place-items-center rounded-xl bg-background/50"><Loader2 className="h-4 w-4 animate-spin" /></span>}
+      <button type="button" aria-label={`Leave ${f.name} out`} onClick={onRemove} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground"><X className="h-3 w-3" /></button>
+    </div>);
+}
 
 export function Chat({ name, embedded = false, onState }: { name: string; embedded?: boolean; onState?: (s: string) => void }) {
   const agent = useMemo(() => new HttpAgent({ url: edgeUrl() + "/agent", threadId: "console" }), []);
-  const [msgs, setMsgs] = useState<Msg[]>([]); const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [state, setState] = useState("off"); const [hint, setHint] = useState(""); const [owner, setOwner] = useState("");
-  const [files, setFiles] = useState<Attached[]>([]); const [uploading, setUploading] = useState(0); const [drag, setDrag] = useState(false);
+  const [msgs, setMsgs] = useState<Msg[]>([]); const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [state, setState] = useState("off"); const [hint, setHint] = useState("");
+  const [cfg, setCfg] = useState<{ owner: string; model: string; effort: string }>({ owner: "", model: "", effort: "" });
+  const [files, setFiles] = useState<Attached[]>([]); const [drag, setDrag] = useState(false); const [menu, setMenu] = useState(false); const [shooting, setShooting] = useState(false);
   const [pick, setPick] = useState<{ start: number; q: string; items: Found[]; i: number; loading: boolean } | null>(null);   // the @ picker: where the mention starts, what is typed so far, what was found
-  const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0);
+  const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0); const [hearing, setHearing] = useState(false);
   const [below, setBelow] = useState(0); const [tail, setTail] = useState(true);        // at the end of the conversation, or reading above; lines that arrived meanwhile
   const scroller = useRef<HTMLDivElement>(null); const atBottom = useRef(true); const seen = useRef(0);
   const pos = useRef(0), cpos = useRef(0), live = useRef<{ id: string; final: string[] } | null>(null), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
   const liveStep = useRef<{ id: string; name: string; detail: string } | null>(null), args = useRef<Record<string, string>>({});   // the step under way in a spoken turn; a typed turn's tool inputs as they stream
-  const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0);
+  const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0), menuRef = useRef<HTMLDivElement>(null);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
   const quiet = (m: Msg) => m.role === "note" || m.role === "ignored" || m.role === "steps";
   useEffect(() => {                                              // follow the conversation only while the owner is at its end
@@ -161,16 +185,20 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   const onScroll = () => { const el = scroller.current; if (!el) return; const near = el.scrollHeight - el.scrollTop - el.clientHeight < 48; atBottom.current = near; setTail(near); if (near) { seen.current = msgs.length; setBelow(0); } };
   const toBottom = () => { atBottom.current = true; setTail(true); end.current?.scrollIntoView({ behavior: "smooth" }); seen.current = msgs.length; setBelow(0); };
   useEffect(() => { onState?.(state); }, [state, onState]);
-  useEffect(() => { const el = input.current; if (!el) return; if (!text) { el.style.height = ""; return; } el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + (el.offsetHeight - el.clientHeight), 160) + "px"; }, [text]);   // the field grows with the lines, up to five or so; empty, it is the one line the styles give it
+  useEffect(() => { const el = input.current; if (!el) return; if (!text) { el.style.height = ""; return; } el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight + (el.offsetHeight - el.clientHeight), 200) + "px"; }, [text]);   // the field grows with the lines, up to seven or so; empty, it is the one line the styles give it
   useEffect(() => { if (!rec) { setRecT(0); return; } const t = setInterval(() => setRecT(Math.floor((Date.now() - rec.start) / 1000)), 500); return () => clearInterval(t); }, [rec]);
-  useEffect(() => {                                               // Esc cuts a reply off, as the Stop button does
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented && state && state !== "idle" && state !== "off") epost("/say", { text: "stop" }); };
+  useEffect(() => {                                               // Esc cuts a reply off, as the Stop button does; it also closes the + menu
+    const k = (e: KeyboardEvent) => { if (e.key !== "Escape" || e.defaultPrevented) return; if (menu) { setMenu(false); return; } if (state && state !== "idle" && state !== "off") epost("/say", { text: "stop" }); };
     addEventListener("keydown", k); return () => removeEventListener("keydown", k);
-  }, [state]);
+  }, [state, menu]);
+  useEffect(() => {                                               // the + menu closes on a click anywhere else
+    if (!menu) return; const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(false); };
+    addEventListener("mousedown", h); return () => removeEventListener("mousedown", h);
+  }, [menu]);
   useEffect(() => {
     let stop = false;
     (async () => {
-      eget("/config").then(c => setOwner(c.owner || "")).catch(() => {});
+      eget("/config").then(c => setCfg({ owner: c.owner || "", model: c.model || "", effort: c.effort || "" })).catch(() => {});
       try { const h = await eget("/history?limit=120"); setMsgs(group(h.items.map(fromRow).filter(Boolean) as Msg[])); pos.current = h.pos || 0; cpos.current = h.cpos || 0; } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
       const poll = async () => {
         if (stop) return;
@@ -213,20 +241,26 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     return () => { stop = true; };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- files: the @ picker over the file roots, and uploads (the clip, a drop, a paste) into data/blobs/uploads
-  const onChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value; setText(v);
-    const caret = e.target.selectionStart ?? v.length; let start = -1;
-    if (pick && v[pick.start] === "@" && caret > pick.start && !v.slice(pick.start + 1, caret).includes("@")) start = pick.start;   // the picker is open: everything since the @ is the search, spaces included
-    else { const m = /(^|\s)@([^\s@"]*)$/.exec(v.slice(0, caret)); if (m) start = caret - m[2].length - 1; }
-    if (start < 0) { setPick(null); return; }
-    const q = v.slice(start + 1, caret);
+  // ---- files: the @ picker over the file roots, and uploads (the clip, a drop, a paste, a screenshot) into data/blobs/uploads
+  const search = (start: number, q: string) => {                  // the picker: what is typed after the @, looked up on the Mac
     setPick(p => ({ start, q, items: p?.items || [], i: 0, loading: true }));
     clearTimeout(findT.current); const n = ++findN.current;
     findT.current = setTimeout(async () => {
       let items: Found[] = []; try { items = (await eget(`/find?q=${encodeURIComponent(q)}`)).items || []; } catch {}
       if (n === findN.current) setPick(p => p ? (items.length ? { ...p, items, i: 0, loading: false } : null) : p);   // nothing found: the @ stays as typed, Enter sends
     }, 120);
+  };
+  const onChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value; setText(v);
+    const caret = e.target.selectionStart ?? v.length; let start = -1;
+    if (pick && v[pick.start] === "@" && caret > pick.start && !v.slice(pick.start + 1, caret).includes("@")) start = pick.start;   // the picker is open: everything since the @ is the search, spaces included
+    else { const m = /(^|\s)@([^\s@"]*)$/.exec(v.slice(0, caret)); if (m) start = caret - m[2].length - 1; }
+    if (start < 0) { setPick(null); return; }
+    search(start, v.slice(start + 1, caret));
+  };
+  const pointAt = () => {                                          // the menu's "@": an @ at the end of the words, the picker open on the file roots
+    const el = input.current; const v = text.length && !/\s$/.test(text) ? text + " @" : text + "@"; setText(v); setMenu(false);
+    requestAnimationFrame(() => { if (el) { el.focus(); el.setSelectionRange(v.length, v.length); } }); search(v.length - 1, "");
   };
   const choose = (it: Found) => {
     if (!pick) return;
@@ -244,22 +278,32 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     }
     if (e.key === "Enter" && !e.shiftKey && !mobile) { e.preventDefault(); send(text); }   // on a phone Return makes a new line, as in a messenger; the plane sends
   };
+  const drop = (id: string) => setFiles(fs => { const f = fs.find(x => x.id === id); if (f?.url && f.url.startsWith("blob:")) URL.revokeObjectURL(f.url); return fs.filter(x => x.id !== id); });
   const upload = async (list: FileList | File[] | null) => {
-    const arr = Array.from(list || []); if (!arr.length) return;
+    const arr = Array.from(list || []); if (!arr.length) return; setMenu(false);
     for (const f of arr) {
       if (f.size > 60_000_000) { setHint(`${f.name} is over 60 MB.`); continue; }
-      setUploading(n => n + 1);
+      const id = nid(); const isPic = f.type.startsWith("image/") || IMAGE.test(f.name);
+      setFiles(fs => [...fs, { id, name: f.name, path: "", kind: isPic ? "image" : "file", url: isPic ? URL.createObjectURL(f) : undefined, size: f.size, uploading: true }]);   // shown at once, as it goes up
       try {
         const r = await fetch(edgeUrl() + "/upload", { method: "POST", headers: { "X-Filename": f.name.normalize("NFKD").replace(/[^\x20-\x7E]/g, "_"), "X-Kind": "uploads", "Content-Type": "application/octet-stream" }, body: f });
         const d = await r.json().catch(() => ({}));
-        if (d.ok && d.path) { setFiles(fs => fs.some(x => x.path === d.path) ? fs : [...fs, { name: f.name, path: d.path }]); setHint(""); }
-        else setHint(d.error ? `${f.name}: ${d.error}.` : `${f.name} did not upload.`);
-      } catch { setHint(`${f.name} did not upload: Troi's server is not answering.`); }
-      finally { setUploading(n => n - 1); }
+        if (d.ok && d.path) { setFiles(fs => fs.map(x => x.id === id ? { ...x, path: d.path, uploading: false } : x)); setHint(""); }
+        else { drop(id); setHint(d.error ? `${f.name}: ${d.error}.` : `${f.name} did not upload.`); }
+      } catch { drop(id); setHint(`${f.name} did not upload: Troi's server is not answering.`); }
     }
   };
+  const screenshot = async () => {                                 // the Mac's screen, captured by the agent's own eyes and attached
+    setMenu(false); setShooting(true);
+    try {
+      const d = await epost("/look", { what: "screen" });
+      if (d.ok && d.path) { setFiles(fs => [...fs, { id: nid(), name: base(d.path), path: d.path, kind: "image", url: img(d.path) }]); setHint(""); }
+      else setHint(d.error ? `No screenshot: ${d.error}` : "No screenshot.");
+    } catch { setHint("No screenshot: Troi's server is not answering."); }
+    finally { setShooting(false); }
+  };
 
-  // ---- a voice note: the phone's microphone, the agent's own ears, the words sent as the line
+  // ---- a voice note: the microphone, the agent's own ears, the words sent as the line
   const canMic = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
   const startRec = async () => {
     if (!canMic) { setHint(typeof window !== "undefined" && !window.isSecureContext ? "The microphone needs an https address on a phone: see On your phone in the docs, or send a voice note on Telegram." : "This browser cannot record."); return; }
@@ -278,21 +322,23 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   };
   const sendVoice = async (blob: Blob) => {
     if (blob.size < 2000) { setHint("Too short to hear."); return; }
-    setUploading(n => n + 1); setHint("Listening…");
+    setHearing(true); setHint("Listening…");
     try {
       const ext = blob.type.includes("mp4") ? "m4a" : blob.type.includes("ogg") ? "ogg" : "webm";
       const r = await fetch(edgeUrl() + "/voice", { method: "POST", headers: { "X-Filename": `note.${ext}`, "Content-Type": blob.type || "application/octet-stream" }, body: blob });
       const d = await r.json().catch(() => ({}));
       if (d.ok && d.text) { setHint(""); await send(d.text); } else setHint(d.error ? String(d.error) : "I could not make out any words.");
     } catch { setHint("Troi's server is not answering."); }
-    finally { setUploading(n => n - 1); }
+    finally { setHearing(false); }
   };
 
   async function send(t: string) {
-    const full = [t.trim(), ...files.map(f => mention(f.path))].filter(Boolean).join(" ");   // attached files go as @ mentions, after the words
+    const ready = files.filter(f => f.path && !f.uploading);
+    const full = [t.trim(), ...ready.map(f => mention(f.path))].filter(Boolean).join(" ");   // attached files go as @ mentions, after the words
     if (!full || busy) return;
     if (busyRef.current) { try { agent.abortRun(); } catch {} }                            // a reply still streaming: let it go; its sentences come through the record
-    setBusy(true); busyRef.current = true; setText(""); setFiles([]); setPick(null); setMsgs(ms => [...settle(ms), { id: nid(), role: "user", text: full, t: stamp() }]); skip.current.add("you|" + full.slice(0, 60));
+    for (const f of ready) if (f.url && f.url.startsWith("blob:")) URL.revokeObjectURL(f.url);
+    setBusy(true); busyRef.current = true; setText(""); setFiles(fs => fs.filter(f => f.uploading)); setPick(null); setMenu(false); setMsgs(ms => [...settle(ms), { id: nid(), role: "user", text: full, t: stamp() }]); skip.current.add("you|" + full.slice(0, 60));
     agent.messages = [{ id: nid(), role: "user", content: full }];
     const said: string[] = []; const free = setTimeout(() => setBusy(false), 6000);          // the field is free once the run has started, or after six seconds whatever happens
     try {
@@ -312,9 +358,21 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     for (const s of said) for (const sent of s.split(/(?<=[.!?])\s+/)) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
-  const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off"); const something = text.trim().length > 0 || files.length > 0;
-  const field = "w-full border border-border bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
+  const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off");
+  const uploading = files.some(f => f.uploading) || hearing; const something = text.trim().length > 0 || files.some(f => f.path && !f.uploading);
   const col = embedded ? "w-full" : "mx-auto w-full max-w-[880px]";                       // the window is the page's full width; the words keep a reading column
+  const round = "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors";
+  const previews = files.length > 0 && <div className={cn("flex flex-wrap gap-2.5", mobile ? "pb-2" : "px-3 pt-3")}>{files.map(f => <Attachment key={f.id} f={f} onRemove={() => drop(f.id)} />)}</div>;
+  const recording = rec && (
+    <div className={cn("flex min-w-0 flex-1 items-center gap-2.5", mobile ? "h-11 rounded-full border border-border bg-background px-4" : "h-10 px-4")}>
+      <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" /><span className="font-mono text-sm tabular-nums">{mmss(recT)}</span><span className="truncate text-sm text-muted-foreground">Recording</span>
+      <button type="button" aria-label="Throw the recording away" onClick={() => stopRec(false)} className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+    </div>);
+  const menuItems = [
+    { Icon: Paperclip, label: "Add files or photos", onClick: () => { setMenu(false); fileIn.current?.click(); } },
+    { Icon: Monitor, label: shooting ? "Taking a screenshot…" : "Take a screenshot", onClick: screenshot, disabled: shooting },
+    { Icon: AtSign, label: "Point at a file on the Mac", onClick: pointAt },
+  ];
   return (
     <div className={cn("flex h-full min-h-0 flex-col", embedded ? "" : "md:hairline")}>
       {/* the header is the desktop's: on a phone the top bar already says who is speaking and in what state */}
@@ -329,7 +387,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
               : m.role === "user" ? (
                 <motion.div key={m.id} {...rise} className="flex items-end justify-end gap-2">
                   <div className="max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap"><WithMentions text={m.text} /></span>{m.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{m.t}</span>}</div>
-                  <Avatar name={owner} />
+                  <Avatar name={cfg.owner} />
                 </motion.div>)
               : m.role === "assistant" ? (
                 <motion.div key={m.id} {...rise} className="min-w-0 text-[15px] leading-6 md:text-sm">
@@ -344,44 +402,59 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       {!tail && msgs.length > 0 && (
         <div className="pointer-events-none relative"><button type="button" onClick={toBottom} aria-label="Back to the latest" className="glass pointer-events-auto absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium shadow-lg">
           <ArrowDown className="h-4 w-4" />{below > 0 ? `${below} new` : "Latest"}</button></div>)}
-      {/* the composer: the clip, the field (with the @ picker above it), then the plane, or the microphone while the field is empty on a phone; Stop shows while a reply is under way */}
-      <form className={cn("relative border-t border-border p-2.5 md:p-3", drag && "bg-accent/40")} onSubmit={e => { e.preventDefault(); send(text); }}
+      {/* the composer. On the desktop, one card: what is attached, the words, then the + menu, the model, the microphone and the arrow (Stop while a reply is under way). On a phone, a messenger's row. */}
+      <form className={cn("relative", mobile ? "border-t border-border p-2.5" : "px-6 pb-4 pt-1")} onSubmit={e => { e.preventDefault(); if (rec) stopRec(true); else send(text); }}
         onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDrag(true); } }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files); }}>
         <div className={cn(col, "relative")}>
           {pick && pick.items.length > 0 && (
-            <div role="listbox" aria-label="Files on the Mac" className="absolute bottom-full left-0 right-0 z-20 mb-3 max-h-60 overflow-y-auto rounded-md border border-border bg-background/95 p-1 shadow-lg backdrop-blur md:mb-4">
+            <div role="listbox" aria-label="Files on the Mac" className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-60 overflow-y-auto rounded-xl border border-border bg-background/95 p-1 shadow-lg backdrop-blur">
               {pick.items.map((it, k) => (
                 <button type="button" role="option" aria-selected={k === pick.i} key={it.path} onMouseDown={e => { e.preventDefault(); choose(it); }} onMouseEnter={() => setPick(p => p ? { ...p, i: k } : p)}
-                  className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm", k === pick.i ? "bg-accent text-accent-foreground" : "text-foreground")}>
+                  className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm", k === pick.i ? "bg-accent text-accent-foreground" : "text-foreground")}>
                   {it.kind === "dir" ? <Folder className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
                   <span className="truncate">{it.name}</span><span className="ml-auto hidden max-w-[50%] truncate text-xs text-muted-foreground sm:block">{short(it.path).replace(/\/[^/]*$/, "")}</span>
                 </button>))}
             </div>)}
-          <div className="flex items-end gap-2">
-            <input ref={fileIn} type="file" multiple className="hidden" onChange={e => { upload(e.target.files); e.target.value = ""; }} />
-            {rec ? (
-              <div className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border bg-background px-4 md:h-9 md:rounded-sm">
-                <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500" /><span className="font-mono text-sm tabular-nums">{mmss(recT)}</span><span className="truncate text-sm text-muted-foreground">Recording</span>
-                <button type="button" aria-label="Throw the recording away" onClick={() => stopRec(false)} className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          <input ref={fileIn} type="file" multiple className="hidden" onChange={e => { upload(e.target.files); e.target.value = ""; }} />
+          {mobile ? (<>
+            {previews}
+            <div className="flex items-end gap-2">
+              {recording || (<>
+                <Button type="button" variant="outline" aria-label="Attach a file" title="Attach a file or a photo" disabled={uploading} onClick={() => fileIn.current?.click()} className="h-11 w-11 shrink-0 rounded-full p-0"><Paperclip className={cn("h-[18px] w-[18px]", uploading && "animate-pulse")} /></Button>
+                <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
+                  placeholder={`Message ${name}`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
+                  className="max-h-40 min-h-11 w-full flex-1 resize-none rounded-[22px] border border-border bg-background px-4 py-2.5 text-base leading-6 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" />
+              </>)}
+              {rec ? <Button type="submit" aria-label="Send the recording" className="h-11 w-11 shrink-0 rounded-full p-0"><Send className="h-5 w-5" /></Button>
+                : !something ? <Button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" className="h-11 w-11 shrink-0 rounded-full p-0"><Mic className="h-5 w-5" /></Button>
+                : <Button type="submit" disabled={busy || uploading} aria-label="Send" className="h-11 w-11 shrink-0 rounded-full p-0"><Send className="h-5 w-5" /></Button>}
+              {talking && <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off" aria-label="Stop the reply" className="h-11 w-11 shrink-0 rounded-full p-0"><Square className="h-4 w-4" /></Button>}
+            </div>
+          </>) : (
+            <div className={cn("rounded-2xl border bg-background/80 shadow-sm transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15", drag ? "border-primary bg-accent/30" : "border-border")}>
+              {previews}
+              {recording || <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
+                placeholder={`Type to ${name} · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
+                className="block max-h-[200px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-6 placeholder:text-muted-foreground focus:outline-none" />}
+              <div className="flex items-center gap-1 px-2 pb-2 pt-1">
+                <div ref={menuRef} className="relative">
+                  <button type="button" onClick={() => setMenu(v => !v)} aria-label="Add" aria-haspopup="menu" aria-expanded={menu} title="Add files or photos, a screenshot, a file on the Mac" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground", menu && "bg-accent/60 text-foreground")}><Plus className={cn("h-4 w-4 transition-transform", menu && "rotate-45")} /></button>
+                  {menu && (
+                    <div role="menu" className="absolute bottom-full left-0 z-30 mb-2 w-64 rounded-xl border border-border bg-background/95 p-1.5 shadow-xl backdrop-blur">
+                      {menuItems.map(it => <button key={it.label} type="button" role="menuitem" disabled={it.disabled} onClick={it.onClick} className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent/60 disabled:opacity-60"><it.Icon className="h-4 w-4 text-muted-foreground" />{it.label}</button>)}
+                    </div>)}
+                </div>
+                <button type="button" onClick={() => fileIn.current?.click()} aria-label="Attach a file" title="Attach a file or a photo: choose one, drop it here, or paste it" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><Paperclip className={cn("h-4 w-4", uploading && "animate-pulse")} /></button>
+                {cfg.model && <span className="ml-auto hidden items-center gap-1.5 pr-1 text-xs text-muted-foreground sm:flex" title={`The model and the effort. Say "switch to the deep model", "back to the fast model" or "set effort to high" to change them.`}><span className="font-medium text-foreground/80">{modelName(cfg.model)}</span>{cfg.effort && <span className="capitalize">{cfg.effort}</span>}</span>}
+                {!rec && <button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" title="A voice note: speak, then send it" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50", !cfg.model && "ml-auto")}><Mic className="h-4 w-4" /></button>}
+                {rec ? <button type="submit" aria-label="Send the recording" title="Send the recording" className={cn(round, "bg-primary text-primary-foreground hover:bg-primary/90")}><ArrowUp className="h-4 w-4" /></button>
+                  : talking && !something ? <button type="button" onClick={() => epost("/say", { text: "stop" })} aria-label="Stop the reply" title="Cut the reply off (Esc)" className={cn(round, "border border-border bg-background text-foreground hover:bg-accent/60")}><Square className="h-3.5 w-3.5" /></button>
+                  : <button type="submit" disabled={busy || uploading || !something} aria-label="Send" title="Send (Enter)" className={cn(round, "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground")}><ArrowUp className="h-4 w-4" /></button>}
               </div>
-            ) : (<>
-              <Button type="button" variant="outline" aria-label="Attach a file" title="Attach a file: choose one, drop it here, or paste it. Type @ to point at a file on the Mac." disabled={uploading > 0} onClick={() => fileIn.current?.click()} className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-9 md:rounded-sm"><Paperclip className={cn("h-[18px] w-[18px] md:h-4 md:w-4", uploading > 0 && "animate-pulse")} /></Button>
-              <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
-                placeholder={mobile ? `Message ${name}` : `Type to ${name} and press Enter · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
-                className={cn(field, "max-h-40 min-h-11 flex-1 resize-none rounded-[22px] px-4 py-2.5 text-base leading-6 md:min-h-9 md:rounded-sm md:px-3 md:py-1.5 md:text-sm")} />
-            </>)}
-            {rec ? <Button type="button" onClick={() => stopRec(true)} aria-label="Send the recording" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>
-              : mobile && !something ? <Button type="button" onClick={startRec} disabled={busy || uploading > 0} aria-label="Record a voice note" className="h-11 w-11 shrink-0 rounded-full p-0"><Mic className="h-5 w-5" /></Button>
-              : <Button type="submit" disabled={busy || uploading > 0 || !something} aria-label="Send" className="h-11 w-11 shrink-0 rounded-full p-0 md:h-9 md:w-auto md:rounded-sm md:px-4"><Send className="h-5 w-5 md:h-4 md:w-4" /><span className="hidden md:inline">Send</span></Button>}
-            <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off (Esc)" aria-label="Stop the reply" className={cn("h-11 w-11 shrink-0 rounded-full p-0 md:inline-flex md:h-9 md:w-auto md:rounded-sm md:px-3", talking ? "inline-flex" : "hidden")}><Square className="h-4 w-4" /></Button>
-          </div>
-          {files.length > 0 && <div className="flex flex-wrap gap-1.5 pt-2">{files.map(f => (
-            <span key={f.path} title={f.path} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"><FileText className="h-3 w-3 shrink-0" /><span className="truncate">{f.name}</span>
-              <button type="button" aria-label={`Leave ${f.name} out`} onClick={() => setFiles(fs => fs.filter(x => x.path !== f.path))} className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button></span>))}
-          </div>}
+            </div>)}
         </div>
       </form>
-      {hint && <div className={cn(col, "px-4 pb-3 text-xs text-muted-foreground")}>{hint}</div>}
+      {hint && <div className={cn(col, "px-4 pb-3 text-xs text-muted-foreground md:px-10")}>{hint}</div>}
     </div>
   );
 }
