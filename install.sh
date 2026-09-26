@@ -19,6 +19,7 @@ command -v claude >/dev/null && ok "Claude Code $(claude --version 2>/dev/null |
 echo "2. the voice line, the globe, face ID"
 ( cd "$ROOT/backtalk" && uv sync -q --inexact 2>/dev/null ) && ok "voice line environment" || die "the voice line environment did not build (cd backtalk && uv sync)"
 uv pip install -q --python "$ROOT/backtalk/.venv/bin/python" resemblyzer agora-python-server-sdk agora-token-builder webrtcvad numpy 2>/dev/null && ok "voice ID, calls, voice activity" || warn "voice ID / calls extras did not install"
+uv tool install -q workspace-mcp==1.29.0 2>/dev/null || uv tool install -q workspace-mcp 2>/dev/null   # the Google tool server, installed once: a fast, offline start for the brain (google.sh mcp)
 [ -x "$C/.venv-ring/bin/python" ] || uv venv -q "$C/.venv-ring" >/dev/null 2>&1
 uv pip install -q --python "$C/.venv-ring/bin/python" pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices 2>/dev/null && ok "the globe and the cursor guard" || warn "the globe environment did not install"
 if [ ! -x "$C/.venv-face/bin/python" ]; then
@@ -31,6 +32,7 @@ echo "3. the console and the agent's browser"
 
 echo "4. this Mac"
 chmod +x "$ROOT"/*.sh "$C"/*.sh "$C"/*.py 2>/dev/null
+git -C "$ROOT" config core.hooksPath .githooks 2>/dev/null                     # the pre-push checks: nothing red reaches main
 /usr/bin/python3 "$C/setup.py" render | sed 's/^/ /'
 "$C/patch-board.sh" >/dev/null 2>&1 && ok "board tools in place" || warn "the board tools did not copy"
 /usr/bin/python3 "$C/setup.py" services install | sed 's/^/ /'

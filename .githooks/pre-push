@@ -1,0 +1,27 @@
+#!/bin/bash
+# pre-push: the checks CI runs, run here first, so nothing red ever reaches main. Wired in by install.sh
+# (git config core.hooksPath .githooks). Skip once, knowingly, with SKIP_CHECKS=1.
+[ -n "$SKIP_CHECKS" ] && exit 0
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT" || exit 1
+remote="$1"; fail=0
+# what is being pushed: the files that differ between each pushed ref and its remote counterpart
+changed="$(while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue        # a deletion
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then base="$(git merge-base "$local_sha" origin/main 2>/dev/null || echo "$local_sha~20")"; else base="$remote_sha"; fi
+  git diff --name-only "$base" "$local_sha" 2>/dev/null
+done | sort -u)"
+[ -z "$changed" ] && exit 0
+echo "pre-push: checking what is about to go up"
+if echo "$changed" | grep -q -E "^docs/|^scripts/build-docs-nav.mjs$|^\.markdownlint-cli2\.jsonc$"; then
+  echo "  documentation: markdown style"; npx --yes markdownlint-cli2@0.23.2 >/tmp/pre-push-lint.log 2>&1 || { cat /tmp/pre-push-lint.log | grep -E "\.md:[0-9]+|Summary" | head -20; fail=1; }
+  echo "  documentation: published navigation"; node scripts/build-docs-nav.mjs --check >/tmp/pre-push-nav.log 2>&1 || { tail -5 /tmp/pre-push-nav.log; fail=1; }
+fi
+if echo "$changed" | grep -q -E "^console/.*\.(ts|tsx|css|json)$"; then
+  echo "  console: type check"; (cd console && npx tsc --noEmit -p tsconfig.json) >/tmp/pre-push-tsc.log 2>&1 || { head -20 /tmp/pre-push-tsc.log; fail=1; }
+fi
+for f in $(echo "$changed" | grep -E "^(troi-console|backtalk)/.*\.py$"); do
+  [ -f "$f" ] && { python3 -m py_compile "$f" 2>/dev/null || { echo "  $f does not compile"; fail=1; }; }
+done
+for f in $(echo "$changed" | grep -E "\.sh$"); do [ -f "$f" ] && { bash -n "$f" || { echo "  $f: shell syntax"; fail=1; }; }; done
+[ "$fail" = 0 ] && echo "pre-push: clean" || { echo "pre-push: STOP, fix the above before pushing (SKIP_CHECKS=1 git push … overrides, knowingly)"; }
+exit $fail
