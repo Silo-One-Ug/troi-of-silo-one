@@ -327,6 +327,16 @@ CONSOLE_VERBS = {
                   "ask for permission again"),
 }
 _EFFORTS = ("low", "medium", "high", "xhigh", "max")
+# troi-console: the brains by name ("switch to fable", "use opus"). The ONE list is
+# the config's "models" map (name -> model id, backtalk.json): a new model is one
+# line there and nowhere else; no name in the map, no verb.
+_MODEL_RE = re.compile(r"^(?:switch to the|use the|switch to|use|slash model|model) "   # longer lead-ins first
+                       r"([a-z0-9][a-z0-9 ]*?)(?: model)?$")
+
+
+def _models():
+    m = CFG.get("models") or {}
+    return {str(k).lower(): str(v) for k, v in m.items()} if isinstance(m, dict) else {}
 
 
 def console_match(text):
@@ -338,6 +348,9 @@ def console_match(text):
         if norm in (f"set effort to {lvl}", f"effort {lvl}",
                     f"slash effort {lvl}"):
             return f"effort:{lvl}"
+    m = _MODEL_RE.match(norm)              # troi-console: a brain by name, from the config's map
+    if m and m.group(1) in _models():
+        return f"model:{m.group(1)}"
     return None
 
 
@@ -755,6 +768,16 @@ async def amain():
         elif verb == "fast":
             resp = await brain.command(f"/model {CFG['model']}")
             say_after = "Back on the fast model."
+        elif verb.startswith("model:"):        # troi-console: a brain by name, from the config's map
+            name = verb.split(":", 1)[1]
+            model_id = _models().get(name)
+            if not model_id:
+                resp = ""
+                say_after = f"I have no model called {name} in the config."
+            else:
+                mouth.say(f"Switching to {name}. One moment.")
+                resp = await brain.command(f"/model {model_id}")
+                say_after = f"On {name} now, for this session."
         elif verb.startswith("effort:"):
             lvl = verb.split(":", 1)[1]
             resp = await brain.command(f"/effort {lvl}")

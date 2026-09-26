@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
+import { COMPAT_BOOT } from "@/lib/compat-boot";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: COMPAT_BOOT }} /><script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} /></head>
       <body className="font-sans">{children}</body>
     </html>
   );

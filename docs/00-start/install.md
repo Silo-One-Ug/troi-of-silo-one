@@ -48,7 +48,7 @@ The installer:
   `.claude/settings.json` with the guard's hooks, vault access and denied destructive commands. It
   also renders `.mcp.json` and the components' configs, and marks the folder as trusted for Claude
   Code;
-- patches the hands board with cursor control;
+- puts the board's tools in place;
 - loads the four background services: reminders and the morning brief, the globe, the Telegram
   bridge, and the nightly backup;
 - puts **Troi** on the Desktop and a `troi` command in `~/.local/bin`;

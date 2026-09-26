@@ -1,21 +1,133 @@
-/* board.css — Silo One's look for the hands board (injected by patch-board.sh; upstream files untouched).
-   The camera is off until hand tracking is switched on, and it is never the backdrop: the stage is a calm dark
-   gradient that takes any content, and pictures keep their true colours. */
-#cam { width: 2px !important; height: 2px !important; opacity: .01 !important; pointer-events: none !important; }
-body:not(.overlay):not(.keybg) {
-  background: radial-gradient(1400px 900px at 45% 38%, #0c1c2c 0%, #070f19 45%, #03060b 100%) !important;
+/* board.css — the board's own look (Silo One): light gray paper (#F9FAFB, Paul's choice), reading text in Inter with JetBrains Mono for labels, numbers and code, no boxes.
+   Light or dark: the system's choice by default, the console's switch when the board is framed in it (a message), or
+   ?theme=dark|light. A tile is an area of the page: a small title as its handle, a hairline under it, the content
+   below; its bounds show only under the mouse. Flat: no glass, no glow, no 3D. */
+:root {
+  --paper: #F9FAFB; --paper-2: #FFFFFF; --ink: #1f2937; --ink-2: #374151; --muted: #6b7280; --line: rgba(31,41,55,.14);
+  --accent: #0f7f78; --gold: #c98a2a; --bad: #c0392b; --ok: #1f9d55; --note: #0f7f78; --warn: #b7791f; --mutedt: rgba(107,114,128,.6);
+  --fill: rgba(31,41,55,.04); --well: rgba(31,41,55,.05); --glow: rgba(15,127,120,.12);
+  --bg: radial-gradient(1400px 900px at 50% 40%, #FFFFFF 0%, #F9FAFB 60%, #F3F4F6 100%);
+  --mono: "JetBrains Mono", "JetBrainsMono Nerd Font", "JetBrainsMono NF", ui-monospace, Menlo, "SF Mono", monospace;
+  --sans: "Inter", ui-sans-serif, -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;   /* the reading font (the console's too); the mono keeps labels, numbers and code */
+  color-scheme: light;
 }
-body:not(.overlay):not(.keybg)::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(900px 600px at 70% 80%, rgba(120,80,200,.08), transparent 60%), radial-gradient(700px 500px at 20% 20%, rgba(60,160,220,.07), transparent 60%);
+:root[data-theme="dark"] {
+  --paper: #15191d; --paper-2: #1d2228; --ink: #e8e3d9; --ink-2: #d7d1c6; --muted: #98a3a8; --line: rgba(232,227,217,.14);
+  --accent: #5fd0c4; --gold: #e3ad55; --bad: #f08a7b; --ok: #6fd39a; --note: #5fd0c4; --warn: #e0b35a; --mutedt: rgba(152,163,168,.6);
+  --fill: rgba(232,227,217,.05); --well: rgba(232,227,217,.08); --glow: rgba(95,208,196,.16);
+  --bg: radial-gradient(1400px 900px at 50% 40%, #1a2026 0%, #15191d 60%, #10141a 100%);
+  color-scheme: dark;
 }
-/* pictures are shown as they are: no holographic tint */
-.card.imgcard.mat img, .card.imgcard.mat video { filter: none !important; }
-.card.imgcard img, .card.imgcard video { filter: none; }
-/* cards read well on the dark ground */
-.card, .panel { box-shadow: 0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); }
-/* the Hands button (board.js): the camera on or off, from the board itself */
-#troi-hands { position: fixed; right: 18px; top: 16px; z-index: 30; cursor: pointer; padding: 6px 12px; border-radius: 9px; border: 1px solid rgba(160,220,230,.35); color: #dff5f7; background: rgba(8,16,26,.72); font: 500 12px/1.2 Sora, "SF Pro Display", -apple-system, Helvetica, sans-serif; letter-spacing: .02em; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-#troi-hands[aria-pressed="true"] { border-color: #8cf5ff; color: #8cf5ff; }
-#troi-hands:hover { border-color: rgba(160,220,230,.7); }
-body.overlay #troi-hands, body.greenkey #troi-hands { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15191d; --paper-2: #1d2228; --ink: #e8e3d9; --ink-2: #d7d1c6; --muted: #98a3a8; --line: rgba(232,227,217,.14);
+    --accent: #5fd0c4; --gold: #e3ad55; --bad: #f08a7b; --ok: #6fd39a; --note: #5fd0c4; --warn: #e0b35a; --mutedt: rgba(152,163,168,.6);
+    --fill: rgba(232,227,217,.05); --well: rgba(232,227,217,.08); --glow: rgba(95,208,196,.16);
+    --bg: radial-gradient(1400px 900px at 50% 40%, #1a2026 0%, #15191d 60%, #10141a 100%);
+    color-scheme: dark;
+  }
+}
+html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
+html { background: var(--paper); }
+body { background: var(--bg) fixed; color: var(--ink); font: 15px/1.6 var(--sans); -webkit-font-smoothing: antialiased; font-feature-settings: "calt" 0; }
+#stage { position: relative; width: 100%; min-height: 100vh; }
+body.presenting #stage::before { content: ""; position: fixed; inset: 0; background: color-mix(in srgb, var(--paper) 74%, transparent); z-index: 10; }
+
+/* tiles: areas on the paper */
+.tile { position: absolute; box-sizing: border-box; min-width: 150px; border-radius: 10px; padding: 0 2px 4px;
+  outline: 1px dashed transparent; outline-offset: 6px;
+  transition: left .35s cubic-bezier(.2,.8,.2,1), top .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1), height .35s cubic-bezier(.2,.8,.2,1), opacity .25s, outline-color .2s, transform .25s; }
+.tile:hover { outline-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+.tile.dragging, .tile.resizing { transition: outline-color .2s; outline-color: var(--accent); user-select: none; z-index: 5; }
+.tile.arrive { animation: arrive .45s cubic-bezier(.2,.8,.2,1); }
+@keyframes arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.tile.leave { opacity: 0; transform: scale(.98); pointer-events: none; }
+.tile.pulse { animation: pulse 1.6s ease-out; }
+@keyframes pulse { 0%, 100% { outline-color: transparent; } 30% { outline-color: var(--accent); outline-offset: 10px; } }
+.tile.shake { animation: shake .4s ease-in-out; }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-9px); } 75% { transform: translateX(9px); } }
+.tilebar { display: flex; align-items: center; gap: 10px; padding: 4px 0 6px; border-bottom: 1px solid var(--line); cursor: grab; user-select: none; margin-bottom: 12px; }
+.tile.dragging .tilebar { cursor: grabbing; }
+.tilebar.hidden { display: none; }
+.tilebar h3 { flex: 1; margin: 0; font: 600 11px/1.3 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tileclose { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); font: 15px/1 var(--mono); cursor: pointer; flex: none; opacity: 0; transition: opacity .15s, background .15s; }
+.tile:hover .tileclose { opacity: 1; }
+.tileclose:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.tilebody { min-width: 0; }
+.tilegrip { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; cursor: nwse-resize; border-right: 2px solid color-mix(in srgb, var(--ink) 35%, transparent); border-bottom: 2px solid color-mix(in srgb, var(--ink) 35%, transparent); border-radius: 0 0 3px 0; opacity: 0; transition: opacity .15s; }
+.tile:hover .tilegrip { opacity: 1; }
+/* a plain card, and a note card (its body opens the note) */
+.tile-card { width: 440px; max-width: calc(100vw - 48px); }
+.tile-card .tilebody p { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); white-space: pre-wrap; }
+.tile-card.note .tilebody { cursor: pointer; border-radius: 6px; }
+.tile-card.note .tilebody:hover { background: var(--glow); }
+.tile-card.note .tilebody p::after { content: "  open ↗"; color: var(--accent); font-size: 12px; }
+/* a picture or a video: the picture itself, its caption under it */
+.tile-img { padding: 0; cursor: grab; }
+.tile-img img, .tile-img video { display: block; max-width: 32vw; max-height: 44vh; border-radius: 8px; }
+.tile-img .tilecap { padding: 6px 2px 0; font-size: 12px; color: var(--muted); max-width: 32vw; }
+.tile-img .tileclose.float { position: absolute; top: 8px; right: 8px; background: color-mix(in srgb, var(--paper-2) 92%, transparent); box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 18%, transparent); }
+/* a note from the vault, and a UI panel: a body that scrolls when it must */
+.tile-note, .tile-ui { display: flex; flex-direction: column; }
+.tile-note .tilebody, .tile-ui .tilebody { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding-right: 6px; }
+.tile-ui .tilebody { max-height: 84vh; }
+.tile-ui.fixed .tilebody { max-height: none; }
+.tile-note .tilebody, .tile-ui.fixed .tilebody { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.tile-note .tilebody { font-size: 14.5px; line-height: 1.65; color: var(--ink-2); }
+/* the spotlight */
+.tile.presented { z-index: 20 !important; outline-color: transparent; }
+.tile.presented.tile-img img, .tile.presented.tile-img video { max-height: 86vh; max-width: 90vw; box-shadow: 0 30px 80px color-mix(in srgb, var(--ink) 22%, transparent); }
+.tile.presented.tile-img .tilecap { max-width: 90vw; }
+.tile.dimmed { opacity: .3; filter: saturate(.4); pointer-events: none; }
+.tile.presented.tile-ui .tilebody, .tile.presented.tile-note .tilebody { max-height: calc(100vh - 90px); }
+
+/* the empty board says what it is for */
+.empty { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.empty[hidden] { display: none; }
+.emptycard { pointer-events: auto; max-width: 680px; padding: 24px 32px; text-align: center; animation: arrive .5s cubic-bezier(.2,.8,.2,1); }
+.emptycard .kicker { font: 600 11px/1.3 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+.emptycard h1 { margin: 0 0 16px; font: 600 27px/1.3 var(--sans); letter-spacing: -.015em; }
+.emptycard p { margin: 0 0 10px; font-size: 14px; line-height: 1.65; color: var(--ink-2); }
+.emptycard p.how { font-size: 12.5px; color: var(--muted); }
+.emptycard .how b { color: var(--ink); font-weight: 600; }
+.prompts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 22px; }
+.prompts button { font: 500 13px var(--sans); padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.prompts button:hover { border-color: var(--accent); color: var(--accent); }
+.prompts button.sent { border-color: var(--accent); background: var(--glow); color: var(--accent); }
+
+/* the corner tools and the toast (top, clear of the console's bar) */
+#tools { position: fixed; right: 20px; top: 14px; display: flex; gap: 14px; z-index: 30; }
+#tools button { font: 500 11.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; padding: 6px 2px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
+#tools button:hover { color: var(--accent); border-bottom-color: var(--accent); }
+#tools button.arm { color: var(--bad); border-bottom-color: var(--bad); }
+#toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-8px); background: var(--ink); color: var(--paper); padding: 7px 14px; border-radius: 8px; font: 13px var(--sans); opacity: 0; transition: opacity .2s, transform .2s; z-index: 40; pointer-events: none; max-width: 70vw; }
+#toast.on { opacity: 1; transform: translateX(-50%); }
+
+/* a phone (under 768 px): the same tiles as one column in reading order, full width, nothing to drag. The page lays the
+   column out (board-app.js clears the inline geometry and sets each tile's order); the tiles keep the glass's positions in
+   the model, so the desktop finds everything where it was. A tap on a title spotlights a tile: it scrolls into view whole
+   and the others fade. */
+@media (max-width: 767px) {
+  #stage { display: flex; flex-direction: column; gap: 26px; box-sizing: border-box; padding: 54px 16px 110px; height: auto !important; min-height: 100vh; }
+  .tile { position: relative !important; left: auto !important; top: auto !important; width: 100% !important; height: auto !important; min-width: 0; max-width: 100%; z-index: auto !important;
+    transition: opacity .25s, outline-color .2s, transform .25s; }
+  .tile:hover { outline-color: transparent; }
+  .tile-card { width: 100% !important; max-width: 100%; }
+  .tilebar, .tile-img { cursor: default; }
+  .tileclose, .tile:hover .tileclose { opacity: .85; }                     /* no hover on a phone: the × is always there */
+  .tilegrip { display: none; }
+  .tile-img img, .tile-img video { max-width: 100%; max-height: 60vh; width: auto; margin: 0 auto; }
+  .tile-img .tilecap { max-width: 100%; }
+  .tile-note .tilebody, .tile-ui .tilebody, .tile-ui.fixed .tilebody { max-height: 70vh; }
+  .tile.presented .tilebody, .tile.presented.tile-ui.fixed .tilebody { max-height: none; }
+  .tile.presented.tile-img img, .tile.presented.tile-img video { max-height: 85vh; box-shadow: none; }
+  body.presenting #stage::before { display: none; }                         /* no veil: the page still scrolls */
+  .tile.dimmed { opacity: .35; filter: saturate(.4); pointer-events: auto; }
+  .tile.presented { outline: none; }
+  #tools { right: 16px; top: 12px; }
+  #tidy { display: none; }
+  #toast { top: auto; bottom: 92px; max-width: 86vw; }                     /* clear of the console's pill */
+  .emptycard { max-width: 100%; padding: 24px 12px; }
+  .emptycard h1 { font-size: 21px; }
+  .emptycard p { font-size: 13.5px; }
+}

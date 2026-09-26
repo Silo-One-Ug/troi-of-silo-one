@@ -16,13 +16,15 @@ cat <<'TXT'
   stt.py       <file>   the words in an audio file, with your own ears (run with backtalk/.venv/bin/python; the server keeps one as a worker for the console's voice notes)
   console.sh   go <place> · view face|hands|files|apps|vault · vault show|clear · files <folder> · focus <path> · apps open · images open|close
                modes|routines|approvals|reports open|close · camera open|close · browser open|close · talk column|floating · panel hide|show
-               tidy · hint "<text>" · gestures on|off · eyes off|every|watch|screen · wake on|off · face-gate on|off · voice-id off|on|learn
+               tidy · hint "<text>" · gestures on|off · speak on|off (text only saves ElevenLabs credits) · eyes off|every|watch|screen · wake on|off · face-gate on|off · voice-id off|on|learn
                voice list|kokoro|elevenlabs ["<name>"] · mode "<phrase>"      (console.sh with no arguments prints them all)
   console.sh hands <key> <value>   tune hand tracking (pinch_close, pinch_open, ext, dwell_ms, magnet); press P in the galaxy to sample a pose
-  show-image.sh <file> [title] [x] [y]   put a picture / 3D model on the hands board
-  ../barehands/bin/board.sh '{"a":"present",...}'   and   ../barehands/bin/board-state.sh      the hands board itself
+  show-image.sh <file> [title] [x] [y]   put a picture (or a video) on the board; without x and y it flows into free space
+  ../barehands/bin/board.sh '{"a":"add_card",...}'   add_card | add_img | present | yank | hover | clear | add_ui | ui | layout | tidy   the board (mouse-driven, white, it keeps what is up)
+  ../barehands/bin/board-state.sh [events|json]    what is on the board (or the saved scene), and the last clicks on its buttons
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
-  show.py     '<json tree>' | chart ... | table ... | vocabulary   draw interface in the conversation: charts, tables, stats, galleries (never an HTML file)
+  brain.sh     status · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
+  show.py     '<json tree>' [--board|--both] | chart ... | table ... | board "<title>" <op> | board tidy|clear | vocabulary   draw interface from data, in the conversation or as a tile on the board (never an HTML file)
   media.py     now · play [words] · pause · resume · stop · next · prev · volume N · louder · quieter · shuffle on|off · like · movie on|off   Apple Music by voice, and movie mode
   db.py        tail [N] · sessions · stats · star <id|path> · retain   the record: data/troi.db (conversation, cards, approvals, pictures, reports, runs);
                captures (looks, screens, Telegram) go to the Trash after 14 days unless starred
@@ -31,6 +33,7 @@ cat <<'TXT'
   pr.py        list [repo] · review <repo> <n> [--post] [--tests] · review <project> --local · show <repo> <n>   a PR review by you, headless, in a throwaway checkout, following the Code Review job; report to data/blobs/reviews/ and Telegram
   code.sh      list · <project> [--window]   a Claude Code session inside a project folder that still boots as the agent (boot file, guard, vault come along)
   servers.py   list · add <name> <ssh-host> [role] · check [name] [--json]   read-only health of the servers in data/servers.json over SSH (the pulse watches every 15 min)
+  grafana.py   check · alerts [--all] · rules · silences · query '<PromQL>' [--range 1h] [--show] · logs '<LogQL>' [--since 15m] · dashboards [words] · panel <uid> <id> [--show] · watch   Grafana, read-only (data/grafana.json; the token is the Keychain item grafana); the pulse watches the alerts every minute
   agenda.py    today · next · week · soon [min] · current   the Mac's Calendar app (Google etc.); the pulse warns 15 min before an event
   face.py verify|check              face ID (its own env: .venv-face); learning the owner's face is theirs to do (Modes › Face ID)
   browser-mcp.sh open | which       open the browser with its port 9223 (Arc, or Chrome) / say which it is; the console's Browser page mirrors it live and the owner can click in it

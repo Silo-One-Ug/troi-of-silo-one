@@ -1173,6 +1173,8 @@ def apply_settings(body, cur):
         cur["guard_settings"] = body["guard_settings"]
     if isinstance(body.get("living_greeting"), bool):
         cur["living_greeting"] = body["living_greeting"]
+    if isinstance(body.get("speak"), bool):                          # speech aloud, or text only (Modes > Speech)
+        cur["speak"] = body["speak"]
     if re.fullmatch(r"\d\d:\d\d", str(body.get("brief_time", ""))):
         cur["brief_time"] = body["brief_time"]
     if body.get("tts") in ("kokoro", "elevenlabs"):
@@ -1670,6 +1672,7 @@ class Handler(BaseHTTPRequestHandler):
                 "model": bt.get("model", BT.get("model", "claude-sonnet-5")),
                 "deep_model": bt.get("deep_model", BT.get("deep_model", "claude-opus-5")),
                 "effort": bt.get("effort") or "",
+                "models": bt.get("models") or {},                         # the brains by name (backtalk.json), the one list
                 "wake_word": settings()["wake_word"],
                 "eyes": settings()["eyes"],
                 "voice_id": settings()["voice_id"],
@@ -1679,6 +1682,7 @@ class Handler(BaseHTTPRequestHandler):
                 "face_env": face_env(), "face_print": face_print(), "face_id_threshold": settings().get("face_id_threshold", 0.70),
                 "vault": HANDS.get("orbs", [{}])[0].get("path", ""),
                 "brief_time": settings()["brief_time"],
+                "speak": settings().get("speak", True),
                 "hand_tuning": settings().get("hands", SETTING_DEFAULTS["hands"]),
                 "wake_names": settings()["wake_names"],
                 "tts": settings().get("tts", "kokoro"), "elevenlabs_voice": settings().get("elevenlabs_voice", ""), "elevenlabs_voice_name": elevenlabs_voice_name(settings().get("elevenlabs_voice", "")), "elevenlabs_key": KC.has("elevenlabs"),

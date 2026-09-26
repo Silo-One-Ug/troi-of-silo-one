@@ -24,10 +24,10 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   useEffect(() => { let stop = false; const t = async () => { if (stop) return; try { const d = await eget("/state"); setState(d.voice ? d.state : "off"); } catch { setState("off"); } setTimeout(t, 800); }; t(); return () => { stop = true; }; }, []);
   const name = cfg?.name || "Troi"; const onTalk = path.startsWith("/conversation"); const canvas = CANVAS.some(p => path.startsWith(p)); const section = path.split("/")[1] || "default";
   return (
-    <div className="min-h-screen md:pb-24">
+    <div className="min-h-[100dvh] md:min-h-screen md:pb-24">{/* on a phone the page measures itself in the visible height: 100vh runs under Safari's bars and makes the page scroll */}
       <Space state={state} view={section} active={!canvas} lite={mobile} />{/* always mounted: a remount flashes and reloads the planet; paused under the canvas pages; lighter on a phone */}
       {/* enter-only, opacity-only: an exit under the app router can leave the next page stuck at opacity 0. app-page keeps clear of the phone's bars */}
-      <motion.main key={path} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, ease: "easeOut" }} className={canvas ? "fixed inset-0 z-0 bg-black" : "app-page on-space mx-auto max-w-[1800px] px-3 pt-3 sm:px-5 sm:pt-5"}>{children}</motion.main>
+      <motion.main key={path} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, ease: "easeOut" }} className={canvas ? "fixed inset-0 z-0 bg-black" : onTalk ? "app-page on-space mx-auto max-w-[1800px] px-0 pt-0 md:px-5 md:pt-5" : "app-page on-space mx-auto max-w-[1800px] px-3 pt-3 sm:px-5 sm:pt-5"}>{children}</motion.main>
       {shape === "floating" && !onTalk && panelOn && !mobile && <FloatingChat name={name} />}
       <Directives />
       <Alerts />

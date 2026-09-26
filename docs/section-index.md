@@ -29,7 +29,7 @@ goes to the macOS Trash. Nobody but you can change how it behaves.
 | [Getting started](00-start/) | What Troi is, installing, permissions, the welcome, starting and stopping | You are setting Troi up |
 | [Talking to Troi](10-talking/) | The talk key, hands-free, the wake word, the voices, Telegram, calls, what to ask for | You want to know what to say |
 | [The console](20-console/) | Space, the globe, the bar, every page, and the console on your phone | You are at the console |
-| [The views](30-views/) | The Files and Apps galaxies, the Vault wall, the hands board and its gestures | You would rather see than read |
+| [The views](30-views/) | The Files and Apps galaxies, the Vault wall, the board, and the galaxies' gestures | You would rather see than read |
 | [What Troi can do](40-abilities/) | Every ability, a page each: files, apps, the native hands, the browser, pictures, news, music, meetings, code, servers | You wonder whether Troi can do a thing |
 | [Safety](50-safety/) | The guard, approvals, the PIN and the protected settings, face ID, guests, what leaves the Mac | You want to know what can and cannot happen |
 | [Memory and data](60-memory/) | The vault, the record, backups, housekeeping, where things are | You want to know what Troi keeps, and where |
@@ -44,7 +44,7 @@ The directory prefixes (`00-`, `10-`, …) fix the reading order and leave room 
 | `console/` | The console app (Next.js, at `http://localhost:3100`): the welcome, the conversation, Library, Modes, Routines, Reports, Approvals, Eyes, Browser, and the Face, Hands, Files, Apps and Vault views |
 | `troi-console/` | The agent's server (`http://127.0.0.1:8796`) and its tools: files, apps, the native hands, eyes, the browser, calendar, meetings, reports, Telegram, calls, the guard |
 | `backtalk/` | The voice line: speech in, the agent's session, speech out |
-| `ai-visualizer/`, `barehands/` | The face and the hands board |
+| `ai-visualizer/`, `barehands/` | The face, and the board's home: its config and the airlock (the board's own page lives in `troi-console/barehands/`) |
 | `vault-template/` | The starting vault the welcome creates when you have none |
 | `brand/` | The logo: its generator and typeface; the files it makes are in `console/public/brand/` |
 | `docs/` | These pages |

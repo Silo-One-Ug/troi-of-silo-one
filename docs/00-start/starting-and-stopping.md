@@ -13,7 +13,7 @@ Double-click **Troi** on the Desktop, or type `troi` in a terminal. Everything c
 | The console | `http://localhost:3100` |
 | The agent's server (its API) | `http://127.0.0.1:8796` |
 | The face | `http://127.0.0.1:8790` |
-| The hands board | `http://127.0.0.1:8794` |
+| The board | `http://127.0.0.1:8794` |
 | The agent's browser | Arc, or a Chrome of the agent's own, with its debugging port 9223 |
 | The voice line | in the Terminal window |
 

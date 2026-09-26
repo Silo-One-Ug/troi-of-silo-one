@@ -35,4 +35,4 @@ its next launch.
 | The talk key does nothing | Give Terminal Input Monitoring, quit and reopen Terminal, and start Troi again. |
 | "Accessibility missing" | System Settings › Privacy & Security › Accessibility: add Terminal. Start Troi again. |
 | "What's on my screen" comes back empty | Screen Recording for Terminal, then a restart of Terminal. |
-| The hands board shows only a ring | That is the board at rest: its camera stays off until you switch Hands on. If it still sees no hands, allow the camera for the console's address in the browser. |
+| The board shows only its placeholder | Nothing is up. Ask the agent to show you something, or click one of the requests written on the board. |

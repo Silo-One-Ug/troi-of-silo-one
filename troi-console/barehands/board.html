@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!-- board.html — the board (Silo One): a full-width page of tiles the agent fills and the owner moves with the mouse.
+     Served by troi-console/board-server.py at /stage.html (the address the console's Hands view embeds) and /board.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>the board</title>
+<meta name="color-scheme" content="light dark">
+<script>/* the theme before the first paint: the console's word in the address, else what it said last time, else the system's */
+(function(){try{var q=new URLSearchParams(location.search).get("theme");var t=(q==="dark"||q==="light")?q:(localStorage.getItem("board.theme")||"");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<link rel="stylesheet" href="board.css">
+<link rel="stylesheet" href="board-ui.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="empty" class="empty" hidden></div>
+<div id="tools"><button id="tidy" type="button" title="line everything up">Tidy</button><button id="clear" type="button" title="put everything away">Clear</button></div>
+<div id="toast"></div>
+<script src="board-render.js"></script>
+<script src="board-app.js"></script>
+</body>
+</html>

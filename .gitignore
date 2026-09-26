@@ -26,3 +26,6 @@ logs/
 .DS_Store
 .env*
 .next-*/
+
+# the browser tool's own logs and snapshots
+.playwright-mcp/

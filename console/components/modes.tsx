@@ -2,13 +2,15 @@
 // Modes: permissions, microphone, model and effort go in as the voice-console phrases the agent understands (/say);
 // wake word, eyes, voice ID, face ID and the voice itself are settings (/settings), guarded like the native console.
 // Every change shows at once: the chip spins until the agent confirms it (the config changes), and a note says what
-// happened, including when the voice line is not running or a protected change needs the PIN.
+// happened, including when the voice line is not running or a protected change needs the PIN. The Keys card keeps the
+// secrets the welcome asked for (ElevenLabs, Telegram, OpenAI, Gemini, Agora, the PIN) in the Keychain, later too.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Info, Loader2, Lock, RefreshCw, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Info, KeyRound, Loader2, Lock, RefreshCw, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Combobox } from "./ui/combobox";
+import { Input } from "./ui/input";
 import { setWorkSound, workSoundOn } from "./sounds";
 import { eget, epost, unlockToken, type Config } from "@/lib/edge";
 import { cn } from "@/lib/utils";
@@ -30,18 +32,33 @@ function Seg({ label, value, options, onPick, hint, busy }: { label: string; val
   );
 }
 
-const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="hairline grid min-w-0 content-start gap-5 p-4 sm:p-5"><h2 className="text-sm font-semibold">{title}</h2>{children}</section>
+const Panel = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
+  <section className={cn("hairline grid min-w-0 content-start gap-5 p-4 sm:p-5", className)}><h2 className="text-sm font-semibold">{title}</h2>{children}</section>
 );
+
+// the secrets the agent keeps, by their Keychain names (troi-console/keychain.py), with what each one is for
+// The brains, by name: the voice line's config carries the ONE list (its "models" map, name -> id), and the server
+// passes it through /config as `models`; the switch is drawn from that and hidden until the server reports it.
+const brainsOf = (c: Config | null) => Object.entries(c?.models || {}).map(([v, id]) => ({ v, l: v[0].toUpperCase() + v.slice(1), id }));
+const KEYS: { name: string; label: string; hint: string; secret: boolean }[] = [
+  { name: "elevenlabs", label: "ElevenLabs API key", hint: "the voice", secret: true },
+  { name: "telegram", label: "Telegram bot token", hint: "your phone", secret: true },
+  { name: "openai", label: "OpenAI key", hint: "pictures from words", secret: true },
+  { name: "gemini", label: "Gemini key", hint: "pictures, the alternative", secret: true },
+  { name: "agora-appid", label: "Agora app id", hint: "phone calls", secret: false },
+  { name: "agora-cert", label: "Agora certificate", hint: "phone calls", secret: true },
+  { name: "grafana", label: "Grafana token", hint: "production alerts and metrics", secret: true },
+  { name: "pin", label: "PIN", hint: "unlocks protected settings", secret: true },
+];
 
 export function Modes() {
   const [c, setC] = useState<Config | null>(null); const [down, setDown] = useState(""); const [note, setNote] = useState<{ tone: Tone; text: string } | null>(null);
   const [busy, setBusy] = useState<Record<string, string | null>>({}); const [confirmAuto, setConfirmAuto] = useState(false);
-  const [model, setModel] = useState("fast"); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
+  const [model, setModel] = useState("sonnet"); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
   const noteTimer = useRef<any>(0); const cfg = useRef<Config | null>(null);
   const tell = useCallback((tone: Tone, text: string) => { setNote({ tone, text }); clearTimeout(noteTimer.current); noteTimer.current = setTimeout(() => setNote(null), tone === "warn" ? 12000 : 6000); }, []);
   const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown("Troi's server is not answering: start Troi from the Desktop."); return null; } }, []);
-  useEffect(() => { load(); try { setModel(localStorage.getItem("silo.model") || "fast"); } catch {} const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); try { setModel(((m) => m === "deep" ? "fable" : m === "fast" || !m ? "sonnet" : m)(localStorage.getItem("silo.model") || "fast")); } catch {} const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
 
   // wait for the agent to confirm a change (the config reads back the new value); a short, quick poll
   const confirm = async (check: (d: Config) => boolean, ms = 6000) => { const end = Date.now() + ms; while (Date.now() < end) { await new Promise(r => setTimeout(r, 600)); const d = await load(); if (d && check(d)) return true; } return false; };
@@ -59,6 +76,23 @@ export function Modes() {
   useEffect(() => { if (c?.elevenlabs_key) loadVoices(); }, [c?.elevenlabs_key]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const [sounds, setSounds] = useState(true); useEffect(() => { setSounds(workSoundOn()); }, []);   // this browser's own: the pad while it works, the chime when done
+  // the keys: which are kept (never the values), and a field to keep or replace each one
+  const [kept, setKept] = useState<Record<string, boolean>>({}); const [keyText, setKeyText] = useState<Record<string, string>>({});
+  const loadKept = useCallback(async () => { try { const d = await eget("/setup/status"); if (d && d.secrets) setKept(d.secrets); } catch {} }, []);
+  useEffect(() => { loadKept(); }, [loadKept]);
+  const keep = async (name: string) => {
+    const value = (keyText[name] || "").trim(); if (!value) return;
+    const label = KEYS.find(k => k.name === name)?.label || name;
+    await run("key", name, async () => {
+      const d = await epost("/keychain", { service: name, value });
+      if (!d.ok) { tell("warn", d._status === 403 ? `${label}: a kept key is replaced only by you. Unlock with your PIN (the lock in the bar), then keep it again.` : `${label} not kept: ${d.error || "the console refused it"}.`); return; }
+      setKeyText(t => ({ ...t, [name]: "" }));
+      if (name === "telegram") { await epost("/setup/services", { action: "restart", name: "telegram" }); tell("ok", "Telegram token kept. Waking the bridge…"); }
+      else if (name === "elevenlabs") { tell("ok", "ElevenLabs key kept."); loadVoices(true); }
+      else tell("ok", `${label} kept in the Keychain.`);
+      await Promise.all([loadKept(), load()]);
+    });
+  };
   if (!c) return <div className="hairline max-w-xl p-6 text-sm text-muted-foreground">{down || <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Reading the agent&apos;s modes…</span>}</div>;
   const perm = c.permission_mode === "bypassPermissions" ? "auto" : "ask", mic = c.mic_mode === "open" ? "open" : "ptt";
   const voiceOpts = voices.map(v => ({ value: v.voice_id, label: v.name, hint: typeof v.labels === "string" ? v.labels : Object.values(v.labels || {}).join(" · ") }));
@@ -96,9 +130,10 @@ export function Modes() {
             })} />
           <Seg label="Wake word" value={c.wake_word === false ? "off" : "on"} busy={busy.wake} options={[{ v: "on", l: "Say the name" }, { v: "off", l: "Off" }]}
             onPick={v => run("wake", v, () => set({ wake_word: v === "on" }, v === "on" ? `Hands-free acts only when it hears "${c.name}".` : "Wake word off."))} />
-          <Seg label="Model" value={model} busy={busy.model} hint={model === "deep" ? `${c.deep_model}, for this session` : c.model}
-            options={[{ v: "fast", l: "Fast", title: c.model }, { v: "deep", l: "Deep", title: c.deep_model + ". This session only." }]}
-            onPick={v => run("model", v, async () => { if (await say(v === "deep" ? "switch to the deep model" : "back to the fast model")) { setModel(v); try { localStorage.setItem("silo.model", v); } catch {} tell("ok", v === "deep" ? "Deep model for this session." : "Fast model."); } })} />
+          {/* the brains by name: each posts the voice line's own phrase ("switch to fable"); the choice lasts the session, the launch default is c.model */}
+          {brainsOf(c).length > 0 && <Seg label="Brain" value={model} busy={busy.model} hint={`${brainsOf(c).find(b => b.v === model)?.id || model} for this session · at launch: ${c.model} (deep: ${c.deep_model})`}
+            options={brainsOf(c).map(b => ({ v: b.v, l: b.l, title: b.id }))}
+            onPick={v => run("model", v, async () => { if (await say(`switch to ${v}`)) { setModel(v); try { localStorage.setItem("silo.model", v); } catch {} tell("ok", `${v} for this session.`); } })} />}
           <Seg label="Effort" value={c.effort || ""} busy={busy.effort} hint={c.effort ? undefined : "the model's default"} options={[{ v: "low", l: "Low" }, { v: "medium", l: "Medium" }, { v: "high", l: "High" }, { v: "max", l: "Max" }]}
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
           <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: "A soft pad while Troi works, a chime when it is done" }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
@@ -124,6 +159,15 @@ export function Modes() {
           <div className="grid min-w-0 gap-1.5"><div className="label">Face ID</div><div className="flex flex-wrap items-center gap-2"><Badge tone={c.face_print ? "ok" : "warn"}>{c.face_env === false ? "not installed" : c.face_print ? "known" : "not learnt"}</Badge><Button size="sm" variant="outline" disabled={!!busy.face} onClick={() => run("face", "learn", () => set({ face_id: "learn" }, "Look at the camera: five shots, about ten seconds."))}>{busy.face && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Learn my face</Button></div></div>
           <Seg label="Voice" value={c.tts || "kokoro"} busy={busy.tts} options={[{ v: "kokoro", l: `Kokoro (${c.kokoro_voice})` }, { v: "elevenlabs", l: "ElevenLabs" }]} hint={c.elevenlabs_key ? undefined : "no ElevenLabs key in the Keychain yet"}
             onPick={v => run("tts", v, async () => { if (v === "elevenlabs" && !c.elevenlabs_key) { tell("warn", "ElevenLabs needs your key first (the welcome page keeps it in the Keychain)."); return; } await set({ tts: v, elevenlabs_voice: c.elevenlabs_voice || "" }, v === "elevenlabs" ? `${c.name} speaks with ElevenLabs from the next line.` : `${c.name} speaks with Kokoro.`); })} />
+          <Seg label="Speech" value={(c as any).speak === false ? "text" : "aloud"} busy={busy.speak}
+            hint={(c as any).speak === false ? "Answers stay on the page; nothing is spoken and no ElevenLabs credit is used." : "Every answer is spoken. Text only keeps the voice quiet and saves ElevenLabs credits."}
+            options={[{ v: "aloud", l: "Aloud" }, { v: "text", l: "Text only", title: "Answers on the page, nothing spoken" }]}
+            onPick={v => run("speak", v, async () => {
+              const d = await epost("/settings", { speak: v === "aloud" });
+              if (!d.ok) { tell("warn", "Not saved: " + (d.error || "the console refused it") + "."); return; }
+              if (typeof d.speak !== "boolean") { tell("warn", "The console server does not keep this switch yet: it needs its one-line addition (see the vault note on quiet mode)."); return; }
+              tell("ok", v === "aloud" ? `${c.name} speaks again from the next line.` : `${c.name} answers on the page only from the next line; nothing is spoken.`); load();
+            })} />
           {c.elevenlabs_key && (
             <div className="grid min-w-0 gap-1.5"><div className="label">ElevenLabs voice</div>
               <div className="flex min-w-0 gap-2">
@@ -132,6 +176,20 @@ export function Modes() {
                 <Button size="icon" variant="outline" title="Reload the voices" aria-label="Reload the voices" disabled={voicesLoading} onClick={() => loadVoices(true)}><RefreshCw className={cn("h-4 w-4", voicesLoading && "animate-spin")} /></Button>
               </div>
             </div>)}
+        </Panel>
+
+        <Panel title="Keys" className="lg:col-span-2">
+          <div className="-mt-3 flex items-start gap-2 text-xs text-muted-foreground"><KeyRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />Kept in the Mac&apos;s Keychain, never in a file, the way the welcome keeps them. Add one here later, or replace one: a key already kept is replaced only with your PIN.</div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {KEYS.map(k => { const has = k.name === "pin" ? c.pin_set : k.name === "elevenlabs" ? c.elevenlabs_key || !!kept[k.name] : !!kept[k.name]; const protectedNow = has && locked(); return (
+              <div key={k.name} className="grid min-w-0 gap-1.5">
+                <div className="label flex items-center justify-between gap-2"><span>{k.label} <span className="normal-case tracking-normal text-muted-foreground/80">· {k.hint}</span></span><Badge tone={has ? "ok" : "note"}>{has ? "kept" : "not set"}</Badge></div>
+                <form className="flex min-w-0 gap-2" onSubmit={e => { e.preventDefault(); keep(k.name); }}>
+                  <Input type={k.secret ? "password" : "text"} autoComplete="off" spellCheck={false} placeholder={has ? "paste a new value to replace it" : "paste it here"} value={keyText[k.name] || ""} onChange={e => setKeyText(t => ({ ...t, [k.name]: e.target.value }))} aria-label={k.label} className="h-9 min-w-0 flex-1" />
+                  <Button type="submit" size="sm" variant="outline" disabled={!(keyText[k.name] || "").trim() || !!busy.key} title={protectedNow ? "Replacing a kept key needs your PIN" : has ? "Replace it" : "Keep it"}>{busy.key === k.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : protectedNow ? <Lock className="h-3 w-3" /> : null}Keep</Button>
+                </form>
+              </div>); })}
+          </div>
         </Panel>
       </div>
     </div>

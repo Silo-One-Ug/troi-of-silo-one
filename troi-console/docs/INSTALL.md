@@ -7,7 +7,7 @@ Written for someone setting Troi up on a Mac for the first time. Budget half an 
 1. **A Mac with Apple Silicon** (M1 or newer) on macOS 14 or newer. The speech models run on the Apple GPU through MLX; Intel Macs are not supported.
 2. **Homebrew.** Paste the one-liner from [brew.sh](https://brew.sh) into Terminal.
 3. **Claude Code**, signed in: [claude.com/claude-code](https://claude.com/claude-code). Run `claude` once and log in.
-4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The hands board and the page tools that run without a window need it, and without Arc it is the agent's own browser. If **Arc** is installed, Arc becomes the browser the agent drives, and yours at the same time (Arc runs one instance only): the agent starts it with its debugging port, and asks it to quit and come back, tabs and spaces intact, if you opened it from the Dock first.
+4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The page tools that run without a window need it, and without Arc it is the agent's own browser. If **Arc** is installed, Arc becomes the browser the agent drives, and yours at the same time (Arc runs one instance only): the agent starts it with its debugging port, and asks it to quit and come back, tabs and spaces intact, if you opened it from the Dock first.
 
 The installer adds these command-line tools with Homebrew if they are missing:
 
@@ -34,7 +34,7 @@ The installer:
 - builds the environments for the globe and the cursor guard, and for face ID (optional);
 - installs the browser bridge and the console app, and builds the console;
 - renders this Mac's files from `troi-console/templates/`: the agent's boot file `CLAUDE.md`, and `.claude/settings.json` with the guard's hooks, vault access and denied destructive commands. It also renders `.mcp.json` and the components' configs, and marks the folder as trusted for Claude Code;
-- patches the hands board with cursor control;
+- puts the board's tools in place;
 - loads the four background services: reminders and the morning brief, the globe, the Telegram bridge, and the nightly backup;
 - puts **Troi** on the Desktop and a `troi` command in `~/.local/bin`;
 - starts a resumable download of the larger speech model (1.5 GB) into `data/models`. The small model works in the meantime.
@@ -159,7 +159,7 @@ Run `troi-console/doctor.sh` first. Then:
 | Garbled transcription with a Bluetooth headset | Set `mic_device` in `backtalk/backtalk.json` to the Mac's own microphone. |
 | A file you asked it to trash is still there | That is the design: the request waits in Approvals, across restarts too. Unlock with your PIN and approve it, or send "approve" on Telegram. |
 | "Approving needs you" | Unlock the console: the PIN box on the Approvals page, or **Check it's me** on the Eyes page. Or send "approve" on Telegram. |
-| The hands board shows only a ring | That is the board at rest: its camera stays off until you switch Hands on (the Eyes page, or "hands on"). If it still sees no hands, allow the camera for http://localhost:3100 in the browser's site settings. |
+| The board shows only its placeholder | Nothing is up. Ask the agent to show you something, or click one of the requests written on the board. |
 | The agent's browser tools say the browser is not reachable | Arc was opened without its debugging port (from the Dock, before Troi). Quit Arc and start Troi again, or run `troi-console/browser-mcp.sh open`, which asks Arc to quit and brings it back with the port. |
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |

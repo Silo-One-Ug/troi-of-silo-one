@@ -9,7 +9,7 @@ whether or not Troi is started:
 
 | Service | What it does |
 | --- | --- |
-| `pulse` | Reminders, the morning brief and the end-of-day report, the CI watch, the server watch, the calendar heads-ups, housekeeping and session compaction |
+| `pulse` | Reminders, the morning brief and the end-of-day report, the CI watch, the server watch, the Grafana watch, the calendar heads-ups, housekeeping and session compaction |
 | `ring` | The globe |
 | `telegram` | The Telegram bridge |
 | `vault-backup` | The nightly backup at 23:30 (it shows "not running" between runs) |
@@ -40,5 +40,5 @@ rendered files are among the guard's safeguards: the agent cannot change its own
 
 `start.sh` (the Desktop shortcut and the `troi` command) starts, in order: the console on `:3100`,
 then, through `troi-console/start.sh`, the agent's server on `:8796`, the face on `:8790`, the
-hands board on `:8794`, the browser with its port `9223` and its bridge, the eyes, and the voice
+the board on `:8794`, the browser with its port `9223` and its bridge, the eyes, and the voice
 line in the Terminal window. Ctrl-C stops all of it; the four services above keep running.

@@ -12,7 +12,8 @@ import sys
 ACCOUNT = "troi-of-silo-one"
 NAMES = {"pin": "the PIN for protected settings", "telegram": "the Telegram bot token",
          "elevenlabs": "the ElevenLabs API key", "openai": "the OpenAI key (pictures)", "gemini": "the Gemini key (pictures)",
-         "agora-appid": "the Agora app id (calls)", "agora-cert": "the Agora certificate (calls)"}
+         "agora-appid": "the Agora app id (calls)", "agora-cert": "the Agora certificate (calls)",
+         "grafana": "the Grafana token (production alerts and metrics)"}
 
 
 def service(name: str) -> str:

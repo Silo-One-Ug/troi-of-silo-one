@@ -8,6 +8,8 @@ com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's ty
                 settings); a run that finished since the last check is reported (failures always,
                 successes only when the previous run failed)
   server watch  every 15 minutes, servers.py checks the servers in data/servers.json; only changes are told
+  Grafana watch every minute, grafana.py reads the alert rules' state at the Grafana in data/grafana.json (the token
+                is the Keychain item `grafana`); what began firing and what resolved is told, a storm as one line
                 (all of these go to Telegram instead when the voice line is down)
   calendar      a heads-up 15 minutes before each event in the Mac's Calendar (agenda.py)
   morning brief at "brief_time" (default 08:00), once a day, only if the voice line is up; the agent runs
@@ -175,6 +177,29 @@ def check_github(state):
 
 SERVER_EVERY = 900          # the server watch: every 15 minutes, read-only over SSH (servers.py)
 CAL_EVERY = 60              # the calendar: a heads-up 15 minutes before each event (agenda.py)
+GRAFANA_EVERY = 60          # the Grafana watch: every minute, the alert rules' state over https (grafana.py); only changes are told
+
+
+def check_grafana(state):
+    """What began firing and what resolved in Grafana since the last pass (grafana.py watch). Quiet without a token,
+    quiet on the first pass (a baseline), and one line per change; a storm is one line."""
+    try:
+        import grafana as GF
+        if not GF.token():
+            return
+        lines = GF.watch()
+    except Exception as e:
+        err = str(e)[:160]
+        if state.get("grafana_err") != err:
+            state["grafana_err"] = err; log(f"[pulse]  grafana: {err}")
+        return
+    state.pop("grafana_err", None)
+    for line in lines:
+        log(f"[pulse]  grafana: {line}")
+        tell(f"(grafana watch: {line}. Tell the owner in one sentence. For something FIRING run your Server Maintenance job: look first, read-only "
+             f"(servers.py check on the node named, grafana.py query for the metric behind it), then propose the fix; nothing changes on a server without the owner's go. "
+             f"Keep the board's production panel current if one is up.)",
+             phone=f"Grafana: {line}")
 
 
 def check_servers(state):
@@ -272,7 +297,7 @@ def check_brief(state):
 def main():
     state = jload(STATE, {})
     last_gh = 0.0
-    last_srv = last_cal = 0.0
+    last_srv = last_cal = last_gf = 0.0
     while True:
         try:
             if True:
@@ -284,6 +309,8 @@ def main():
                     last_srv = time.time(); check_servers(state)
                 if time.time() - last_cal > CAL_EVERY:
                     last_cal = time.time(); check_calendar(state)
+                if time.time() - last_gf > GRAFANA_EVERY:
+                    last_gf = time.time(); check_grafana(state)
                 check_brief(state)
                 check_report(state)
                 check_nightly(state)

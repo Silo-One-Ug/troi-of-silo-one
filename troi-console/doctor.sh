@@ -9,7 +9,7 @@ echo "AGENT DOCTOR  $(date '+%Y-%m-%d %H:%M')"
 echo "services"
 for s in ring pulse telegram vault-backup; do launchctl list 2>/dev/null | grep -qF "com.troi-of-silo-one.$s" && ok "$s service loaded" || red "$s service not loaded  (python3 $C/setup.py services install)"; done
 echo "the running stack"
-for p in "3100 console" "8796 agent API" "8790 face" "8794 hands board"; do set -- $p; lsof -nP -t -iTCP:$1 -sTCP:LISTEN >/dev/null 2>&1 && ok "$2 on :$1" || warn "$2 not running on :$1 (start the agent)"; done
+for p in "3100 console" "8796 agent API" "8790 face" "8794 the board"; do set -- $p; lsof -nP -t -iTCP:$1 -sTCP:LISTEN >/dev/null 2>&1 && ok "$2 on :$1" || warn "$2 not running on :$1 (start the agent)"; done
 pgrep -f "troi-console/voice[.]py" >/dev/null && ok "voice line running" || warn "voice line not running (start the agent)"
 pgrep -f "eyes[.]py" >/dev/null && ok "eyes daemon" || warn "eyes daemon not running"
 [ -p "$C/.typed" ] && ok "typing pipe present" || warn "typing pipe missing (console typing/telegram relay will fall back)"

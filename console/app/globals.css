@@ -90,6 +90,9 @@ html.dark body { background: #02040a; }
   a, button { touch-action: manipulation; }
   .app-page { padding-top: calc(env(safe-area-inset-top, 0px) + 60px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); min-height: 100dvh; }
   .fill-page { height: calc(100dvh - 130px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-width: none; }
+  html, body { overflow-x: hidden; }                                                    /* nothing inside may scroll the page sideways */
+  html.talk-lock, html.talk-lock body { overflow: hidden; height: 100dvh; }             /* the conversation open: only its message list scrolls */
+  .chat-md, .chat-md p, .chat-md li, .chat-md td { overflow-wrap: anywhere; }            /* a long address or token wraps instead of widening */
 }
 
 /* Markdown in the agent's bubbles: hierarchy without noise. Tokens follow the theme. */

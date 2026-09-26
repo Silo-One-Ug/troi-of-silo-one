@@ -26,7 +26,7 @@ that explains the ability.
 | "movie mode" / "movie mode off" | Push to talk, cues off, the conversation hidden and the page dimmed; then back |
 | "back up now" | The nightly backup, now: the vault, then the record |
 | "call me" | A call link on Telegram; the agent answers ([Calls](calls.md)) |
-| "show me the photo of …" | The picture goes up on the hands board |
+| "show me the photo of …" | The picture goes up on the board |
 | "move X into Y" / "rename" / "make a folder" | Done directly, inside your file roots, never overwriting ([Files and apps](../40-abilities/files-and-apps.md)) |
 | "delete X" / "trash X" | An approval card. Nothing moves until you approve it, and then it goes to the macOS Trash |
 | "click the Save button" / "type hello in that field" / "open the View menu and switch to list" | The [native hands](../40-abilities/native-hands.md): the control is found by name in the app's accessibility tree, pressed, and the result read back; risky labels ask for approval |

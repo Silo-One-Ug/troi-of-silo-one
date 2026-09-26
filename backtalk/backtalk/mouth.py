@@ -332,6 +332,31 @@ def synth_stream(text: str, timeout: float = 30.0):
         yield KOKORO_RATE, pcm
 
 
+_QUIET = {"t": 0.0, "mtime": 0.0, "on": False}
+
+
+def quiet() -> bool:
+    """troi-console: quiet mode. The console's settings (data/console.json, "speak": false) say the agent answers on the
+    page only, nothing spoken: no ElevenLabs credits, no voice. Read at most once a second, so the switch acts on the very
+    next sentence. Missing file or key = speaking, as always."""
+    import os, time as _t
+    from pathlib import Path
+    now = _t.time()
+    if now - _QUIET["t"] < 1.0:
+        return _QUIET["on"]
+    _QUIET["t"] = now
+    try:
+        p = Path(os.environ.get("TROI_DATA") or (Path(CFG.get("agent_dir") or "~").expanduser() / "data")) / "console.json"
+        m = p.stat().st_mtime
+        if m != _QUIET["mtime"]:
+            import json
+            _QUIET["mtime"] = m
+            _QUIET["on"] = json.loads(p.read_text()).get("speak", True) is False
+    except Exception:
+        _QUIET["on"] = False
+    return _QUIET["on"]
+
+
 class Mouth:
     def __init__(self):
         from backtalk.ducking import Ducker
@@ -398,6 +423,12 @@ class Mouth:
             sentence, directions = item if isinstance(item, tuple) else (item, None)
             if not sentence:
                 continue
+            if quiet():                        # troi-console: quiet mode — the words stay on the page, the room stays silent
+                signals.static_stop()
+                if self._q.empty():
+                    signals.reply_done()
+                    signals.set_state("idle")
+                continue
             self._stop.clear()
             self._speaking.set()
             self.ducker.speech_start()
@@ -435,10 +466,41 @@ class Mouth:
             except Exception:
                 log("[mouth] the output stream went away, reopening")
         self._drop_out()
-        self._out = sd.OutputStream(samplerate=rate, channels=1, dtype="int16")
+        self._out = self._open_out(rate)
         self._out_rate = rate
         self._out.start()
         return self._out
+
+    def _open_out(self, rate: int) -> sd.OutputStream:
+        """troi-console: open the output with a self-heal. PortAudio caches
+        the device list when it initialises; when the default output changed
+        underneath (a monitor's audio dozing and coming back with a new id,
+        25 Sep 2026) every open fails with paInternalError for good while the
+        rest of the line looks healthy. So, on a failure: rebuild the audio
+        system the way the ears do for a lost microphone and try once more;
+        if the default still will not open, fall back to the built-in
+        speakers rather than stay mute. The ears open a fresh stream per
+        capture, so the rebuild costs them nothing."""
+        last: Exception | None = None
+        try:
+            return sd.OutputStream(samplerate=rate, channels=1, dtype="int16")
+        except Exception as e:
+            last = e
+            log(f"[mouth] the output would not open ({e}); rebuilding the audio system")
+        try:
+            sd._terminate()
+        except Exception:
+            pass
+        sd._initialize()
+        try:
+            return sd.OutputStream(samplerate=rate, channels=1, dtype="int16")
+        except Exception as e:
+            last = e
+            log(f"[mouth] still no default output ({e}); trying the built-in speakers")
+        for i, d in enumerate(sd.query_devices()):
+            if d.get("max_output_channels", 0) > 0 and "speaker" in str(d.get("name", "")).lower():
+                return sd.OutputStream(device=i, samplerate=rate, channels=1, dtype="int16")
+        raise last
 
     def _cut(self):
         """Barge-in cut: stop feeding audio and pad the line with a beat

@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEv
 import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { GFM } from "@/lib/compat";                       // GFM markdown where the browser can read it (an iOS 15 phone cannot)
 import { AppWindow, ArrowDown, ArrowUp, AtSign, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, Eraser, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Loader2, Mail, Mic, Monitor, Paperclip, PictureInPicture2, Plug, Plus, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
@@ -90,7 +90,7 @@ function addStep(ms: Msg[], s: Step): Msg[] {
 }
 const withDetail = (ms: Msg[], id: string, detail: string) => ms.map(m => m.role === "steps" && m.steps?.some(s => s.id === id) ? { ...m, steps: m.steps!.map(s => s.id === id ? { ...s, detail } : s) } : m);
 const settle = (ms: Msg[]) => ms.some(m => m.role === "steps" && m.live) ? ms.map(m => m.role === "steps" && m.live ? { ...m, live: false } : m) : ms;   // the turn's steps are done: the line becomes their count
-const Md = ({ text }: { text: string }) => <div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown></div>;
+const Md = ({ text }: { text: string }) => <div className="chat-md"><ReactMarkdown remarkPlugins={GFM}>{text}</ReactMarkdown></div>;
 export const globeState = (s: string) => (s === "thinking" || s === "working" ? "thinking" : s === "speaking" ? "speaking" : s === "listening" ? "listening" : "idle") as "idle" | "thinking" | "speaking" | "listening";
 
 // a file mention in a line: @/path, or @"/a path with spaces"
@@ -371,7 +371,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         onRunErrorEvent: ({ event }) => setMsgs(ms => [...ms, { id: nid(), role: "note", text: event.message }]),
       });
     } catch (e: any) { if (!/abort/i.test(String(e?.name || e?.message || e))) setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
-    for (const s of said) for (const sent of s.split(/(?<=[.!?])\s+/)) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
+    for (const s of said) for (const sent of s.replace(/([.!?])\s+/g, "$1\n").split("\n")) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
   const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off");
@@ -395,7 +395,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       <div className="hidden items-center gap-2 border-b border-border px-3 py-2 text-sm md:flex"><span className="font-medium">Conversation</span><span className="text-xs text-muted-foreground">· {state}</span>
         <button type="button" onClick={clear} disabled={msgs.length === 0} aria-label="Clear the chat" title="Clear the chat: the page empties; the record and the session stay" className="ml-auto text-muted-foreground hover:text-foreground disabled:opacity-40"><Eraser className="h-4 w-4" /></button>
         <button className="text-muted-foreground hover:text-foreground" title={shape === "column" ? "Make it a floating pane" : "Make it a full column"} onClick={() => setTalkShape(shape === "column" ? "floating" : "column")}>{shape === "column" ? <PictureInPicture2 className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}</button></div>
-      <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-6 md:py-4">
+      <div ref={scroller} onScroll={onScroll} className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 md:px-6 md:py-4">
         {msgs.length === 0 && <div className="grid h-full place-items-center px-6 text-center text-[15px] text-muted-foreground md:text-sm">{cleared ? <span>Cleared. <button type="button" onClick={unclear} className="underline underline-offset-2 hover:text-foreground">Show what came before</button></span> : mobile ? `Nothing said yet. Write to ${name} below; it answers here and out loud on the Mac.` : "Nothing said yet. Hold your talk key and speak, or type below."}</div>}
         <div className={cn(col, "space-y-3")}>
           <AnimatePresence initial={false}>
@@ -403,7 +403,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
               : m.role === "steps" ? <motion.div key={m.id} {...rise}><Steps m={m} onToggle={() => upsert(m.id, x => ({ ...x, open: !x.open }))} /></motion.div>
               : m.role === "user" ? (
                 <motion.div key={m.id} {...rise} className="flex items-end justify-end gap-2">
-                  <div className="max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap"><WithMentions text={m.text} /></span>{m.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{m.t}</span>}</div>
+                  <div className="min-w-0 max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap [overflow-wrap:anywhere]"><WithMentions text={m.text} /></span>{m.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{m.t}</span>}</div>
                   <Avatar name={owner} />
                 </motion.div>)
               : m.role === "assistant" ? (

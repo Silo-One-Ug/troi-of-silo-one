@@ -19,10 +19,11 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `apps.sh` | `list`, `running`, `open`, `focus`, `quit`, `kill` (asks you) | Applications |
 | `fs.sh` | `move`, `rename`, `copy`, `mkdir`, `reveal`, `open [app]`, `undo`, `trash` (asks you), `pending` | Files, only inside the file roots (the vault is one) |
 | `console.sh` | see [console.sh](console-sh.md) | The console, driven |
-| `show-image.sh` | `<file> [title] [x] [y]` | A picture or a 3D model on the hands board |
-| `../barehands/bin/board.sh`, `board-state.sh` | `'{"a":"present",…}'` | The hands board itself, and what is on it |
+| `show-image.sh` | `<file> [title] [x] [y]` | A picture or a video on the board; without x and y it flows into free space |
+| `../barehands/bin/board.sh`, `board-state.sh` | `'{"a":"add_card",…}'` (add_card, add_img, present, yank, hover, clear, add_ui, ui, layout, tidy); `board-state.sh [events\|json]` | The board, and what is on it |
 | `remind.sh` | `20m "text"`, `15:00 "text"`, `list`, `cancel N` | Reminders |
-| `show.py` | `'<json tree>'`, `chart …`, `table …`, `vocabulary` | Interface drawn in the conversation |
+| `brain.sh` | `status`, `models`, `deep`, `fast`, `model <name>`, `effort <level>`, `for "<task>" --deep --effort high`, `back`, `rest [<level>]` | The brain for the job: the deep model and a higher effort for heavy work, back to rest after |
+| `show.py` | `'<json tree>' [--board\|--both]`, `chart …`, `table …`, `board "<title>" <op>`, `board tidy\|clear`, `vocabulary` | Interface drawn in the conversation, or as a tile on the board |
 | `media.py` | `now`, `play [words]`, `pause`, `resume`, `stop`, `next`, `prev`, `volume N`, `louder`, `quieter`, `shuffle on\|off`, `like`, `movie on\|off` | Apple Music by voice, and movie mode |
 | `db.py` | `tail [N]`, `sessions`, `stats`, `star <id\|path>`, `retain` | The record |
 | `meeting.py` | `devices`, `start <name> [--device NAME]`, `stop`, `status`, `transcribe <file> [--lang xx] [--speakers N]`, `list` | Meetings |
@@ -30,6 +31,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `pr.py` | `list [repo]`, `review <repo> <n> [--post] [--tests]`, `review <project> --local`, `show <repo> <n>` | A PR review, headless, in a throwaway checkout |
 | `code.sh` | `list`, `<project> [--window]` | A Claude Code session inside a project folder that still boots as the agent |
 | `servers.py` | `list`, `add <name> <ssh-host> [role]`, `check [name] [--json]` | Read-only health of the servers in `data/servers.json` |
+| `grafana.py` | `check`, `alerts [--all]`, `rules`, `silences`, `query '<PromQL>' [--range 1h] [--show]`, `logs '<LogQL>' [--since 15m]`, `dashboards [words]`, `panel <uid> <id> [--show]`, `watch` | Grafana, read-only: the alerts firing, the metric behind one (as a chart on the board), a container's logs, a panel as a picture. The address lives in `data/grafana.json`, the token in the Keychain |
 | `agenda.py` | `today`, `next`, `week`, `soon [min]`, `current` | The Mac's Calendar app |
 | `face.py` | `verify`, `check` | Face ID (its own environment); learning your face is yours to do |
 | `browser-mcp.sh` | `open`, `which` | Open the browser with its port 9223 (Arc, or Chrome), or say which it is |

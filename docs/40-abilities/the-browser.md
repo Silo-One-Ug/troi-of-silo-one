@@ -19,7 +19,7 @@ testing a site you built.
 
 `troi-console/browser-mcp.sh which` says which browser it is; `browser-mcp.sh open` starts it with
 its port if it is not up. `TROI_BROWSER=chrome` in the environment makes the agent keep to Chrome
-even with Arc installed. Chrome is still needed either way, for the hands board and the page tools
+even with Arc installed. Chrome is still needed either way, for the page tools
 that run without a window (the news, research pictures, the report's PDF).
 
 ## What it may do

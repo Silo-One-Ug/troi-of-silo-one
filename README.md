@@ -31,7 +31,7 @@ In **System Settings › Privacy & Security**, give Terminal (the app that runs 
 | `console/` | The console app (Next.js, on http://localhost:3100): the welcome, the conversation, Library, Modes, Routines, Reports, Approvals, Eyes, Browser, and the Face, Hands, Files, Apps and Vault views. On a phone it lays itself out as an app (tabs, a top bar, full-screen views, installable from Safari) |
 | `troi-console/` | The agent's server (http://127.0.0.1:8796) and tools: files, apps, eyes, browser, calendar, meetings, reports, Telegram, calls, the guard. `tools.sh` lists them all |
 | `backtalk/` | The voice line: speech in, the agent's session, speech out |
-| `ai-visualizer/`, `barehands/` | The face and the hands board |
+| `ai-visualizer/`, `barehands/` | The face, and the board's home: its config and the airlock (the board's page lives in `troi-console/barehands/`) |
 | `vault-template/` | The starting vault the welcome creates when you have none |
 | `brand/` | The logo: its generator and typeface; the files it makes are in `console/public/brand/` |
 | `data/` | Everything Troi keeps (not tracked; see below) |

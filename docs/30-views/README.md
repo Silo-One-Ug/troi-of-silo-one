@@ -1,6 +1,6 @@
 ---
 title: The views
-description: The five surfaces that fill the whole window, the Face, the hands board, the Files and Apps galaxies and the Vault wall, and how to open them.
+description: The five surfaces that fill the whole window, the Face, the board, the Files and Apps galaxies and the Vault wall, and how to open them.
 sidebarTitle: Overview
 ---
 
@@ -20,5 +20,5 @@ canvases of their own and keep every gesture they have; the agent can open any o
 ## Hand gestures
 
 The galaxies, the Vault wall and the board can be worked with your hands in front of the webcam,
-once the Hands switch is on ([The hands board](hands-board.md) has the gesture table). The mouse and
+once the Hands switch is on ([The board](hands-board.md) has the gesture table). The mouse and
 the trackpad always work; on the phone, touch does.

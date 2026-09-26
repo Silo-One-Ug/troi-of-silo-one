@@ -6,7 +6,7 @@
   pictures.py shot https://example.com [--show]                           a screenshot of the page itself
   pictures.py board <title> <file> [file ...]                             put files that are already here on the board, as a numbered grid, with a caption
   pictures.py focus 2 | focus <word>                                     spotlight one picture (others dim); pictures.py unfocus brings them all back
-  pictures.py clear                                                      sweep the board (the ring stays); --add on any command keeps what is up
+  pictures.py clear                                                      sweep the board; --add on any command keeps what is up
 
 Everything lands in data/blobs/research/<topic>/ with a credits.json beside the files
 (source, page, licence, author), so a picture can always be traced and credited. --show stages
@@ -190,7 +190,7 @@ def board(title, files, credits=None, fresh=True):
     if not files:
         return "nothing to show"
     if fresh:
-        board_cmd({"a": "clear"}); board_cmd({"a": "widget", "w": "ring"})     # everything off, the ring back: both land at once
+        board_cmd({"a": "clear"})                                              # a new topic never piles on the old one
     n = len(files)
     cols = 1 if n == 1 else 2 if n <= 4 else 3
     rows = math.ceil(n / cols)
@@ -290,6 +290,6 @@ if __name__ == "__main__":
     elif a.cmd == "unfocus":
         print(unfocus())
     elif a.cmd == "clear":
-        print("board swept (the ring stays)" if (board_cmd({"a": "clear"}) and board_cmd({"a": "widget", "w": "ring"})) else "the hands board is not up")
+        print("board swept" if board_cmd({"a": "clear"}) else "the board is not up")
     else:
         print(__doc__)

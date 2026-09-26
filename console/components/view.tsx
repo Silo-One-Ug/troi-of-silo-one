@@ -19,13 +19,23 @@ export function View({ kind }: { kind: "face" | "hands" | "files" | "apps" | "va
     };
     addEventListener("message", h); return () => removeEventListener("message", h);
   }, [c]);
-  useEffect(() => on("hands", (v: boolean) => {                  // the hands switch, live: the board's camera and the galaxies' hand tracking
+  useEffect(() => {                                               // the board follows the console's theme, light or dark
+    if (kind !== "hands" || !ready) return;
+    const post = () => { const f = document.querySelector("iframe[data-view]") as HTMLIFrameElement | null; f?.contentWindow?.postMessage({ theme: document.documentElement.classList.contains("dark") ? "dark" : "light" }, "*"); };
+    const t = setTimeout(post, 400); const mo = new MutationObserver(post); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => { clearTimeout(t); mo.disconnect(); };
+  }, [kind, ready]);
+  useEffect(() => on("hands", (v: boolean) => {                  // the hands switch, live: the galaxies' hand tracking (the board has no camera)
     const f = document.querySelector("iframe[data-view]") as HTMLIFrameElement | null;
     f?.contentWindow?.postMessage({ hands: !!v }, "*"); f?.contentWindow?.postMessage({ boardCamera: v ? "on" : "off" }, "*");
   }), []);
-  // the face and the board are served by the Mac: from a phone, the Mac is the host the page came from, not 127.0.0.1
-  const onMac = (u?: string) => { if (!u) return u; try { const h = location.hostname; return h === "localhost" || h === "127.0.0.1" ? u : u.replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/])/, "//" + h); } catch { return u; } };
-  const src = kind === "face" ? onMac(c?.face) : kind === "hands" ? onMac(c?.hands) : `${edgeUrl()}/galaxy.html?safe=0&mode=${kind}${kind !== "vault" ? "&bg=deep" : ""}${mobile ? "&mobile=1" : ""}${kind === "vault" && c?.vault ? "&vault=" + encodeURIComponent(c.vault) : ""}${kind === "files" && path ? "&path=" + encodeURIComponent(path) : ""}`;
+  // the face and the board are served by the Mac: from a phone, the Mac is the host the page came from, not 127.0.0.1, over the
+  // page's own scheme (https through Tailscale's serve rules for 8790 and 8794: a browser blocks a plain-http frame inside an https page)
+  const onMac = (u?: string) => { if (!u) return u; try { const h = location.hostname; return h === "localhost" || h === "127.0.0.1" ? u : u.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(?=[:/])/, location.protocol + "//" + h); } catch { return u; } };
+  // the board is told the theme in its address, so its first frame is already the right one (live changes follow by message)
+  const boardTheme = typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "dark" : "light";
+  const withTheme = (u?: string) => u ? u + (u.includes("?") ? "&" : "?") + "theme=" + boardTheme : u;
+  const src = kind === "face" ? onMac(c?.face) : kind === "hands" ? withTheme(onMac(c?.hands)) : `${edgeUrl()}/galaxy.html?safe=0&mode=${kind}${kind !== "vault" ? "&bg=deep" : ""}${mobile ? "&mobile=1" : ""}${kind === "vault" && c?.vault ? "&vault=" + encodeURIComponent(c.vault) : ""}${kind === "files" && path ? "&path=" + encodeURIComponent(path) : ""}`;
   if (!src || mobile === null) return <div className="grid h-full place-items-center bg-black text-sm text-muted-foreground">…</div>;
   // the frame fades in once it has painted: no blank frame between pages
   // data-galaxy / data-ready: Troi's commands (focus, refresh, hands) are posted into the galaxy once it has loaded

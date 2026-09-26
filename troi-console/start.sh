@@ -56,7 +56,7 @@ PIDS+=($!)
 echo "  face:    starting"
 
 if [ -d "$HOME_DIR/barehands" ]; then
-  (cd "$HOME_DIR/barehands" && exec python3 server.py) >/dev/null &
+  (cd "$HOME_DIR/barehands" && exec python3 "$HERE/board-server.py") >>"$LOGS/board.log" 2>&1 &   # barehands' server plus the saved scene, the UI panels and taps
   PIDS+=($!)
   echo "  hands:   starting"
 fi

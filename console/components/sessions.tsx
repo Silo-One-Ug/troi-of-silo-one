@@ -8,7 +8,7 @@
 // back. The agent never starts or deletes a session on its own; it has no tool that could.
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { GFM } from "@/lib/compat";
 import { Check, ChevronLeft, ChevronRight, History, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -122,7 +122,7 @@ export function Sessions() {
         {lines && lines.map(l => l.role === "you" ? (
           <div key={l.id} className="flex justify-end"><div className="max-w-[82%] rounded-2xl rounded-br-md bg-accent px-3.5 py-2 text-[15px] md:max-w-[72%] md:text-sm"><span className="whitespace-pre-wrap">{l.text}</span>{l.t && <span className="float-right ml-2.5 mt-2 text-[10px] leading-none text-muted-foreground/80">{l.t}</span>}</div></div>
         ) : l.role === "agent" ? (
-          <div key={l.id} className="min-w-0 text-[15px] leading-6 md:text-sm"><div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{clean(l.text)}</ReactMarkdown></div>{l.t && <div className="mt-0.5 text-[10px] text-muted-foreground">{l.t}</div>}</div>
+          <div key={l.id} className="min-w-0 text-[15px] leading-6 md:text-sm"><div className="chat-md"><ReactMarkdown remarkPlugins={GFM}>{clean(l.text)}</ReactMarkdown></div>{l.t && <div className="mt-0.5 text-[10px] text-muted-foreground">{l.t}</div>}</div>
         ) : l.role === "card" ? (
           <div key={l.id} className="px-1 text-xs italic text-muted-foreground">a card: {String(l.text || "").replace(/^silo\./, "")}</div>
         ) : <div key={l.id} className="px-1 text-xs italic text-muted-foreground">{l.text}</div>)}

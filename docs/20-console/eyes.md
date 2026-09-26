@@ -23,9 +23,9 @@ Turning sight on is a protected change. The camera is never turned on by the age
 
 ## Hands
 
-The **Hands** switch turns hand tracking on for the hands board and the galaxies: one switch for the
+The **Hands** switch turns hand tracking on in the galaxies (the board is driven with the mouse): one switch for the
 board's camera and the galaxies' hands. The webcam is off until then, to save the battery. "Hands
-on" and "hands off" do the same by voice. See [The hands board](../30-views/hands-board.md).
+on" and "hands off" do the same by voice. See [The board](../30-views/hands-board.md).
 
 ## Face ID
 

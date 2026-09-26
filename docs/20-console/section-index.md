@@ -13,7 +13,7 @@ floats over everything: **the bar**, at the bottom centre.
 The bar shows the agent's name and state, with a small audio wave: its voice while it speaks, a
 breath while it listens. It holds:
 
-- the five **views**, which fill the whole window: the Face, the Hands board, the Files galaxy, the
+- the five **views**, which fill the whole window: the Face, the Board, the Files galaxy, the
   Apps galaxy and the Vault ([The views](../30-views/));
 - the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is
   waiting), Eyes, Browser, Agents (with a count of the agents at work) and Sessions;

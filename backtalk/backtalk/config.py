@@ -53,7 +53,17 @@ DEFAULTS = {
     # above). Full id ON PURPOSE, same reasoning as "model". The switch
     # lasts one session and is always spoken; this default never moves
     # by itself.
-    "deep_model": "claude-opus-5",
+    "deep_model": "claude-fable-5-1",
+    # troi-console: the brains by name, for "switch to fable" / "use opus" in a
+    # voice session, brain.sh and the console's Brain switch. Name -> full model
+    # id; this map is the ONE list, so a new model is one line here (or in
+    # backtalk.json, which overrides it).
+    "models": {
+        "fable": "claude-fable-5-1",
+        "opus": "claude-opus-5-5",
+        "sonnet": "claude-sonnet-5",
+        "haiku": "claude-haiku-4-5-20251001",
+    },
     # Tool permissions for the voice session. "ask" is the default ON
     # PURPOSE (safety is opt-out, never opt-in): when the agent wants a
     # gated tool (write a file, run a real command), it ASKS OUT LOUD

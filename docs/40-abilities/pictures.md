@@ -23,7 +23,7 @@ page leads with, or a screenshot of the page.
 ## Making pictures
 
 "Draw me a…", "make a picture of…", "imagine…": the agent makes a picture from words, or restyles
-one you point it at, saves it in the Library, and can put it on the hands board. It needs an image
+one you point it at, saves it in the Library, and can put it on the board. It needs an image
 key in the Keychain; the welcome's Extras step keeps it, or:
 
 ```bash
@@ -39,4 +39,4 @@ troi-console/keychain.py set gemini     # Google Gemini
 "Show me the photo of…", "put that image up", "show me the screenshot": the agent copies the file
 into the board's airlock and puts it up in the middle of the board. Pictures it took, Telegram photos,
 screenshots, vault attachments and 3D models all work; it asks which one if the request could mean
-several. See [The hands board](../30-views/hands-board.md).
+several. See [The board](../30-views/hands-board.md).

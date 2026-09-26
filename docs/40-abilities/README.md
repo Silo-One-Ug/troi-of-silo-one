@@ -5,7 +5,7 @@ sidebarTitle: Overview
 ---
 
 Troi is not a chatbot with a keyboard. It has a browser, native hands on every app, a camera and
-screen sight, application control, file hands, its own console and galaxies, the hands board,
+screen sight, application control, file hands, its own console and galaxies, the board,
 reminders, the calendar, your Google account, meetings, the news, pictures, music, code sessions, CI
 and servers, Telegram and phone calls. When a request needs the world, it reaches for the tool
 instead of saying it cannot.

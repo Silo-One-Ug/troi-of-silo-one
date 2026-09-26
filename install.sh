@@ -32,7 +32,7 @@ echo "3. the console and the agent's browser"
 echo "4. this Mac"
 chmod +x "$ROOT"/*.sh "$C"/*.sh "$C"/*.py 2>/dev/null
 /usr/bin/python3 "$C/setup.py" render | sed 's/^/ /'
-"$C/patch-board.sh" >/dev/null 2>&1 && ok "hands board patched" || warn "hands board patch did not apply"
+"$C/patch-board.sh" >/dev/null 2>&1 && ok "board tools in place" || warn "the board tools did not copy"
 /usr/bin/python3 "$C/setup.py" services install | sed 's/^/ /'
 /usr/bin/python3 "$C/setup.py" shortcut | sed 's/^/ /'
 mkdir -p "$HOME/.local/bin"; printf '#!/bin/bash\nexec "%s/start.sh" "$@"\n' "$ROOT" > "$HOME/.local/bin/troi"; chmod +x "$HOME/.local/bin/troi"; ok "terminal command: troi"

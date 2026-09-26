@@ -4,7 +4,7 @@ Written for someone who has installed it and wants to know what to say, click an
 
 ## Starting and stopping
 
-- **Start**: double-click **Troi** on the Desktop, or type `troi` in a terminal. Everything comes up: the console (http://localhost:3100), the agent's server (http://127.0.0.1:8796), the face, the hands board, the eyes, the agent's browser and the voice line. Starting it twice is safe; the new launch replaces the old one.
+- **Start**: double-click **Troi** on the Desktop, or type `troi` in a terminal. Everything comes up: the console (http://localhost:3100), the agent's server (http://127.0.0.1:8796), the face, the board, the eyes, the agent's browser and the voice line. Starting it twice is safe; the new launch replaces the old one.
 - **Stop**: Ctrl-C in that window, or close it. The globe dims to "off". The four background services keep running: the pulse, the globe, the Telegram bridge and the nightly backup (`python3 troi-console/setup.py services status`).
 - **Typing**: the Conversation page takes typed turns in the same session as your voice. For a terminal session, `cd ~/troi-of-silo-one && claude` gives you the same boot file and the same memory.
 
@@ -50,7 +50,7 @@ From a terminal or by voice: `console.sh voice list`, `console.sh voice elevenla
 The console is a web app at http://localhost:3100. Behind the pages is space: the Earth from low orbit, turning slowly, with a spacecraft whose engines light while the agent works. One control floats over everything: **the bar**, at the bottom centre.
 
 - **The bar** shows the agent's name and state, with a small audio wave: its voice while it speaks, a breath while it listens. It holds:
-  - the five **views**, which fill the whole window: the Face, the Hands board, the Files galaxy, the Apps galaxy and the Vault;
+  - the five **views**, which fill the whole window: the Face, the Board, the Files galaxy, the Apps galaxy and the Vault;
   - the **pages**: Conversation, Library, Modes, Routines, Reports, Approvals (with a count of what is waiting), Eyes, Browser and Agents (with a count of the agents at work);
   - then the bell, the lock and the light/dark switch.
 - **Conversation**: everything the agent hears and says, live.
@@ -77,6 +77,8 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   | Strictness | How closely a voice must match your voice print. Move it right if someone else gets through, left if it starts ignoring you |
   | Face ID | Learn my face |
   | Voice | Kokoro / ElevenLabs, and which of your ElevenLabs voices |
+  | Speech | Aloud / Text only (nothing spoken, no ElevenLabs credits; the answers still land on the page) |
+  | Keys | The third card: the ElevenLabs key, the Telegram token, the OpenAI and Gemini keys, the Agora app id and certificate, the PIN, each with a kept/not-set badge and a field to keep or replace it (a kept key is replaced only from an unlocked console) |
 
   A protected choice needs the console unlocked. For Auto-approve and Hands-free, the page asks you to unlock and pick again. The other protected switches are filed for your approval on Telegram.
 - **Library**: every picture the agent took, made, found or received, shelved as books by source and by day. You can:
@@ -85,7 +87,7 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   - star the ones to keep past the 14-day tidy-up.
 - **Routines**: everything that runs on a clock, with its last run:
   - the morning brief and the end-of-day report, each with a time and a switch;
-  - the CI watch, the server watch and the calendar;
+  - the CI watch, the server watch, the Grafana watch (the alerts firing at your Grafana, `grafana.py`) and the calendar;
   - the vault backup, housekeeping and session compaction;
   - the Telegram bridge and the globe.
 
@@ -110,9 +112,9 @@ Open the same address on your phone, on the same network (`http://<your Mac's na
 - the five views open full screen from **Views**, with a pill at the bottom to come back. In the galaxies: tap a star, drag it onto a folder, press and hold for the menu, pinch to zoom;
 - the conversation is its own tab, with a messenger's composer: the field grows with the lines, and while it is empty a microphone stands where the send button will be. A voice note goes to the agent's own ears on the Mac and comes back as your line (it needs an https address: see below). The floating pane is a desktop shape and does not exist here. "Float the conversation" simply opens the Talk tab.
 
-In Safari, **Share › Add to Home Screen** installs it with its own icon and no browser chrome. A phone held sideways keeps the same layout; an iPad gets the desktop console, with the lock opening the PIN sheet. Nothing is missing on the phone: every page and every switch of the desktop console is here.
+In Safari, **Share › Add to Home Screen** installs it with its own icon and no browser chrome. A phone held sideways keeps the same layout; an iPad gets the desktop console, with the lock opening the PIN sheet. The conversation fills the screen edge to edge, and while it is open the page does not scroll: the message list scrolls, the composer stays above the tabs, nothing pushes the page sideways. Nothing is missing on the phone: every page and every switch of the desktop console is here.
 
-**Reaching Troi from the phone is off until you turn it on.** The agent answers only on the Mac itself by default. Modes › *Your phone* offers two ways beyond that, both protected changes (your PIN), both taking effect at Troi's next start. **Tailscale** (the option appears when Tailscale is installed on the Mac): with Tailscale on the Mac and the phone, signed in to the same account, open `http://<the Mac's Tailscale address>:3100` on the phone (the hint under the switch shows it; the Mac's `.ts.net` name does not work in a browser, which insists on https for it); it works from anywhere, only your own devices can reach it, and every other network is turned away before a byte is read. **This network**: `http://<your Mac's name>.local:3100` on the same Wi-Fi, only on a network you trust, since anyone on it can then talk to Troi and read its record. The Face and Hands views also need their own servers reachable, which they are not yet; the galaxies, the conversation and every page work. **Https** (for the phone's microphone, and for the Mac's `.ts.net` name): enable HTTPS Certificates and Serve in Tailscale's admin console, then `Tailscale serve --bg --https=443 http://127.0.0.1:3100` and `Tailscale serve --bg --https=8796 http://127.0.0.1:8796` on the Mac; `https://<the Mac's tailnet name>/` then opens the console with the microphone working (the agent's server then keeps to the Mac itself and Tailscale carries the phone; the plain `http://<address>:3100` way stops working).
+**Reaching Troi from the phone is off until you turn it on.** The agent answers only on the Mac itself by default. Modes › *Your phone* offers two ways beyond that, both protected changes (your PIN), both taking effect at Troi's next start. **Tailscale** (the option appears when Tailscale is installed on the Mac): with Tailscale on the Mac and the phone, signed in to the same account, open `http://<the Mac's Tailscale address>:3100` on the phone (the hint under the switch shows it; the Mac's `.ts.net` name does not work in a browser, which insists on https for it); it works from anywhere, only your own devices can reach it, and every other network is turned away before a byte is read. **This network**: `http://<your Mac's name>.local:3100` on the same Wi-Fi, only on a network you trust, since anyone on it can then talk to Troi and read its record. The Face and Hands views have their own servers on the Mac, answering on the Mac itself only, so they reach the phone over https alone, with the two extra serve rules below; the galaxies, the conversation and every page work either way. **Https** (for the phone's microphone, and for the Mac's `.ts.net` name): enable HTTPS Certificates and Serve in Tailscale's admin console, then, on the Mac, `Tailscale serve --bg --https=443 http://127.0.0.1:3100` and the same with `--https=8796 http://127.0.0.1:8796` (the agent), `--https=8794 http://127.0.0.1:8794` (the board) and `--https=8790 http://127.0.0.1:8790` (the face); `https://<the Mac's tailnet name>/` then opens the console with the microphone working (the agent's server then keeps to the Mac itself and Tailscale carries the phone; the plain `http://<address>:3100` way stops working).
 
 ## The greeting
 
@@ -171,7 +173,7 @@ It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you 
 | "how is CI" / "any failed builds" | CI status across the GitHub orgs and users you watch (set under Routines › CI watch) |
 | "back up now" | the nightly backup, now: the vault, then the record |
 | "call me" | a call link on Telegram; the agent answers |
-| "show me the photo of ..." | the picture goes up on the hands board |
+| "show me the photo of ..." | the picture goes up on the board |
 | "move X into Y" / "rename" / "make a folder" | done directly, inside your file roots (never overwrites) |
 | "delete X" / "trash X" | an approval card. Nothing moves until you approve it (the console unlocked, or "approve" on Telegram), and then it goes to the macOS Trash |
 | "click the Save button" / "type hello in that field" / "open the View menu and switch to list" | the native hands: the control is found by name in the app's accessibility tree, pressed, and the result read back; risky labels ask for approval. The guarded cursor remains for what has no name |
@@ -213,7 +215,7 @@ Every application as a standalone icon, grouped by category; running apps glow. 
 
 ## Hand gestures (webcam)
 
-The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or "hands on" to the agent, turns hand tracking on for the hands board and the galaxies; the Hands button in the corner of the board, and the one inside a galaxy, do the same and keep the console's switch in step. Chrome asks for the camera the first time.
+The webcam is off until you ask, to save the battery. The **Hands** switch on the Eyes page, or "hands on" to the agent, turns hand tracking on in the galaxies (the Files, Apps and Vault views); the Hands button inside a galaxy does the same and keeps the console's switch in step. The board itself is driven with the mouse. Chrome asks for the camera the first time.
 
 | Hand | Meaning |
 |---|---|
@@ -225,7 +227,13 @@ The webcam is off until you ask, to save the battery. The **Hands** switch on th
 | In a peek drawer: hand up and down | scrolls like a trackpad (small movements, repeat) |
 | In a peek drawer: swipe right | closes it |
 
-The galaxies' sensitivity lives in `data/console.json` under `hands` (pinch thresholds, dwell time, magnet), or use `console.sh hands <key> <value>`. Press **P** in a galaxy to sample a pose. The mouse also works as a hand on the hands board: move is an open hand, hold is a pinch, click is a tap.
+The galaxies' sensitivity lives in `data/console.json` under `hands` (pinch thresholds, dwell time, magnet), or use `console.sh hands <key> <value>`. Press **P** in a galaxy to sample a pose.
+
+## The board
+
+The **Hands** view is the board: a full-width page, reading text in Inter with JetBrains Mono for labels, numbers and code, light or dark with the console, where the agent shows you things and everything stays until you clear it. Cards, pictures, notes from the vault, and panels drawn from data (charts, tables, stats, slideshows, video, maps, a plan) land as tiles that flow into free space; `layout` grids several at once; **Tidy** lines them up. Drag a tile by its title, scroll inside a panel, double-click a title to spotlight it, hover for its × and its resize grip; tabs, buttons, choices and checkboxes click (a tick in a vault note lands in the note itself), slideshows slide and drag, videos and audio play, and a click on a button, a choice or a checklist item reaches the agent as an answer. Opened on its own, the board hands over to the console's Hands view, so the console's bar is the one navigation everywhere. The scene is saved in `data/board/scene.json` and comes back after a reload or a restart. With nothing up, the board says what it is for and offers requests to click. It has no camera; the mouse drives it.
+
+**On a phone** (under 768 px) the board is one column in reading order, full width, nothing to drag: a tap on a title spotlights a tile, a tap again lets it go, × puts it away; Tidy is hidden. Each tile keeps its place on the glass, so the desktop is unchanged.
 
 ## Telegram
 
@@ -306,11 +314,11 @@ When the agent researches or explains something that has a look to it, it puts p
 - **Kept**: they also land in the Library under Research, and in `data/blobs/research/<topic>/` with a credits file.
 - **To your phone**: "Send me those."
 
-The board has a calm dark backdrop, its camera stays off until hand tracking is on, and pictures keep their true colours.
+The board is a light gray page (#F9FAFB) in the light theme, near-black in the dark; pictures keep their true colours.
 
 ## Making pictures
 
-"Draw me a…", "make a picture of…", "imagine…": the agent makes a picture from words, or restyles one you point it at, saves it in the Library, and can put it on the hands board. It needs an image key in the Keychain; the welcome's Extras step keeps it, or:
+"Draw me a…", "make a picture of…", "imagine…": the agent makes a picture from words, or restyles one you point it at, saves it in the Library, and can put it on the board. It needs an image key in the Keychain; the welcome's Extras step keeps it, or:
 
 ```bash
 troi-console/keychain.py set openai     # OpenAI

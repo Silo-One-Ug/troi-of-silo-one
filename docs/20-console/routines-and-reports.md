@@ -14,6 +14,7 @@ Everything that runs on a clock, with its last run:
 | The end-of-day report | `report_time` (18:30 by default), with a switch |
 | The CI watch | every 3 minutes, the newest run on `main` of every repo of the GitHub orgs and users on its card |
 | The server watch | every 15 minutes, read-only over SSH |
+| The Grafana watch | every minute, the alert rules' state at your Grafana (`data/grafana.json`, the token in the Keychain): what began firing and what resolved |
 | The calendar | a heads-up 15 minutes before an event |
 | The vault backup | 23:30 nightly: the vault, then the record |
 | Housekeeping | 03:00: logs and old captures |

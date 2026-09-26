@@ -78,6 +78,8 @@ certificate and serve it over https, once, in two steps:
    ```bash
    /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=443 http://127.0.0.1:3100
    /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=8796 http://127.0.0.1:8796
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=8794 http://127.0.0.1:8794
+   /Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=8790 http://127.0.0.1:8790
    ```
 
 Then `https://<the Mac's tailnet name>/` opens the console on the phone, no port, with the
@@ -89,8 +91,27 @@ way stops working, and the https name is the one to use. Without this, the phone
 over `http://<the Mac's Tailscale address>:3100` with everything but the microphone; Telegram voice
 notes are the way to talk.
 
-### What does not reach the phone yet
+### The Face and Hands views on the phone
 
-The Face and Hands views need their own servers reachable, and those still answer on the Mac only,
-so those two views stay blank on the phone. The galaxies, the Vault, the conversation and every page
-work.
+The face and the board have their own servers on the Mac (ports 8790 and 8794), answering on the Mac
+itself only, and the console frames them over the scheme the page came in on. So they reach the phone
+over https alone, through the third and fourth serve rules above: without those two rules the views
+stay black (a browser blocks a plain-http frame inside an https page, and nothing served the ports),
+and over plain `http://<address>:3100` they do not reach the phone at all. The galaxies, the Vault,
+the conversation and every page work either way. On a phone the board lays its tiles out as one
+column in reading order; a tap on a title spotlights a tile, a tap again lets it go.
+
+### The conversation on the phone
+
+The conversation fills the screen between the bar and the tabs, edge to edge. The page itself does
+not scroll while it is open: the message list scrolls, the composer stays put above the tabs, and
+nothing inside can push the page sideways (code blocks and tables scroll within themselves, long
+addresses wrap). Leave the page and scrolling comes back for the others.
+
+### Which phones
+
+Safari on iOS 15 or later runs the console. Its start-up scripts are kept readable by Safari 15 on
+purpose: one library the conversation uses for GitHub-flavoured markdown carries a regular
+expression Safari learnt only in 16.4, so it is compiled with the app and switched on only where the
+browser understands it. On an older phone, markdown tables, strikethrough and task lists show as
+plain text; everything else is the same.
