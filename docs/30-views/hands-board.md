@@ -4,18 +4,19 @@ description: "The agent's show-and-tell surface: a light gray, full-width page o
 order: 4
 ---
 
-The board is where the agent shows you things (`http://127.0.0.1:8794`, on the Mac only; the **Hands**
-view in the console). When you ask to see something ("show me", "put it up", "pull up my notes on X"),
-the agent finds the thing, puts it on the board, and says what it put up. Research pictures land as a
-numbered grid with a caption; a picture it made, a screenshot, a photo from Telegram, a note from the
-vault, a chart, a table or a plan can all go up, and anything can be presented centre stage, enlarged,
-with the rest dimmed.
+The board is where the agent shows you things (`http://127.0.0.1:8794`, on the Mac only; the
+**Hands** view in the console). When you ask to see something ("show me", "put it up", "pull up my
+notes on X"), the agent finds the thing, puts it on the board, and says what it put up. Research
+pictures land as a numbered grid with a caption; a picture it made, a screenshot, a photo from
+Telegram, a note from the vault, a chart, a table or a plan can all go up, and anything can be
+presented centre stage, enlarged, with the rest dimmed.
 
-The board is a full-width page, its reading text in Inter and its labels, numbers and code in JetBrains Mono, with the content sitting on the paper: a small title
-over each tile, hairlines, no boxes. Light or dark follows the system, or the console's switch when the
-board is framed in it (`?theme=dark|light` forces one). It grows downward and scrolls when there is more
-than a screen of it. Opened on its own, the page hands over to the console's Hands view, so the console's bar
-is the one navigation everywhere.
+The board is a full-width page, its reading text in Inter and its labels, numbers and code in
+JetBrains Mono, with the content sitting on the paper: a small title over each tile, hairlines, no
+boxes. Light or dark follows the system, or the console's switch when the board is framed in it
+(`?theme=dark|light` forces one). It grows downward and scrolls when there is more than a screen of
+it. Opened on its own, the page hands over to the console's Hands view, so the console's bar is the
+one navigation everywhere.
 
 ## The mouse
 
@@ -60,9 +61,9 @@ the one thing to look at, and keeps to one accent and no more than three hues on
 ## Organised by itself
 
 A new tile flows into the first free space, in reading order, and scrolls into view. `layout` places
-several tiles in the cells of a grid, a row or a column, with a caption under them. `tidy`
-(`show.py board tidy`, or the button) re-flows the whole board. The agent can drive a panel that is up:
-a new tree in place (a live dashboard), the next slide, play or pause, scroll, move, resize, spotlight
+several tiles in the cells of a grid, a row or a column, with a caption under them. `tidy` (`show.py
+board tidy`, or the button) re-flows the whole board. The agent can drive a panel that is up: a new
+tree in place (a live dashboard), the next slide, play or pause, scroll, move, resize, spotlight
 (`show.py board "<title>" next|set|scroll|present …`).
 
 ## It stays
@@ -90,8 +91,8 @@ the bottom, and under everything on the glass.
 
 Only files inside `barehands/media/` (the airlock) can appear on the board; `show-image.sh`,
 `pictures.py` and `show.py` copy files there first. Anything remote is https or refused. The board
-runs on the Mac only, and it has no camera: the **Hands** switch, and the gestures below, belong to the
-galaxies.
+runs on the Mac only, and it has no camera: the **Hands** switch, and the gestures below, belong to
+the galaxies.
 
 ## Hand gestures (the galaxies)
 

@@ -29,14 +29,17 @@ your approval on Telegram when the console is locked.
 guard does not depend on this switch: deletions, force-quits, risky clicks and protected changes need
 you in either mode ([The guard](../50-safety/the-guard.md)).
 
-**Brain** picks a model by name for this session ("switch to <name>" is the phrase behind it). The names come from one place, the `models` map in the voice line's config: add a model there and it appears here, in the phrases and in `brain.sh`. The next start returns to the fast model; "switch to the deep model" means the configured deep one.
-**Effort** is how hard the model thinks per turn; Max is thorough and slow, Low is quick.
+**Brain** picks a model by name for this session (`switch to fable` is the phrase behind it). The
+names come from one place, the `models` map in the voice line's config: add a model there and it
+appears here, in the phrases and in `brain.sh`. The next start returns to the fast model; "switch to
+the deep model" means the configured deep one. **Effort** is how hard the model thinks per turn; Max
+is thorough and slow, Low is quick.
 
-The agent pulls these two levers by itself for heavy work (code changes, reviews, research
-reports, long reads, server operations): it says so in a line, switches to the deep brain (Fable) or a named one at a higher
-effort between turns, continues the task there, and comes back to the fast model and the resting effort
-when the piece is done (`brain.sh`; the resting effort is medium unless you set another with
-`brain.sh rest <level>`). The switches show here as they happen.
+The agent pulls these two levers by itself for heavy work (code changes, reviews, research reports,
+long reads, server operations): it says so in a line, switches to the deep brain (Fable) or a named
+one at a higher effort between turns, continues the task there, and comes back to the fast model and
+the resting effort when the piece is done (`brain.sh`; the resting effort is medium unless you set
+another with `brain.sh rest <level>`). The switches show here as they happen.
 
 ## Eyes
 
@@ -63,19 +66,19 @@ unlocked console, or with your approve on Telegram.
 
 ## Speech
 
-**Text only** keeps the voice quiet: every answer still lands in the conversation, on Telegram and on
-the board as before, but nothing is synthesised or played, and the ElevenLabs balance is untouched. Fillers
-and the greeting stay quiet too. **Aloud** brings the voice back from the next line. By voice or from a
-terminal: `console.sh speak on|off`.
+**Text only** keeps the voice quiet: every answer still lands in the conversation, on Telegram and
+on the board as before, but nothing is synthesised or played, and the ElevenLabs balance is
+untouched. Fillers and the greeting stay quiet too. **Aloud** brings the voice back from the next
+line. By voice or from a terminal: `console.sh speak on|off`.
 
 ## Keys
 
 The third card keeps the secrets the welcome asked for, in the Mac's Keychain and never in a file:
 the ElevenLabs API key (the voice), the Telegram bot token (your phone), the OpenAI and Gemini keys
-(pictures), the Agora app id and certificate (phone calls), and the PIN. Each has a badge (**kept** or
-**not set**), a field, and **Keep**. Add a key here later, or replace one: a key already kept is
-replaced only from an unlocked console (the lock in the bar). A new Telegram token wakes the bridge; a
-new ElevenLabs key reloads the voices.
+(pictures), the Agora app id and certificate (phone calls), and the PIN. Each has a badge (**kept**
+or **not set**), a field, and **Keep**. Add a key here later, or replace one: a key already kept is
+replaced only from an unlocked console (the lock in the bar). A new Telegram token wakes the bridge;
+a new ElevenLabs key reloads the voices.
 
 ## Sounds
 
