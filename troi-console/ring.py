@@ -23,7 +23,9 @@ import objc
 from AppKit import (NSView, NSApplication, NSApplicationActivationPolicyAccessory, NSBackingStoreBuffered, NSColor, NSMakeRect, NSMenu,
                     NSMenuItem, NSPanel, NSScreen, NSStatusBar, NSVariableStatusItemLength, NSWindowCollectionBehaviorCanJoinAllSpaces,
                     NSWindowCollectionBehaviorFullScreenAuxiliary, NSWindowCollectionBehaviorStationary, NSWindowStyleMaskBorderless,
-                    NSWindowStyleMaskNonactivatingPanel, NSStatusWindowLevel, NSWorkspace)
+                    NSWindowStyleMaskNonactivatingPanel, NSStatusWindowLevel, NSWorkspace,
+                    NSWindowStyleMaskResizable, NSFloatingWindowLevel, NSVisualEffectView, NSVisualEffectMaterialHUDWindow,
+                    NSVisualEffectBlendingModeBehindWindow, NSVisualEffectStateActive, NSViewWidthSizable, NSViewHeightSizable, NSViewMinYMargin)
 from Foundation import NSObject, NSTimer, NSURL
 from WebKit import WKWebView, WKWebViewConfiguration, WKUserContentController
 
@@ -132,6 +134,9 @@ def settings():
 
 
 CONSOLE_URL = os.environ.get("TROI_CONSOLE_URL", "http://localhost:3100/")     # the console app; :8796 is the agent's API
+FLOAT_URL = CONSOLE_URL.rstrip("/") + "/float"                    # the conversation alone, for the floater panel
+FLOAT_FILE = P.DATA / "cache" / "floater.json"                       # {shown, x, y, w, h}: console.sh float and the board server write shown; the panel writes its frame
+
 
 
 def save_pos(x, y):
@@ -155,6 +160,97 @@ class DragView(NSView):
 
     def acceptsFirstMouse_(self, event):
         return True
+
+
+def float_state():
+    try:
+        return json.loads(FLOAT_FILE.read_text())
+    except Exception:
+        return {}
+
+
+def float_write(**kv):
+    """Merge keys into the floater's state file (shown, x, y, w, h); atomic, tolerant."""
+    try:
+        d = float_state(); d.update(kv)
+        FLOAT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = FLOAT_FILE.with_suffix(".json.tmp"); tmp.write_text(json.dumps(d)); os.replace(tmp, FLOAT_FILE)
+    except Exception:
+        pass
+
+
+class FloatDrag(NSView):
+    """The strip at the top of the conversation panel: drag moves it, a double-click puts it back to its default place."""
+    def mouseDown_(self, event):
+        if event.clickCount() >= 2:
+            APP.float_default(); return
+        self.window().performWindowDragWithEvent_(event)
+        APP.float_remember()
+
+    def acceptsFirstMouse_(self, event):
+        return True
+
+
+class Floater:
+    """The conversation as a panel of its own: translucent, resizable, above every app and on every space, showing the
+    console's /float route. Shown and hidden through the state file (console.sh float, the console's pane button through
+    the board server, the ring's menu); its frame is remembered in the same file."""
+    W, H, MIN_W, MIN_H, STRIP = 440, 560, 360, 260, 22
+
+    def __init__(self):
+        scr = NSScreen.mainScreen().visibleFrame(); st = float_state()
+        x = st.get("x", scr.origin.x + scr.size.width - self.W - 24); y = st.get("y", scr.origin.y + 24)
+        w = max(self.MIN_W, st.get("w", self.W)); h = max(self.MIN_H, st.get("h", self.H))
+        self.win = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+            NSMakeRect(x, y, w, h), NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel | NSWindowStyleMaskResizable, NSBackingStoreBuffered, False)
+        p = self.win
+        p.setLevel_(NSFloatingWindowLevel)
+        p.setCollectionBehavior_(NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary)
+        p.setOpaque_(False); p.setBackgroundColor_(NSColor.clearColor()); p.setHasShadow_(True)
+        p.setMovableByWindowBackground_(False); p.setHidesOnDeactivate_(False); p.setBecomesKeyOnlyIfNeeded_(True)
+        p.setMinSize_((self.MIN_W, self.MIN_H))
+        glass = NSVisualEffectView.alloc().initWithFrame_(NSMakeRect(0, 0, w, h))
+        glass.setMaterial_(NSVisualEffectMaterialHUDWindow); glass.setBlendingMode_(NSVisualEffectBlendingModeBehindWindow); glass.setState_(NSVisualEffectStateActive)
+        glass.setWantsLayer_(True); glass.layer().setCornerRadius_(14.0); glass.layer().setMasksToBounds_(True)
+        glass.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        cfg = WKWebViewConfiguration.alloc().init()
+        self.web = WKWebView.alloc().initWithFrame_configuration_(NSMakeRect(0, 0, w, h - self.STRIP), cfg)
+        self.web.setValue_forKey_(False, "drawsBackground")
+        self.web.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        glass.addSubview_(self.web)
+        self.strip = FloatDrag.alloc().initWithFrame_(NSMakeRect(0, h - self.STRIP, w, self.STRIP))
+        self.strip.setAutoresizingMask_(NSViewWidthSizable | NSViewMinYMargin)
+        glass.addSubview_(self.strip)
+        p.setContentView_(glass)
+        self.loaded_at = 0.0; self.lastframe = None; self.moved_at = 0.0; self.shown = False
+
+    def load(self):
+        self.web.loadRequest_(__import__("Foundation").NSURLRequest.requestWithURL_(NSURL.URLWithString_(FLOAT_URL)))
+        self.loaded_at = time.time()
+
+    def show(self):
+        if time.time() - self.loaded_at > 60:            # fresh after a while away: the console may have been rebuilt or restarted
+            self.load()
+        self.win.orderFrontRegardless(); self.shown = True
+
+    def hide(self):
+        self.win.orderOut_(None); self.shown = False
+
+    def sync(self):
+        """Follow the state file (shown), and remember the frame a second after it stops moving."""
+        want = bool(float_state().get("shown", False))
+        if want and not self.win.isVisible(): self.show()
+        elif not want and self.win.isVisible(): self.hide()
+        f = self.win.frame(); fr = (int(f.origin.x), int(f.origin.y), int(f.size.width), int(f.size.height))
+        if self.lastframe and fr != self.lastframe: self.moved_at = time.time()
+        if self.lastframe and fr == self.lastframe and self.moved_at and time.time() - self.moved_at > 1.0:
+            float_write(x=fr[0], y=fr[1], w=fr[2], h=fr[3]); self.moved_at = 0.0
+        self.lastframe = fr
+
+    def default(self):
+        scr = NSScreen.mainScreen().visibleFrame()
+        self.win.setFrame_display_(NSMakeRect(scr.origin.x + scr.size.width - self.W - 24, scr.origin.y + 24, self.W, self.H), True)
+        float_write(x=int(scr.origin.x + scr.size.width - self.W - 24), y=int(scr.origin.y + 24), w=self.W, h=self.H)
 
 
 APP = None
@@ -193,10 +289,14 @@ class App(NSObject):
         self.item = NSStatusBar.systemStatusBar().statusItemWithLength_(NSVariableStatusItemLength)
         self.item.button().setTitle_("T")
         menu = NSMenu.alloc().init()
-        for title, sel in (("Show / hide the ring", "toggle:"), ("Open the console", "open:"), ("Quit the ring", "quit:")):
+        for title, sel in (("Show / hide the ring", "toggle:"), ("Show / hide the conversation", "togglefloat:"), ("Open the console", "open:"), ("Quit the ring", "quit:")):
             it = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, sel, ""); it.setTarget_(self); menu.addItem_(it)
         self.item.setMenu_(menu)
         self.last = None; self.lastpos = None
+        try:
+            self.floater = Floater()
+        except Exception as e:
+            self.floater = None; print("[ring] no conversation panel:", e, file=sys.stderr)
         self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.15, self, "tick:", None, True)
 
     def tick_(self, timer):
@@ -234,6 +334,11 @@ class App(NSObject):
             except Exception:
                 pass
             self.web.evaluateJavaScript_completionHandler_(f"setBadge({n})", None)
+        if self.floater is not None and self.badge_tick % 3 == 0:
+            try:
+                self.floater.sync()
+            except Exception:
+                pass
         # remember where the ring was dragged
         f = self.win.frame(); p = (int(f.origin.x), int(f.origin.y))
         if self.lastpos and p != self.lastpos:
@@ -244,6 +349,15 @@ class App(NSObject):
 
     def toggle_(self, sender):
         self.win.orderOut_(None) if self.win.isVisible() else self.win.orderFrontRegardless()
+
+    def togglefloat_(self, sender):
+        float_write(shown=not bool(float_state().get("shown", False)))
+
+    def float_default(self):
+        if self.floater is not None: self.floater.default()
+
+    def float_remember(self):
+        if self.floater is not None: self.floater.moved_at = time.time()
 
     def open_(self, sender):
         NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL))

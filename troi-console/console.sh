@@ -11,7 +11,8 @@
 #   console.sh modes|routines|approvals|reports open|close   those pages ("close" goes back to the conversation)
 #   console.sh camera open|close        the Eyes page (the live frame, a look on demand, face ID)
 #   console.sh browser open|close       the Browser page (the agent's Chrome, live, click-through)
-#   console.sh talk column|floating     the conversation as a full column, or a floating pane over every page
+#   console.sh talk column|floating     the conversation as a full column, or a floating pane over every page (floating also raises the desktop panel)
+#   console.sh float on|off|toggle|status   the conversation as the ring's own panel over every app, on every space
 #   console.sh panel hide|show          hide or show the floating conversation (in the column shape, show opens it)
 #   console.sh tidy                     put the floating conversation back in its place and show it
 #   console.sh hint "<text>"            a short note above the bar, for nine seconds
@@ -29,6 +30,15 @@
 #                                       (going hands-free and dropping the permission prompt are protected)
 C="http://127.0.0.1:8796"; J="Content-Type: application/json"
 post() { curl -s -m 10 -X POST -H "$J" -H "Origin: $C" -d "$2" "$C$1"; echo; }
+FLOAT="$(cd "$(dirname "$0")" && pwd)/../data/cache/floater.json"
+floatget() { python3 -c 'import json,sys
+try: print("true" if json.load(open(sys.argv[1])).get("shown") else "false")
+except Exception: print("false")' "$FLOAT"; }
+floatset() { python3 -c 'import json,sys,os
+p=sys.argv[1]; d={}
+try: d=json.load(open(p))
+except Exception: pass
+d["shown"]=(sys.argv[2]=="true"); os.makedirs(os.path.dirname(p), exist_ok=True); t=p+".tmp"; open(t,"w").write(json.dumps(d)); os.replace(t,p)' "$FLOAT" "$1"; }
 case "$1" in
   view)     post /ui "{\"view\":\"$2\"}";;
   vault)    post /ui "{\"vault\":\"$2\"}";;
@@ -52,7 +62,15 @@ case "$1" in
     esac;;
   apps)     post /ui "{\"apps\":\"$2\"}";;
   modes)    post /ui "{\"modes\":\"$2\"}";;
-  talk)     post /ui "{\"talk\":\"$2\"}";;
+  talk)     post /ui "{\"talk\":\"$2\"}"; floatset "$([ "$2" = floating ] && echo true || echo false)" >/dev/null;;
+  float)
+    case "$2" in
+      on)     floatset true;  echo "the conversation floats over every app (the ring's panel)";;
+      off)    floatset false; echo "the floating conversation is put away";;
+      toggle) [ "$(floatget)" = true ] && { floatset false; echo "put away"; } || { floatset true; echo "floating"; };;
+      status) [ "$(floatget)" = true ] && echo "the conversation is floating over the desktop" || echo "the conversation is not floating over the desktop";;
+      *) echo "console.sh float on|off|toggle|status";;
+    esac;;
   approvals) post /ui "{\"approvals\":\"$2\"}";;
   reports)  post /ui "{\"reports\":\"$2\"}";;
   go)       post /ui "{\"go\":\"$2\"}";;
