@@ -16,7 +16,7 @@
 #   console.sh tidy                     put the floating conversation back in its place and show it
 #   console.sh hint "<text>"            a short note above the bar, for nine seconds
 #   console.sh gestures on|off          hand tracking in the galaxies
-#   console.sh speak on|off             speech: on = every answer is spoken; off = text only (no voice, no ElevenLabs credits)
+#   console.sh speak on|off|toggle|status   speech: on = every answer is spoken; off = text only (no voice, no ElevenLabs credits); status prints which
 #   console.sh hands <pinch_close|pinch_open|ext|dwell_ms|magnet> <value>   * tune the hand tracking
 #   console.sh eyes off|every|watch|screen   * the camera and screen sight (turning them on is protected)
 #   console.sh wake on|off              * the wake word for hands-free (turning it off is protected)
@@ -41,7 +41,15 @@ case "$1" in
   files)    post /ui "$(python3 -c 'import json,sys; print(json.dumps({"files": sys.argv[1]}))' "$2")";;
   focus)    post /ui "$(python3 -c 'import json,sys; print(json.dumps({"focus": sys.argv[1]}))' "$2")";;
   gestures) post /ui "{\"gestures\":$([ "$2" = on ] && echo true || echo false)}";;
-  speak)    post /settings "{\"speak\":$([ "$2" = off ] && echo false || echo true)}" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(("text only: nothing is spoken from the next line" if d.get("speak") is False else "speaking aloud again") if d.get("ok") and isinstance(d.get("speak"), bool) else (d.get("error") or "the console server does not keep the speak switch yet (its one-line addition is missing)"))';;
+  speak)
+    cur="$(curl -s -m 5 "$C/config" | python3 -c 'import sys,json;print("on" if json.load(sys.stdin).get("speak", True) is not False else "off")' 2>/dev/null || echo unknown)"
+    case "$2" in
+      status) echo "speech: $([ "$cur" = off ] && echo "text only" || echo "aloud")";;
+      on|off|toggle)
+        want="$2"; [ "$want" = toggle ] && { [ "$cur" = off ] && want=on || want=off; }
+        post /settings "{\"speak\":$([ "$want" = off ] && echo false || echo true)}" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(("text only: nothing is spoken from the next line" if d.get("speak") is False else "speaking aloud again") if d.get("ok") and isinstance(d.get("speak"), bool) else (d.get("error") or "the console server does not keep the speak switch yet (its one-line addition is missing)"))';;
+      *) echo "console.sh speak on|off|toggle|status";;
+    esac;;
   apps)     post /ui "{\"apps\":\"$2\"}";;
   modes)    post /ui "{\"modes\":\"$2\"}";;
   talk)     post /ui "{\"talk\":\"$2\"}";;

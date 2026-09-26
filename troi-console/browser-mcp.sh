@@ -26,9 +26,15 @@ ensure_browser() {
     for i in $(seq 1 40); do pgrep -xq Arc || break; sleep 0.5; done
     pgrep -xq Arc && { echo "Arc did not quit; it needs its debugging port (quit Arc, then try again)" >&2; return 1; }
   fi
-  if [ -n "$PROFILE" ]; then mkdir -p "$PROFILE"; DATA_DIR=(--user-data-dir="$PROFILE"); else DATA_DIR=(); fi
-  open -na "$APP" --args --remote-debugging-port=$PORT "${DATA_DIR[@]}" --no-first-run --no-default-browser-check \
-    --window-size=1280,900 --window-position=80,60 "about:blank" 2>/dev/null
+  if [ -n "$PROFILE" ]; then
+    # a second Chrome of the agent's own: its own profile, its own window
+    mkdir -p "$PROFILE"
+    open -na "$APP" --args --remote-debugging-port=$PORT --user-data-dir="$PROFILE" --no-first-run --no-default-browser-check \
+      --window-size=1280,900 --window-position=80,60 "about:blank" 2>/dev/null
+  else
+    # the owner's Arc: the port and nothing else, so it comes back with its own windows and spaces, not one more of ours
+    open -na "$APP" --args --remote-debugging-port=$PORT --no-first-run --no-default-browser-check 2>/dev/null
+  fi
   for i in $(seq 1 80); do cdp_up && { open -a "$APP" 2>/dev/null; return 0; }; sleep 0.5; done   # activated once: Arc shows its window only then
   echo "$NAME did not answer on port $PORT" >&2; return 1
 }
