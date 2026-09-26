@@ -51,6 +51,7 @@ KEEP_S = 120
 WATCH_THRESHOLD = 0.12     # mean abs pixel change (0..1) that counts as "the view changed"
 WATCH_SETTLE = 3           # consecutive changed frames before we speak (not a passing hand)
 WATCH_COOLDOWN = 60
+SHARE_DIR = P.DATA / "cache" / "share"                     # share.sh: the owner's live share (live.jpg + share.json)
 PATH = "/opt/homebrew/bin:/usr/local/bin:" + os.environ.get("PATH", "")
 
 
@@ -126,6 +127,7 @@ def main():
     changed_run = 0
     last_report = 0.0
     baseline = None
+    share_base = None; share_run = 0; share_last = None; share_report = 0.0
     try:
         while True:
             m = mode()
@@ -181,6 +183,30 @@ def main():
                     except Exception as e:
                         log(f"[eyes]   watch error: {e!r}")
                 prune()
+            # the owner's share (share.sh): watched whatever the camera mode, since picking a window in the Mac's own picker is the consent
+            try:
+                sj = SHARE_DIR / "share.json"; sl = SHARE_DIR / "live.jpg"
+                live = sj.exists() and sl.exists() and json.loads(sj.read_text()).get("state") == "live" and time.time() - sl.stat().st_mtime < 6
+                if live and sl.stat().st_mtime != share_last:
+                    share_last = sl.stat().st_mtime; g = gray(sl)
+                    if share_base is None:
+                        share_base = g
+                    else:
+                        diff = float(abs(g - share_base).mean())
+                        share_run = share_run + 1 if diff > WATCH_THRESHOLD else 0
+                        if share_run >= WATCH_SETTLE:
+                            share_base = g; share_run = 0
+                            if time.time() - share_report > WATCH_COOLDOWN and not speaking():
+                                share_report = time.time()
+                                what = json.loads(sj.read_text()).get("title") or "the shared screen"
+                                log(f"[eyes]   the share changed (diff {diff:.2f}), telling the agent")
+                                tell_agent(f"(screen share: what the owner is sharing, {what}, changed noticeably. Run look-screen.sh, read the frame, and only if "
+                                           f"there is something worth a word to the owner (a dialog, an error, a finished job), say ONE short sentence. "
+                                           f"If it is nothing, reply with exactly: Noted.)")
+                elif not live:
+                    share_base = None; share_run = 0
+            except Exception as e:
+                log(f"[eyes]   share watch error: {e!r}")
             time.sleep(1.0)
     finally:
         if cam is not None:

@@ -34,7 +34,7 @@ so clicks landed a little off. The tree costs 45 ms to read, names every control
 | `menu app [path]` | no path: the menu bar; `View`: its items with ✓ marks, shortcuts and disabled state; `File > Export…`: chooses that item | the listing, or what was chosen |
 | `type text` | inserts at the focused field: through the tree when the field allows it, else as keystrokes | how it went in, and the field's value |
 | `key combo` | `return`, `tab`, `esc`, `space`, `delete`, arrows, `home`, `end`, `f1`–`f12`, a letter or digit, with `cmd`/`shift`/`alt`/`ctrl`: `cmd+s` | ok |
-| `click x y [--double\|--right] [--screenshot]` | the pointer, for what has no name, in screen points; `--screenshot` converts pixels of a `look-screen.sh` screenshot to points | what was under the point |
+| `click x y [--double\|--right] [--screenshot\|--share]` | the pointer, for what has no name, in screen points; `--share` converts pixels of the frame the owner is sharing (`share.sh`) to the points it covers; `--screenshot` converts pixels of a `look-screen.sh` screenshot to points | what was under the point |
 | `wait app text [--role R] [--timeout S]` | waits for an element to appear: a sheet's button, a window title, a status | the element, and how long it took |
 | `doctor` | is the accessibility API available to this process, what is in front, how fast a look is | a line of numbers |
 

@@ -40,3 +40,13 @@ PIN cannot, so keep the PIN for the things that matter most. See
 Looks land in `data/blobs/looks/` and screenshots in `data/blobs/screens/`, and in the Library. They
 stay on the Mac (and in your private nightly backup); after 14 days they go to the Trash unless
 starred.
+
+## Screen sharing
+
+Say "share my screen" and the Mac's own picker appears, the one a call uses: pick a window, an app
+or a display. From then on the agent sees what you are sharing, two frames a second, until you say
+"stop sharing" or press the menu bar's Stop Sharing. While a share is live, every "look at my
+screen" and the Screen sight show the shared content rather than the whole desktop, the eyes daemon
+tells the agent when what you share changes (a dialog, an error, a finished job), and the hands can
+click on what they see in the shared frame. Frames live in a two-minute cache and go with the share;
+nothing of it is kept unless you ask. `troi-console/share.sh status` says what is shared.

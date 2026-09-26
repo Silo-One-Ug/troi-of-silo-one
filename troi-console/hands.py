@@ -16,8 +16,8 @@ element itself. The brain reaches this as MCP tools (hands.sh mcp, see hands-mcp
   hands.py menu <app> [File > Export…]       list a menu, or press an item by its path
   hands.py type <text>                       insert text at the focused field (accessibility first, keystrokes second)
   hands.py key <combo>                       return, tab, esc, arrows, or cmd+s, cmd+shift+t…
-  hands.py click <x> <y> [--double|--right] [--screenshot]   the pointer, for what has no name (points; --screenshot
-                                             converts pixels of a look-screen.sh screenshot to points)
+  hands.py click <x> <y> [--double|--right] [--screenshot|--share]   the pointer, for what has no name (points; --screenshot
+                                             converts pixels of a look-screen.sh screenshot to points, --share pixels of the shared frame)
   hands.py wait <app> <text> [--timeout S]   wait for an element to appear (a sheet, a button, a title)
   hands.py doctor                            is the accessibility API available, and how fast is it
 
@@ -706,9 +706,24 @@ def screen_scale():
     return {"points": {"w": int(f.width), "h": int(f.height)}, "factor": round(max(f.width, f.height) / SCREENSHOT_MAX, 4)}
 
 
+def share_info():
+    """What the owner is sharing (share.sh): bounds in screen points and the frame size, or None when nothing is live."""
+    try:
+        d = json.loads((P.DATA / "cache" / "share" / "share.json").read_text())
+        if d.get("state") != "live" or time.time() - float(d.get("last") or 0) > 6 or not d.get("bounds") or not d.get("frame"): return None
+        return d
+    except Exception:
+        return None
+
+
 def click(x, y, kind="click", space="points"):
     if space == "screenshot":
         k = screen_scale()["factor"]; x, y = x * k, y * k
+    elif space == "share":                                     # pixels of the shared frame (share.sh) to the points it covers on screen
+        d = share_info()
+        if not d: raise HandsError("nothing is being shared right now (share.sh status)")
+        b, f = d["bounds"], d["frame"]
+        x, y = b["x"] + float(x) * b["w"] / max(1, f["w"]), b["y"] + float(y) * b["h"] / max(1, f["h"])
     x, y = float(x), float(y)
     e, el = AXUIElementCopyElementAtPosition(AXUIElementCreateSystemWide(), x, y, None)
     label = ""
@@ -896,7 +911,7 @@ def main(argv):
         elif cmd == "menu": _out(menu(resolve(rest[0]), " ".join(rest[1:])))
         elif cmd == "type": _out(type_text(" ".join(rest)))
         elif cmd == "key": _out(key(rest[0]))
-        elif cmd == "click": _out(click(float(rest[0]), float(rest[1]), "double" if "--double" in flags else "right" if "--right" in flags else "click", "screenshot" if "--screenshot" in flags else "points"))
+        elif cmd == "click": _out(click(float(rest[0]), float(rest[1]), "double" if "--double" in flags else "right" if "--right" in flags else "click", "screenshot" if "--screenshot" in flags else "share" if "--share" in flags else "points"))
         elif cmd == "wait": _out(wait_for(resolve(rest[0]), " ".join(rest[1:]), opt.get("role", ""), float(opt.get("timeout", 10))))
         elif cmd == "scale": _out(screen_scale())
         else: print(__doc__); return 1

@@ -102,7 +102,7 @@ def key(combo: str) -> str:
     return _run(H.key, combo)
 
 
-@srv.tool(name="click", description="The pointer, for what has no name: click/double/right at x,y in screen points. With space='screenshot' the numbers are pixels of a "
+@srv.tool(name="click", description="The pointer, for what has no name: click/double/right at x,y in screen points. With space='share' the numbers are pixels of the frame the owner is sharing (share.sh), mapped onto the shared window or display. With space='screenshot' the numbers are pixels of a "
                                    "look-screen.sh screenshot and are converted. The element under the point is checked for risky labels first.")
 def click(x: float, y: float, kind: str = "click", space: str = "points") -> str:
     return _run(H.click, x, y, kind, space)

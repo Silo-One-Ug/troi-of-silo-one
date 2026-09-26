@@ -33,6 +33,7 @@ echo "3. the console and the agent's browser"
 echo "4. this Mac"
 chmod +x "$ROOT"/*.sh "$C"/*.sh "$C"/*.py 2>/dev/null
 git -C "$ROOT" config core.hooksPath .githooks 2>/dev/null                     # the pre-push checks: nothing red reaches main
+"$C/share.sh" build >/dev/null 2>&1 && echo "screen-share helper built" || echo "screen sharing needs Xcode's command line tools (xcode-select --install), then: troi-console/share.sh build"
 /usr/bin/python3 "$C/setup.py" render | sed 's/^/ /'
 "$C/patch-board.sh" >/dev/null 2>&1 && ok "board tools in place" || warn "the board tools did not copy"
 /usr/bin/python3 "$C/setup.py" services install | sed 's/^/ /'
