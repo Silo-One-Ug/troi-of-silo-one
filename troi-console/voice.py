@@ -194,6 +194,15 @@ _ask_stream = WarmBrain.ask_stream
 _LIVE = P.LIVE
 
 
+def _share_live():
+    """A screen share (share.sh) is live: its newest frame is what the owner is showing, whatever the Eyes switch says."""
+    try:
+        d = json.loads((P.DATA / "cache" / "share" / "share.json").read_text())
+        return d.get("state") == "live" and time.time() - float(d.get("last") or 0) < 6
+    except Exception:
+        return False
+
+
 import asyncio                                  # noqa: E402
 import random                                   # noqa: E402
 def _call():
@@ -253,7 +262,7 @@ async def _with_fillers(gen, silent=False):
 
 def ask_stream(self, utterance):
     eyes = settings().get("eyes", "off")
-    if eyes == "screen" and not str(utterance).startswith(("(camera watch:", "(session start", "(written:")):
+    if (eyes == "screen" or _share_live()) and not str(utterance).startswith(("(camera watch:", "(session start", "(written:", "(screen share:")):
         try:
             import subprocess as _sp
             r = _sp.run([str(HERE / "look-screen.sh")], capture_output=True, text=True, timeout=12)

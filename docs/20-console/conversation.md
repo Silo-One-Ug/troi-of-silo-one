@@ -10,7 +10,10 @@ The window takes the console's full width; the words keep a reading column in th
 - **Your lines** are bubbles on the right, with your initials beside them and the time in the
   corner. **The agent's replies** sit straight on the page, and under each one a copy button takes
   the reply as written, with the time beside it.
-- A reply grows word by word, then settles into the finished text.
+- A reply grows word by word, then settles into the finished text as the record has it, whole and
+  in order, so what you see live is what a reload shows; a line the log delivers late joins the
+  same reply instead of opening another, and a reply typed here is not shown twice when the voice
+  reads it out.
 - **What it is doing.** While the agent works, one line under your message shows the tool in its
   hands and what it is on: the command, the file, the search, the page. The line shimmers, and each
   new step takes the last one's place, so the conversation never fills with them. When the reply
