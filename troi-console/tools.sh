@@ -15,6 +15,7 @@ cat <<'TXT'
   google.sh    mcp | status | setup <client_secret.json> | enable [project] | signin <email>   the owner's Google account as your mcp__google__* tools (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts); sending, sharing and invitations need the owner's go-ahead
   stt.py       <file>   the words in an audio file, with your own ears (run with backtalk/.venv/bin/python; the server keeps one as a worker for the console's voice notes)
   console.sh   go <place> · view face|hands|files|apps|vault · vault show|clear · files <folder> · focus <path> · apps open · images open|close
+               float on|off|toggle|status   the conversation as the ring's panel over every app; talk floating raises it too
                modes|routines|approvals|reports open|close · camera open|close · browser open|close · talk column|floating · panel hide|show
                tidy · hint "<text>" · gestures on|off · speak on|off (text only saves ElevenLabs credits) · eyes off|every|watch|screen · wake on|off · face-gate on|off · voice-id off|on|learn
                voice list|kokoro|elevenlabs ["<name>"] · mode "<phrase>"      (console.sh with no arguments prints them all)

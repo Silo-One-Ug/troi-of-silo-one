@@ -346,6 +346,8 @@ class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body=b"", ctype="text/plain; charset=utf-8", cache="no-store"):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        self.send_header("Access-Control-Allow-Origin", "*")            # the console page (another port) asks the floater to show
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", cache)
         self.end_headers()
@@ -365,6 +367,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do_GET()
 
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*"); self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type"); self.send_header("Content-Length", "0"); self.end_headers()
+
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         path, q = u.path, urllib.parse.parse_qs(u.query)
@@ -379,6 +386,9 @@ class Handler(BaseHTTPRequestHandler):
             if root not in target.parents or not target.is_file():
                 return self._send(404, b"not in the media airlock")
             return self._file(target, None, "private, max-age=3600")
+        if path == "/floater":
+            try: return self._json(json.loads((P.DATA / "cache" / "floater.json").read_text()))
+            except Exception: return self._json({"shown": False})
         if path == "/config":
             return self._json({"name": CONFIG.get("name", "Assistant"), "orbs": [{"title": o.get("title", "?"), "kind": o.get("kind", "notes")} for o in CONFIG["orbs"]]})
         if path == "/note":
@@ -411,6 +421,18 @@ class Handler(BaseHTTPRequestHandler):
         global _STATE
         n = int(self.headers.get("Content-Length", 0) or 0)
         body = self.rfile.read(n) if 0 < n < 4_000_000 else b"{}"
+        if self.path == "/floater":                                    # the desktop conversation panel (ring.py): show or hide it
+            try:
+                d = json.loads(body) if body.strip() else {}
+                f = P.DATA / "cache" / "floater.json"; f.parent.mkdir(parents=True, exist_ok=True)
+                cur = {}
+                try: cur = json.loads(f.read_text())
+                except Exception: pass
+                if "shown" in d: cur["shown"] = bool(d["shown"])
+                tmp = f.with_suffix(".json.tmp"); tmp.write_text(json.dumps(cur)); os.replace(tmp, f)
+                return self._json(cur)
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)}, 400)
         if self.path == "/state":
             _STATE = body
             snapshot(body)

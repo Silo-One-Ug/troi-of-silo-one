@@ -88,3 +88,13 @@ floating pane is a desktop shape and does not exist there.
 
 **Stop** (the square button) or **Esc** stops a reply; so does saying "stop". While the agent is
 talking the send button becomes Stop.
+
+## Floating over every app
+
+The floating pane lives inside the console's window. When you want the conversation with you in
+every app, the ring lends it a panel of its own: translucent, resizable from its edges, dragged by the
+thin strip at its top, above other windows and present on every space, and you can type into it from
+wherever you are. Choosing the floating shape in the console, "float the conversation" by voice, or
+`console.sh float on` raise it; the column shape, "put the conversation away" or `console.sh float
+off` put it away; the ring's menu has "Show / hide the conversation" too. Its place and size are
+remembered. It shows the console's `/float` route, the conversation alone.
