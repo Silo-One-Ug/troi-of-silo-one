@@ -182,7 +182,7 @@ It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you 
 | "what's in the news" / "what does NTV say about…" | headlines per outlet, Uganda first, read out or on the board |
 | "go hands free" / "stop asking for permission" / "clear the session" | only in your verified voice (or your face), from an unlocked console, or with your approve on Telegram |
 | "open example.com and fill in the form" | the agent's browser |
-| "what's in my inbox from the bank" / "draft a reply to Sarah" / "find the budget sheet in Drive" / "put the launch on my Google calendar" | your Google account (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts), once signed in (`google.sh signin`); sending, sharing and answering invitations wait for your go-ahead, and nothing there is ever deleted |
+| "what's in my inbox from the bank" / "draft a reply to Sarah" / "find the budget sheet in Drive" / "put the launch on my Google calendar" | your Google account (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts), once signed in (`google.sh signin`); sending, sharing and answering invitations wait for your go-ahead, and nothing there is ever deleted Gmail stays at the drafts level: Troi writes, you send. |
 
 ## The Files galaxy
 

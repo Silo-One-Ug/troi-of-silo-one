@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""google.py: the owner's Google account for the agent (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts), through
-the Google Workspace MCP server (workspace-mcp, run with uvx) as one of the brain's tool servers: `google.sh mcp`.
-Standard library only.
+"""google.py: the owner's Google account for the agent (Gmail, Calendar, Drive, Docs, Sheets, Slides, Tasks, Contacts),
+through the Google Workspace MCP server (workspace-mcp, installed as a uv tool, uvx as the fallback) as one of the
+brain's tool servers: `google.sh mcp`. Standard library only.
 
   google.py status                      what is set up: the OAuth client, the sign-in and its account, the runner
   google.py setup <client_secret.json>  keep the OAuth client Google gave you (data/google/client_secret.json, 0600)
   google.py enable [project]            turn the Google APIs on in the Cloud project (gcloud services enable …)
   google.py signin <email>              sign that account in once, in the browser; the token stays in data/google/
+  google.py signout <email>             revoke that sign-in at Google and set its token file aside (nothing deleted)
+  google.py permissions                 the per-service permission levels the server is started with (one line)
   google.py env                         the environment the MCP server runs with
+
+The scopes are the narrowest the server offers per service (PERMISSIONS below): Gmail at "drafts" (read, organise,
+draft; no send), Contacts read-only, the rest full, since the agent creates events, files, documents and tasks.
+A change of levels changes the scopes asked for at the next sign-in; to shrink a grant already given, sign out and in.
 
 The way in, once: a Google Cloud project with an OAuth client (a web application with the redirect URI
 http://localhost:8788/oauth2callback, or a desktop app), the APIs turned on, and one sign-in in the browser. The
@@ -30,9 +36,14 @@ SECRET = DIR / "client_secret.json"
 CREDS = DIR / "credentials"
 PORT = 8788
 APIS = ["calendar-json.googleapis.com", "gmail.googleapis.com", "drive.googleapis.com", "docs.googleapis.com",
-        "sheets.googleapis.com", "tasks.googleapis.com", "people.googleapis.com"]
-TOOLS = ["calendar", "gmail", "drive", "docs", "sheets", "tasks", "contacts"]
+        "sheets.googleapis.com", "slides.googleapis.com", "tasks.googleapis.com", "people.googleapis.com"]
+# the server's per-service permission levels (its --permissions flag): Gmail readonly < organize < drafts < send < full;
+# the others readonly | full. The ONE place these live; google.sh reads them, status shows them.
+PERMISSIONS = {"gmail": "drafts", "calendar": "full", "drive": "full", "docs": "full", "sheets": "full", "slides": "full",
+               "tasks": "full", "contacts": "readonly"}
+TOOLS = list(PERMISSIONS)
 UVX = shutil.which("uvx") or str(Path.home() / ".local" / "bin" / "uvx")
+BIN = shutil.which("workspace-mcp") or str(Path.home() / ".local" / "bin" / "workspace-mcp")   # the installed server (install.sh); uvx is the fallback
 
 
 def accounts():
@@ -50,7 +61,7 @@ def env(email=""):
 
 
 def status(line=False):
-    ok_client = SECRET.exists(); acc = accounts(); ok_run = Path(UVX).exists()
+    ok_client = SECRET.exists(); acc = accounts(); ok_run = Path(BIN).exists() or Path(UVX).exists()
     if line:
         if not ok_run: print("no uvx to run the Google tools (uv is missing)"); return 1
         if not ok_client: print("no Google OAuth client yet (google.py setup <client_secret.json>)"); return 1
@@ -62,10 +73,10 @@ def status(line=False):
             d = json.loads(SECRET.read_text()); kind = "web application" if "web" in d else "desktop app" if "installed" in d else "unknown"
         except Exception:
             kind = "unreadable"
-    print(f"runner:   {'uvx at ' + UVX if ok_run else 'uvx missing (install uv)'}")
+    print(f"runner:   {'installed, ' + BIN if Path(BIN).exists() else 'uvx at ' + UVX + ' (slower to start; install.sh installs the server)' if Path(UVX).exists() else 'none: install uv, then install.sh'}")
     print(f"client:   {'kept, a ' + kind + ' (' + str(SECRET) + ')' if ok_client else 'none yet: google.py setup <client_secret.json>'}")
     print(f"account:  {', '.join(acc) if acc else 'not signed in: google.py signin <email>'}")
-    print(f"tools:    {' '.join(TOOLS)}   (the brain sees them as mcp__google__*; names that delete are blocked by the guard)")
+    print(f"levels:   {' '.join(f'{k}:{v}' for k, v in PERMISSIONS.items())}   (the brain sees the tools as mcp__google__*; names that delete are blocked by the guard)")
     print(f"callback: http://localhost:{PORT}/oauth2callback   tokens: {CREDS}")
     return 0
 
@@ -165,6 +176,35 @@ def signin(email):
         m.close()
 
 
+def signout(email):
+    """Revoke the sign-in at Google and set its token file aside as <email>.json.revoked-<date>: the grant is gone on
+    Google's side, the server no longer sees an account, and nothing is deleted. `signin` starts afresh, asking only
+    the scopes PERMISSIONS needs. Revoking also happens from https://myaccount.google.com/permissions."""
+    import urllib.parse
+    import urllib.request
+    email = email or (accounts()[0] if accounts() else "")
+    f = CREDS / f"{email}.json"
+    if not email or not f.exists():
+        print(f"no sign-in kept for {email or 'that account'}: {', '.join(accounts()) or 'nobody is signed in'}"); return 1
+    try:
+        d = json.loads(f.read_text()); tok = d.get("refresh_token") or d.get("token") or ""
+    except Exception:
+        tok = ""
+    revoked = False
+    if tok:
+        try:
+            req = urllib.request.Request("https://oauth2.googleapis.com/revoke", data=urllib.parse.urlencode({"token": tok}).encode(),
+                                         headers={"Content-Type": "application/x-www-form-urlencoded"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                revoked = r.status == 200
+        except Exception as e:
+            print(f"Google did not confirm the revocation ({e}); revoke it at https://myaccount.google.com/permissions as well")
+    aside = f.with_name(f"{email}.json.revoked-{time.strftime('%Y-%m-%d')}")
+    f.rename(aside)
+    print(f"{email}: {'revoked at Google and ' if revoked else ''}signed out; the old token file is set aside as {aside.name}. Sign in again with: google.py signin {email}")
+    return 0
+
+
 def main(a):
     c = a[0] if a else "status"
     if c == "status":
@@ -175,6 +215,10 @@ def main(a):
         return enable(a[1] if len(a) > 1 else "")
     if c == "signin":
         return signin(a[1] if len(a) > 1 else "")
+    if c == "signout":
+        return signout(a[1] if len(a) > 1 else "")
+    if c == "permissions":
+        print(" ".join(f"{k}:{v}" for k, v in PERMISSIONS.items())); return 0
     if c == "env":
         for k, v in env().items():
             print(f"{k}={v}")
