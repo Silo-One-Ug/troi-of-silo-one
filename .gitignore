@@ -29,3 +29,5 @@ logs/
 
 # the browser tool's own logs and snapshots
 .playwright-mcp/
+# the compiled screen-share helper (share.sh builds it from share/share.swift)
+troi-console/share/share

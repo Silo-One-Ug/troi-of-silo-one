@@ -24,6 +24,7 @@ cat <<'TXT'
   ../barehands/bin/board-state.sh [events|json]    what is on the board (or the saved scene), and the last clicks on its buttons
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
   brain.sh     status · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
+  share.sh     start | stop | status | build   screen sharing: the Mac's picker, then the shared frames for your eyes (look-screen.sh) and hands (click --share)
   show.py     '<json tree>' [--board|--both] | chart ... | table ... | board "<title>" <op> | board tidy|clear | vocabulary   draw interface from data, in the conversation or as a tile on the board (never an HTML file)
   media.py     now · play [words] · pause · resume · stop · next · prev · volume N · louder · quieter · shuffle on|off · like · movie on|off   Apple Music by voice, and movie mode
   db.py        tail [N] · sessions · stats · star <id|path> · retain   the record: data/troi.db (conversation, cards, approvals, pictures, reports, runs);

@@ -23,6 +23,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `../barehands/bin/board.sh`, `board-state.sh` | `'{"a":"add_card",…}'` (add_card, add_img, present, yank, hover, clear, add_ui, ui, layout, tidy); `board-state.sh [events\|json]` | The board, and what is on it |
 | `remind.sh` | `20m "text"`, `15:00 "text"`, `list`, `cancel N` | Reminders |
 | `brain.sh` | `status`, `models`, `deep`, `fast`, `model <name>`, `effort <level>`, `for "<task>" --deep --effort high`, `back`, `rest [<level>]` | The brain for the job: the deep model and a higher effort for heavy work, back to rest after |
+| `share.sh` | `start`, `stop`, `status`, `build` | Screen sharing: the Mac's own picker, then the shared frames for the agent's eyes and hands |
 | `show.py` | `'<json tree>' [--board\|--both]`, `chart …`, `table …`, `board "<title>" <op>`, `board tidy\|clear`, `vocabulary` | Interface drawn in the conversation, or as a tile on the board |
 | `media.py` | `now`, `play [words]`, `pause`, `resume`, `stop`, `next`, `prev`, `volume N`, `louder`, `quieter`, `shuffle on\|off`, `like`, `movie on\|off` | Apple Music by voice, and movie mode |
 | `db.py` | `tail [N]`, `sessions`, `stats`, `star <id\|path>`, `retain` | The record |
