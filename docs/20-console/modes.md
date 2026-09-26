@@ -69,7 +69,9 @@ unlocked console, or with your approve on Telegram.
 **Text only** keeps the voice quiet: every answer still lands in the conversation, on Telegram and
 on the board as before, but nothing is synthesised or played, and the ElevenLabs balance is
 untouched. Fillers and the greeting stay quiet too. **Aloud** brings the voice back from the next
-line. By voice or from a terminal: `console.sh speak on|off`.
+line. By voice or from a terminal: `console.sh speak on|off|toggle|status`. The agent switches it
+itself on your word ("text only", "go quiet", "speak", "aloud"), before it answers, so the reply
+follows the new setting.
 
 ## Keys
 
