@@ -4,7 +4,10 @@
 # effort. It pulls the voice line's own levers ("switch to the deep model", "back to the fast model", "set effort to X"),
 # which the server delivers the moment the voice line is idle, so a switch always lands BETWEEN turns: `for` therefore
 # queues the task as the next turn, and the agent's current turn ends with one line about the switch.
-#   brain.sh status                                   the fast and deep models, the effort, what the helper remembers
+# The voice line reports the brain the session runs on in backtalk/.voice_model (the full id, written when it warms and
+# after every switch that took); status, for and back read that file, never a memory of their own.
+#   brain.sh status                                   the fast and deep models, the live brain, the effort, what `for` remembered
+#   brain.sh live                                     the brain the session runs on right now (name and id, the voice line's word)
 #   brain.sh deep | fast                              the session's model (deep is slower and better; fast is the default)
 #   brain.sh model <name>                             a brain by name, for this session; the names are the config's models map
 #   brain.sh models                                   the map: name -> model id (backtalk/backtalk.json "models", the ONE list)
@@ -14,7 +17,7 @@
 #   brain.sh rest [<level>]                           show or set the resting effort (default medium)
 # The voice line applies these; in a plain terminal session the slash commands /model and /effort are the owner's.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; C="http://127.0.0.1:8796"; J="Content-Type: application/json"
-MEM="$ROOT/data/brain.json"; LOG="$ROOT/data/logs/brain.log"; VLOG="$ROOT/backtalk/logs/backtalk.log"
+MEM="$ROOT/data/brain.json"; LOG="$ROOT/data/logs/brain.log"; VLOG="$ROOT/backtalk/logs/backtalk.log"; LIVE="$ROOT/backtalk/.voice_model"
 mkdir -p "$(dirname "$LOG")"
 mem() { python3 - "$MEM" "$@" <<'PY'
 import json, sys, pathlib
@@ -43,22 +46,30 @@ m=json.load(open(sys.argv[1])).get("models") or {}
 print("\n".join(f"{k} {v}" for k,v in m.items()))' "$ROOT/backtalk/backtalk.json" 2>/dev/null; }
 name_ok() { models | awk '{print $1}' | grep -qx -- "$1"; }
 id_of() { models | awk -v n="$1" '$1==n{print $2}'; }
-pretty() { local n; n="$(models | awk -v id="$1" '$2==id{print $1}' | head -1)"; [ -n "$n" ] && echo "$n ($1)" || echo "$1"; }
+name_of() { models | awk -v id="$1" '$2==id{print $1}' | head -1; }
+pretty() { local n; n="$(name_of "$1")"; [ -n "$n" ] && echo "$n ($1)" || echo "$1"; }
 resting() { local r; r="$(mem get resting)"; echo "${r:-medium}"; }
+reported() { [ -r "$LIVE" ] && tr -d '[:space:]' <"$LIVE"; return 0; }        # the voice line's word, or nothing
+live_id() { local v; v="$(reported)"; [ -n "$v" ] && echo "$v" || cfg model; } # the live brain, else the launch model
+live_name() { local n; n="$(name_of "$(live_id)")"; echo "${n:-$(live_id)}"; }
+wait_model() { for i in $(seq 1 60); do [ "$(reported)" = "$1" ] && return 0; sleep 1; done; return 1; }
 
 case "$1" in
   status)
     if alive; then echo "fast: $(pretty "$(cfg model)") · deep: $(pretty "$(cfg deep_model)") · effort: $(cfg effort) (saved default)"; else echo "the voice line is not running (a terminal session)"; fi
-    echo "session model: $(mem get session_model | sed 's/^$/fast/') · resting effort: $(resting)$( [ -n "$(mem get before)" ] && echo " · remembered for back: $(mem get before)" )";;
+    if [ -n "$(reported)" ]; then echo "live brain: $(pretty "$(live_id)") (the voice line's word)"; else echo "live brain: not reported yet (the voice line has not warmed, or runs without the patch); the launch default is $(pretty "$(cfg model)")"; fi
+    echo "resting effort: $(resting)$( [ -n "$(mem get before)" ] && echo " · remembered for back: $(mem get before)" )";;
+  live)
+    if [ -n "$(reported)" ]; then echo "$(live_name) $(live_id)"; else echo "not reported yet; the launch default is $(live_name) $(live_id)"; fi;;
   deep|fast)
-    need_line; mem set session_model="$1" >/dev/null
+    need_line
     [ "$1" = deep ] && phrase "switch to the deep model" || phrase "back to the fast model"
     echo "the $1 model, from the next turn";;
   models)
     if [ -z "$(models)" ]; then echo "no models map in the voice line's config"; else models | awk '{printf "  %-10s %s\n", $1, $2}'; fi;;
   model)
     name_ok "$2" || { echo "no brain called '$2'; the names: $(models | awk '{print $1}' | tr '\n' ' ')"; exit 1; }
-    need_line; mem set session_model="$2" >/dev/null; phrase "switch to $2"; echo "$2 ($(id_of "$2")), from the next turn (this session)";;
+    need_line; phrase "switch to $2"; echo "$2 ($(id_of "$2")), from the next turn (this session)";;
   effort)
     lvl_ok "$2" || { echo "brain.sh effort low|medium|high|xhigh|max"; exit 1; }
     need_line; phrase "set effort to $2"; echo "effort $2, from the next turn (the voice line saves it as the default)";;
@@ -69,25 +80,27 @@ case "$1" in
     while [ $# -gt 0 ]; do case "$1" in --deep) deep=1;; --model) name="$2"; shift;; --effort) eff="$2"; shift;; esac; shift; done
     [ -n "$name" ] && ! name_ok "$name" && { echo "no brain called '$name'; the names: $(models | awk '{print $1}' | tr '\n' ' ')"; exit 1; }
     [ -n "$eff" ] && ! lvl_ok "$eff" && { echo "unknown effort $eff"; exit 1; }
-    [ -z "$task" ] && { echo "brain.sh for \"<task>\" [--deep] [--effort <level>]"; exit 1; }
-    before="{\"model\":\"$(mem get session_model | sed 's/^$/fast/')\",\"effort\":\"$(cfg effort)\"}"; mem set before="$before" task="$task" >/dev/null
+    [ -z "$task" ] && { echo "brain.sh for \"<task>\" [--deep|--model <name>] [--effort <level>]"; exit 1; }
+    before="{\"model\":\"$(live_name)\",\"effort\":\"$(cfg effort)\"}"; mem set before="$before" task="$task" >/dev/null
     nohup "$0" _run_for "$task" "$deep" "$eff" "$name" >>"$LOG" 2>&1 &
     echo "switching after this turn$( [ $deep = 1 ] && echo " to the deep model" )$( [ -n "$name" ] && echo " to $name" )$( [ -n "$eff" ] && echo " at $eff effort" ); the task continues on the new brain";;
   _run_for)                                  # detached: the levers, one at a time, then the task as the next turn
     task="$2"; deep="$3"; eff="$4"; name="$5"
-    if [ -n "$name" ]; then mem set session_model="$name" >/dev/null; phrase "switch to $name"; wait_log "on $name now" || sleep 12;
-    elif [ "$deep" = 1 ]; then mem set session_model=deep >/dev/null; phrase "switch to the deep model"; wait_log "deep model online" || sleep 12; fi
+    if [ -n "$name" ]; then phrase "switch to $name"; wait_model "$(id_of "$name")" || wait_log "on $name now" || sleep 12;
+    elif [ "$deep" = 1 ]; then phrase "switch to the deep model"; wait_model "$(cfg deep_model)" || wait_log "deep model online" || sleep 12; fi
     if [ -n "$eff" ]; then phrase "set effort to $eff"; wait_effort "$eff" || echo "$(date '+%F %T') effort $eff not confirmed in time" >>"$LOG"; fi
     say_text "(brain: continuing$( [ "$deep" = 1 ] && echo " on the deep model" )$( [ -n "$name" ] && echo " on $name" )$( [ -n "$eff" ] && echo " at $eff effort" ): $task. When it is done, run brain.sh back.)";;
   back)
     need_line; before="$(mem get before)"
-    [ -z "$before" ] && { echo "nothing remembered: the fast model and the resting effort it is"; before="{\"model\":\"fast\",\"effort\":\"$(resting)\"}"; }
+    [ -z "$before" ] && { echo "nothing remembered: the fast model and the resting effort it is"; before="{\"model\":\"$(name_of "$(cfg model)")\",\"effort\":\"$(resting)\"}"; }
     nohup "$0" _run_back "$before" >>"$LOG" 2>&1 &
     echo "back after this turn: $before";;
-  _run_back)
-    model="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("model","fast"))' "$2")"; eff="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("effort",""))' "$2")"
+  _run_back)                                 # detached: back to the remembered brain (by name), then the remembered effort
+    model="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("model",""))' "$2")"; eff="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("effort",""))' "$2")"
     [ -z "$eff" ] && eff="$(resting)"
-    if [ "$model" = fast ] && [ "$(mem get session_model)" != fast ]; then phrase "back to the fast model"; mem set session_model=fast >/dev/null; wait_log "back on the fast model" || sleep 10; fi
+    if [ -n "$model" ] && name_ok "$model"; then
+      [ "$(live_id)" != "$(id_of "$model")" ] && { phrase "switch to $model"; wait_model "$(id_of "$model")" || sleep 10; }
+    elif [ "$(live_id)" != "$(cfg model)" ]; then phrase "back to the fast model"; wait_model "$(cfg model)" || sleep 10; fi
     lvl_ok "$eff" && [ "$(cfg effort)" != "$eff" ] && { phrase "set effort to $eff"; wait_effort "$eff" || true; }
     mem set before= task= >/dev/null;;
   *) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0";;

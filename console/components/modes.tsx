@@ -40,6 +40,10 @@ const Panel = ({ title, children, className }: { title: string; children: React.
 // The brains, by name: the voice line's config carries the ONE list (its "models" map, name -> id), and the server
 // passes it through /config as `models`; the switch is drawn from that and hidden until the server reports it.
 const brainsOf = (c: Config | null) => Object.entries(c?.models || {}).map(([v, id]) => ({ v, l: v[0].toUpperCase() + v.slice(1), id }));
+const brainName = (c: Config, id?: string) => brainsOf(c).find(b => b.id === id)?.v || id || "";
+const fmtN = (n: any) => typeof n === "number" ? n.toLocaleString() : String(n ?? "");
+// the board server (the agent's own, port 8794) from this page: on the Mac directly; from the phone through the same host over https
+const boardUrl = (p: string) => (typeof location !== "undefined" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? `${location.protocol}//${location.hostname}:8794` : "http://127.0.0.1:8794") + p;
 const KEYS: { name: string; label: string; hint: string; secret: boolean }[] = [
   { name: "elevenlabs", label: "ElevenLabs API key", hint: "the voice", secret: true },
   { name: "telegram", label: "Telegram bot token", hint: "your phone", secret: true },
@@ -54,11 +58,17 @@ const KEYS: { name: string; label: string; hint: string; secret: boolean }[] = [
 export function Modes() {
   const [c, setC] = useState<Config | null>(null); const [down, setDown] = useState(""); const [note, setNote] = useState<{ tone: Tone; text: string } | null>(null);
   const [busy, setBusy] = useState<Record<string, string | null>>({}); const [confirmAuto, setConfirmAuto] = useState(false);
-  const [model, setModel] = useState("sonnet"); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
+  const [credits, setCredits] = useState<any>(null); const [mood, setMood] = useState<any>(null); const [moodVol, setMoodVol] = useState<number | null>(null); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
   const noteTimer = useRef<any>(0); const cfg = useRef<Config | null>(null);
   const tell = useCallback((tone: Tone, text: string) => { setNote({ tone, text }); clearTimeout(noteTimer.current); noteTimer.current = setTimeout(() => setNote(null), tone === "warn" ? 12000 : 6000); }, []);
   const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown("Troi's server is not answering: start Troi from the Desktop."); return null; } }, []);
-  useEffect(() => { load(); try { setModel(((m) => m === "deep" ? "fable" : m === "fast" || !m ? "sonnet" : m)(localStorage.getItem("silo.model") || "fast")); } catch {} const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  // the ElevenLabs allowance: the agent server holds the key and asks ElevenLabs at most every five minutes (/usage/elevenlabs); this page asks it once, then every minute while open
+  useEffect(() => { if (!c?.elevenlabs_key) return; let stop = false; const tick = async () => { try { const d = await eget("/usage/elevenlabs"); if (!stop) setCredits(d); } catch { if (!stop) setCredits({ ok: false, error: "the agent server does not report them yet (it needs its restart)" }); } }; tick(); const t = setInterval(tick, 60000); return () => { stop = true; clearInterval(t); }; }, [c?.elevenlabs_key]);
+  // the room's soundscape (sounds.py, through the board server): what plays and the moods on offer
+  useEffect(() => { let stop = false; const tick = async () => { try { const r = await fetch(boardUrl("/sounds"), { cache: "no-store" }); if (!r.ok) throw new Error(); const d = await r.json(); if (!stop) setMood(d); } catch { if (!stop) setMood(null); } }; tick(); const t = setInterval(tick, 5000); return () => { stop = true; clearInterval(t); }; }, []);
+  const moodPost = async (body: any) => { try { const r = await fetch(boardUrl("/sounds"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const d = await r.json().catch(() => ({})); return r.ok && d.ok !== false ? d : { ok: false, error: d.error || "the board server refused it" }; } catch { return { ok: false, error: "the board server is not answering" }; } };
+  const saveMoodVol = async () => { if (moodVol == null) return; const d = await moodPost({ volume: moodVol }); if (d.ok === false) tell("warn", `Not set: ${d.error}.`); else setMood((m: any) => ({ ...(m || {}), volume: moodVol })); setMoodVol(null); };
 
   // wait for the agent to confirm a change (the config reads back the new value); a short, quick poll
   const confirm = async (check: (d: Config) => boolean, ms = 6000) => { const end = Date.now() + ms; while (Date.now() < end) { await new Promise(r => setTimeout(r, 600)); const d = await load(); if (d && check(d)) return true; } return false; };
@@ -130,10 +140,13 @@ export function Modes() {
             })} />
           <Seg label="Wake word" value={c.wake_word === false ? "off" : "on"} busy={busy.wake} options={[{ v: "on", l: "Say the name" }, { v: "off", l: "Off" }]}
             onPick={v => run("wake", v, () => set({ wake_word: v === "on" }, v === "on" ? `Hands-free acts only when it hears "${c.name}".` : "Wake word off."))} />
-          {/* the brains by name: each posts the voice line's own phrase ("switch to fable"); the choice lasts the session, the launch default is c.model */}
-          {brainsOf(c).length > 0 && <Seg label="Brain" value={model} busy={busy.model} hint={`${brainsOf(c).find(b => b.v === model)?.id || model} for this session · at launch: ${c.model} (deep: ${c.deep_model})`}
+          {/* the brains by name: each posts the voice line's own phrase ("switch to fable"). The switch shows the brain the session RUNS ON, which the voice
+              line reports (backtalk/.voice_model, passed through /config as session_model), so a switch made by voice, by brain.sh or from another device
+              shows here too. While a pick is in flight the picked one shows, then the reported one takes over; before the line reports, the launch default. */}
+          {brainsOf(c).length > 0 && <Seg label="Brain" value={busy.model || brainName(c, c.session_model || c.model)} busy={busy.model}
+            hint={`${c.session_model || c.model} for this session${c.session_model ? "" : " (the launch default; the voice line has not reported yet)"} · at launch: ${brainName(c, c.model)} · deep: ${brainName(c, c.deep_model)}`}
             options={brainsOf(c).map(b => ({ v: b.v, l: b.l, title: b.id }))}
-            onPick={v => run("model", v, async () => { if (await say(`switch to ${v}`)) { setModel(v); try { localStorage.setItem("silo.model", v); } catch {} tell("ok", `${v} for this session.`); } })} />}
+            onPick={v => run("model", v, async () => { if (!(await say(`switch to ${v}`))) return; const id = brainsOf(c).find(b => b.v === v)?.id; const ok = await confirm(d => !!id && d.session_model === id, 20000); tell(ok ? "ok" : "info", ok ? `${v} for this session.` : `Switch to ${v} sent. It lands when the voice line is idle; the switch follows once the line reports it.`); })} />}
           <Seg label="Effort" value={c.effort || ""} busy={busy.effort} hint={c.effort ? undefined : "the model's default"} options={[{ v: "low", l: "Low" }, { v: "medium", l: "Medium" }, { v: "high", l: "High" }, { v: "max", l: "Max" }]}
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
           <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: "A soft pad while Troi works, a chime when it is done" }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
@@ -175,7 +188,22 @@ export function Modes() {
                   onChange={v => run("voice", v, () => set({ tts: "elevenlabs", elevenlabs_voice: v }, `Voice changed to ${voiceOpts.find(o => o.value === v)?.label || v}.`))} />
                 <Button size="icon" variant="outline" title="Reload the voices" aria-label="Reload the voices" disabled={voicesLoading} onClick={() => loadVoices(true)}><RefreshCw className={cn("h-4 w-4", voicesLoading && "animate-spin")} /></Button>
               </div>
+              {/* the allowance: one credit per character spoken, about 1,200 for a 30-second sound loop; the bar is what is LEFT, amber under a quarter, red under a tenth */}
+              <div className="grid gap-1 text-xs text-muted-foreground" aria-live="polite">
+                {credits?.ok ? (() => { const frac = credits.limit ? credits.left / credits.limit : 0; return (<>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3"><span><span className="font-medium tabular-nums text-foreground">{fmtN(credits.left)}</span> of {fmtN(credits.limit)} credits left{credits.tier ? ` · ${credits.tier}` : ""}</span>{credits.resets ? <span>resets {new Date(credits.resets * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span> : null}</div>
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-[width] duration-500", frac < 0.1 ? "bg-red-500" : frac < 0.25 ? "bg-amber-500" : "bg-primary")} style={{ width: `${Math.max(0, Math.min(100, Math.round(frac * 100)))}%` }} /></div>
+                </>); })() : <span>ElevenLabs credits: {credits ? credits.error || "unknown" : "checking…"}</span>}
+              </div>
             </div>)}
+          {/* the room's soundscape: sounds.py loops a 30-second ElevenLabs sound on the Mac (made once per mood, about 1,200 credits, then free) and dips while the agent speaks */}
+          {mood?.moods && <Seg label="Mood" value={busy.mood || mood.making || mood.playing || "off"} busy={busy.mood}
+            hint={mood.making ? `Making the ${mood.making} loop with ElevenLabs (about ${fmtN(mood.credits_per_loop || 1200)} credits, once)…` : mood.playing ? `${mood.label || mood.playing}, from the Mac at volume ${mood.volume}; it dips while ${c.name} speaks.` : `A soundscape from the Mac while you work. The first play of a mood makes its loop with ElevenLabs (about ${fmtN(mood.credits_per_loop || 1200)} credits, once); after that it costs nothing.`}
+            options={[{ v: "off", l: "Off" }, ...mood.moods.map((m: any) => ({ v: m.name, l: m.label, title: m.ready ? m.prompt : `${m.prompt} · made on first play` }))]}
+            onPick={v => run("mood", v, async () => { const d = await moodPost(v === "off" ? { stop: true } : { mood: v }); if (d.ok === false) { tell("warn", `Not done: ${d.error}.`); return; } tell("ok", v === "off" ? "Quiet." : d.making ? `Making the ${v} loop; it plays when it is ready.` : `${mood.moods.find((m: any) => m.name === v)?.label || v} playing.`); setMood((m: any) => ({ ...(m || {}), playing: v === "off" ? "" : v, making: d.making ? v : "" })); })} />}
+          {mood?.moods && <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="label shrink-0">Mood volume</span>
+            <input type="range" min="0" max="100" step="5" value={moodVol ?? mood.volume ?? 40} aria-label="Mood volume" onChange={e => setMoodVol(Number(e.target.value))} onPointerUp={saveMoodVol} onKeyUp={saveMoodVol} className="flex-1" />
+            <span className="w-8 text-right tabular-nums">{moodVol ?? mood.volume ?? 40}</span></div>}
         </Panel>
 
         <Panel title="Keys" className="lg:col-span-2">

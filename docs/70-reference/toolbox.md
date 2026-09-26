@@ -22,10 +22,12 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `show-image.sh` | `<file> [title] [x] [y]` | A picture or a video on the board; without x and y it flows into free space |
 | `../barehands/bin/board.sh`, `board-state.sh` | `'{"a":"add_card",…}'` (add_card, add_img, present, yank, hover, clear, add_ui, ui, layout, tidy); `board-state.sh [events\|json]` | The board, and what is on it |
 | `remind.sh` | `20m "text"`, `15:00 "text"`, `list`, `cancel N` | Reminders |
-| `brain.sh` | `status`, `models`, `deep`, `fast`, `model <name>`, `effort <level>`, `for "<task>" --deep --effort high`, `back`, `rest [<level>]` | The brain for the job: the deep model and a higher effort for heavy work, back to rest after |
+| `brain.sh` | `status`, `live`, `models`, `deep`, `fast`, `model <name>`, `effort <level>`, `for "<task>" --deep --effort high`, `back`, `rest [<level>]` | The brain for the job: the deep model and a higher effort for heavy work, back to rest after |
 | `share.sh` | `start`, `stop`, `status`, `build` | Screen sharing: the Mac's own picker, then the shared frames for the agent's eyes and hands |
 | `show.py` | `'<json tree>' [--board\|--both]`, `chart …`, `table …`, `board "<title>" <op>`, `board tidy\|clear`, `vocabulary` | Interface drawn in the conversation, or as a tile on the board |
 | `media.py` | `now`, `play [words]`, `pause`, `resume`, `stop`, `next`, `prev`, `volume N`, `louder`, `quieter`, `shuffle on\|off`, `like`, `movie on\|off` | Apple Music by voice, and movie mode |
+| `sounds.py` | `play <mood>`, `stop`, `volume 0-100`, `status [--json]`, `list`, `add <mood> "<prompt>" [--label "<L>"]`, `regen <mood>` | The room's soundscape: a 30-second ElevenLabs loop per mood, made once (about 1,200 credits), looped on the Mac, dipping while the agent speaks |
+| `credits.sh` | `[--fresh] [--json]` | What is left of the ElevenLabs allowance (the voice and the loops share it), from the agent server |
 | `db.py` | `tail [N]`, `sessions`, `stats`, `star <id\|path>`, `retain` | The record |
 | `meeting.py` | `devices`, `start <name> [--device NAME]`, `stop`, `status`, `transcribe <file> [--lang xx] [--speakers N]`, `list` | Meetings |
 | `ci-status.sh` | | CI, PRs and releases per repo of the GitHub orgs and users you watch |

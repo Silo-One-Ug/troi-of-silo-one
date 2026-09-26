@@ -720,6 +720,7 @@ async def amain():
         mouth.wait_done(timeout=30)
         raise SystemExit(1)
     log("[backtalk] brain warm")
+    signals.set_model(brain.model)     # Silo One: the live brain, for the console's Modes page and brain.sh
     # the hidden warmup ping is plumbing, not conversation
     brain.session.update(turns=0, out_tokens=0, in_tokens=0, cost=0.0)
     # a configured effort level applies at launch (saved by the spoken
@@ -752,6 +753,7 @@ async def amain():
         _deny_pending()
         await brain.reset_turn()
         say_after = None
+        new_model = None                   # Silo One: set by the model verbs; recorded once the switch took
         if verb == "clear":
             resp = await brain.command("/clear")
             say_after = "Cleared. Fresh slate."
@@ -764,9 +766,11 @@ async def amain():
                       "get slower. Say back to the fast model when "
                       "you're done.")
             resp = await brain.command(f"/model {CFG['deep_model']}")
+            new_model = CFG['deep_model']
             say_after = "Deep model online, for this session only."
         elif verb == "fast":
             resp = await brain.command(f"/model {CFG['model']}")
+            new_model = CFG['model']
             say_after = "Back on the fast model."
         elif verb.startswith("model:"):        # troi-console: a brain by name, from the config's map
             name = verb.split(":", 1)[1]
@@ -777,6 +781,7 @@ async def amain():
             else:
                 mouth.say(f"Switching to {name}. One moment.")
                 resp = await brain.command(f"/model {model_id}")
+                new_model = model_id
                 say_after = f"On {name} now, for this session."
         elif verb.startswith("effort:"):
             lvl = verb.split(":", 1)[1]
@@ -877,6 +882,8 @@ async def amain():
                 log(f"[console] {verb} answered: {resp[:120]}")
             else:
                 mouth.say(say_after)
+                if new_model:                  # Silo One: the switch took; say which brain this is now
+                    signals.set_model(new_model)
         signals.set_state("idle")
 
     async def handle(text: str, spoke_from: float | None = None) -> bool:
