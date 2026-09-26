@@ -76,6 +76,8 @@ export function join(a: string, b: string): string {
   const gap = (block(al) || block(bl)) && !(item(al) && item(bl));
   return a + (gap ? "\n\n" : "\n") + b;
 }
+const joinAll = (lines: string[]) => lines.slice(1).reduce((a, b) => join(a, b), lines[0] || "");   // a reply from its lines, as the record gives them
+const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 function append(ms: Msg[], m: Msg): Msg[] {
   const last = ms[ms.length - 1];
   if (m.role === "assistant" && last && last.role === "assistant" && !last.live && (last.t || "") === (m.t || "")) return [...ms.slice(0, -1), { ...last, text: join(last.text, m.text) }];
@@ -172,7 +174,11 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0); const [hearing, setHearing] = useState(false);
   const [below, setBelow] = useState(0); const [tail, setTail] = useState(true);        // at the end of the conversation, or reading above; lines that arrived meanwhile
   const scroller = useRef<HTMLDivElement>(null); const atBottom = useRef(true); const seen = useRef(0);
-  const pos = useRef(0), cpos = useRef(0), live = useRef<{ id: string; final: string[] } | null>(null), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
+  const pos = useRef(0), cpos = useRef(0), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
+  // a spoken reply on the page: `live` while the brain writes it (the words from the partial; the record's lines kept aside), `settled` for a minute after,
+  // so lines of it that the log delivers late still land in the same bubble instead of a second one; `typed` remembers the last typed replies, which come
+  // through the voice log again as spoken chunks and must not show twice
+  const live = useRef<{ id: string; final: string[]; t?: string } | null>(null), settled = useRef<{ id: string; final: string[]; at: number } | null>(null), typed = useRef<string[]>([]);
   const liveStep = useRef<{ id: string; name: string; detail: string } | null>(null), args = useRef<Record<string, string>>({});   // the step under way in a spoken turn; a typed turn's tool inputs as they stream
   const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0), menuRef = useRef<HTMLDivElement>(null);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
@@ -223,8 +229,14 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
           for (const it of d.items as Row[]) {
             if (it.role === "ctl") continue;
             const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
-            if (it.role === "agent" && live.current) { live.current.final.push(it.text); continue; }
-            if (it.role === "agent" && busyRef.current) continue;                        // the same reply is streaming into its own place
+            if (it.role === "agent") {
+              const n = norm(it.text);
+              if (n.length >= 8 && typed.current.some(s => s.includes(n))) continue;      // a typed turn's reply, already on the page from its own stream
+              if (live.current) { const l = live.current; l.final.push(it.text); l.t = l.t || it.t; continue; }   // the reply under way: the record's lines wait for its end
+              if (busyRef.current) continue;                                             // the same reply is streaming into its own place
+              const s = settled.current;
+              if (s && Date.now() - s.at < 60000) { s.final.push(it.text); upsert(s.id, m => ({ ...m, text: joinAll(s.final), t: m.t || it.t })); continue; }   // a late line of the reply just settled: the whole reply again, as the record has it
+            } else settled.current = null;                                                 // the turn moved on: the next reply is a new one
             const m = fromRow(it); if (m) setMsgs(ms => append(m.role === "assistant" ? settle(ms) : ms, m));
           }
           for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
@@ -246,9 +258,13 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
             if (!tl && !part && (d.state === "idle" || !d.voice)) setMsgs(settle);
           }
           if (part && !busyRef.current) {
-            if (!live.current) { const id = nid(); live.current = { id, final: [] }; setMsgs(ms => [...settle(ms), { id, role: "assistant", text: part, live: true }]); }
+            if (!live.current) { const id = nid(); live.current = { id, final: [] }; settled.current = null; setMsgs(ms => [...settle(ms), { id, role: "assistant", text: part, live: true }]); }
             else upsert(live.current.id, m => ({ ...m, text: part }));
-          } else if (!part && live.current) { const l = live.current; live.current = null; upsert(l.id, m => ({ ...m, live: false, t: m.t || stamp(), text: clean(m.text) || l.final.join("\n") })); }   // the reply as written, its structure kept
+          } else if (!part && live.current && !(d.voice && (d.state === "thinking" || (d.tool && d.tool.name)))) {   // the turn is over: a tool still in the brain's hands keeps the reply live, whatever the partial says
+            // the reply settles to what the record has of it, whole and in order, so the page reads as it will after a reload; the words as written stand only until a line has arrived
+            const l = live.current; live.current = null; settled.current = { id: l.id, final: l.final, at: Date.now() };
+            upsert(l.id, m => ({ ...m, live: false, t: m.t || l.t || stamp(), text: l.final.length ? joinAll(l.final) : clean(m.text) }));
+          }
         } catch { setState("off"); }
         setTimeout(pollState, 500);
       };
@@ -371,7 +387,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         onRunErrorEvent: ({ event }) => setMsgs(ms => [...ms, { id: nid(), role: "note", text: event.message }]),
       });
     } catch (e: any) { if (!/abort/i.test(String(e?.name || e?.message || e))) setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
-    for (const s of said) for (const sent of s.replace(/([.!?])\s+/g, "$1\n").split("\n")) skip.current.add("agent|" + sent.slice(0, 60));   // the same sentences come through the voice log
+    for (const s of said) { for (const sent of s.replace(/([.!?])\s+/g, "$1\n").split("\n")) skip.current.add("agent|" + sent.slice(0, 60)); typed.current.push(norm(clean(s))); }   // the same words come back through the voice log as spoken chunks: known by their sentences and by the whole text
+    typed.current.splice(0, Math.max(0, typed.current.length - 6));
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
   const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off");
