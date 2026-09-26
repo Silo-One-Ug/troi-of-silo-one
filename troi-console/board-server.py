@@ -28,6 +28,7 @@ import mimetypes
 import os
 import re
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -389,6 +390,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/floater":
             try: return self._json(json.loads((P.DATA / "cache" / "floater.json").read_text()))
             except Exception: return self._json({"shown": False})
+        if path == "/sounds":                                            # the room's soundscape (sounds.py): what plays, the moods on offer
+            try:
+                import sounds
+                return self._json(sounds.status_dict())
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)[:200]}, 500)
         if path == "/config":
             return self._json({"name": CONFIG.get("name", "Assistant"), "orbs": [{"title": o.get("title", "?"), "kind": o.get("kind", "notes")} for o in CONFIG["orbs"]]})
         if path == "/note":
@@ -433,6 +440,24 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(cur)
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 400)
+        if self.path == "/sounds":                                     # play a mood, stop, or set the volume: sounds.py does it, detached (making a loop takes a while)
+            try:
+                d = json.loads(body) if body.strip() else {}
+                args = ["stop"] if d.get("stop") else ["play", str(d["mood"])] if d.get("mood") else ["volume", str(int(d["volume"]))] if "volume" in d else None
+                if not args:
+                    return self._json({"ok": False, "error": "say mood, stop or volume"}, 400)
+                if args[0] == "play" and not re.fullmatch(r"[a-z0-9_-]{1,32}", args[1]):
+                    return self._json({"ok": False, "error": "no such mood"}, 400)
+                import sounds
+                making = args[0] == "play" and not sounds.loop_ready(args[1])
+                P.LOGS.mkdir(parents=True, exist_ok=True)
+                with open(P.LOGS / "sounds.log", "a") as lg:
+                    subprocess.Popen([sys.executable, str(HERE / "sounds.py"), *args], stdout=lg, stderr=lg, start_new_session=True, cwd=str(HERE))
+                st = sounds.status_dict()                                # the command runs detached: answer with what was asked, not what is read back yet
+                return self._json({"ok": True, "making": making, **({"playing": args[1]} if args[0] == "play" and not making else {}),
+                                   "volume": int(args[1]) if args[0] == "volume" else st.get("volume")})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)[:200]}, 400)
         if self.path == "/state":
             _STATE = body
             snapshot(body)

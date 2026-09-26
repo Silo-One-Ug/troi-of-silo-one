@@ -13,7 +13,7 @@ your approval on Telegram when the console is locked.
 | Permissions | **Ask first** / **Auto-approve** (two clicks to confirm; protected) |
 | Microphone | **Push to talk** (hold Right Option) / **Hands-free** (protected) |
 | Wake word | In hands-free, only sentences containing the agent's name are acted on (turning it off is protected) |
-| Brain | the models by name, for this session, drawn from the voice line's `models` map (name to model id in `backtalk/backtalk.json`, the one list); the launch default is the fast model, "deep" is the deep one |
+| Brain | the models by name, for this session, drawn from the voice line's `models` map (name to model id in `backtalk/backtalk.json`, the one list); the switch shows the brain the session runs on, as the voice line reports it |
 | Effort | **Low** to **Max**; saved as the default |
 | Eyes | **Off** / **Every reply** / **Watch** / **Screen** (turning sight on is protected) |
 | Voice ID | **Off** / **Only me** / **Learn my voice** (about a minute of push-to-talk speech; off and learn are protected) |
@@ -21,6 +21,7 @@ your approval on Telegram when the console is locked.
 | Face ID | **Learn my face**: five photos, a second apart (protected) |
 | Voice | **Kokoro** / **ElevenLabs**, and which of your ElevenLabs voices |
 | Speech | **Aloud** / **Text only**: with Text only the agent answers on the page and nothing is spoken, so no ElevenLabs credit is used |
+| Mood | **Off** or a soundscape from the Mac while you work (Focus, Calm, Café, Forest, Night, Storm, Fire, Hum, and your own), with its volume; a mood's loop is made once with ElevenLabs |
 | Your phone | **This Mac only** / **Tailscale** / **This network**: where the agent answers from Troi's next start (widening it is protected) |
 
 ## Permissions and the model
@@ -31,9 +32,11 @@ you in either mode ([The guard](../50-safety/the-guard.md)).
 
 **Brain** picks a model by name for this session (`switch to fable` is the phrase behind it). The
 names come from one place, the `models` map in the voice line's config: add a model there and it
-appears here, in the phrases and in `brain.sh`. The next start returns to the fast model; "switch to
-the deep model" means the configured deep one. **Effort** is how hard the model thinks per turn; Max
-is thorough and slow, Low is quick.
+appears here, in the phrases and in `brain.sh`. The switch shows the brain the session runs on, as
+the voice line itself reports it, so a switch made by voice, by the agent or from your phone shows
+here too; until the line has reported, it shows the launch default. The next start returns to the
+fast model; "switch to the deep model" means the configured deep one. **Effort** is how hard the
+model thinks per turn; Max is thorough and slow, Low is quick.
 
 The agent pulls these two levers by itself for heavy work (code changes, reviews, research reports,
 long reads, server operations): it says so in a line, switches to the deep brain (Fable) or a named
@@ -73,6 +76,14 @@ line. By voice or from a terminal: `console.sh speak on|off|toggle|status`. The 
 itself on your word ("text only", "go quiet", "speak", "aloud"), before it answers, so the reply
 follows the new setting.
 
+## ElevenLabs credits
+
+Under the ElevenLabs voice, a meter of your allowance: what is left of the month's characters, the
+tier and the reset date, amber under a quarter, red under a tenth. The agent's server holds the key
+and asks ElevenLabs at most every five minutes; the page refreshes every minute while it is open.
+One credit is one character spoken; a 30-second sound loop for Mood is about 1,200. Out loud, "how
+much voice credit is left" gets the same numbers (`credits.sh`).
+
 ## Keys
 
 The third card keeps the secrets the welcome asked for, in the Mac's Keychain and never in a file:
@@ -89,3 +100,11 @@ filter with a breath of wind, and a small chime the moment the work is done and 
 way. It is made in the browser, with no files, and it is on by default; **Sounds** in Modes (or in
 More on a phone) turns it off, for that device only. A browser plays nothing before the first click
 or key on a page, so the first stretch of work after a fresh page is silent until you touch it.
+
+**Mood** is the other kind of sound: a soundscape from the Mac itself while you work (Focus is
+rain on a window, Calm the sea, Café, Forest, Night, Storm, Fire, Hum), with its own volume slider.
+The first time you pick a mood the agent has ElevenLabs make its 30-second seamless loop (about
+1,200 credits, once, from the same allowance as the voice); after that the loop is kept and costs
+nothing. It dips while the agent speaks and comes back after. By voice: "play rain sounds",
+"something calm", "sounds off". Your own moods: `sounds.py add <mood> "<what it sounds like>"`.
+Music itself stays with Apple Music ("play some jazz").

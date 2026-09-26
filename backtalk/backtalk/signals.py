@@ -53,6 +53,7 @@ _LOADING_PID_FILE = os.path.join(_DIR, ".voice_loading_pid")
 _DIRECTION_FILE = os.path.join(_DIR, ".voice_direction")
 _REPLY_DONE_FILE = os.path.join(_DIR, ".voice_reply_done")
 _RATE_LIMIT_FILE = os.path.join(_DIR, ".voice_rate_limits")
+_MODEL_FILE = os.path.join(_DIR, ".voice_model")   # Silo One: the brain this session runs on (a full model id)
 
 _BH = CFG.get("barehands_state_dir") or ""
 _BH_STATE = os.path.join(_BH, "state") if _BH else ""
@@ -78,6 +79,17 @@ def set_state(name: str):
                 f.write(name)
         except OSError:
             pass
+
+
+def set_model(model_id: str):
+    """Silo One: record the brain this session runs on (a full model id), at launch and after every /model switch
+    that took. Anything can read it (.voice_model beside .voice_state): the console's Modes page shows the live
+    brain from it and brain.sh trusts it over any memory of its own. Never raises."""
+    try:
+        with open(_MODEL_FILE, "w") as f:
+            f.write(str(model_id or "").strip())
+    except OSError:
+        pass
 
 
 def feed_waveform(pcm: np.ndarray):

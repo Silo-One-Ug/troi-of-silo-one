@@ -33,7 +33,7 @@ A small gold globe floats on every Space and over full-screen apps: a wireframe 
 Kokoro speaks by default, local and free. **ElevenLabs** is the premium voice:
 
 1. Keep your key in the Keychain: the welcome does it, or `troi-console/keychain.py set elevenlabs`.
-2. In **Modes**, the Voice switch then offers ElevenLabs, with an **ElevenLabs voice** picker (and a reload button) listing your voices. Picking one switches to it at once. With no pick, your own cloned voice comes first, else the first listed.
+2. In **Modes**, the Voice switch then offers ElevenLabs, with an **ElevenLabs voice** picker (and a reload button) listing your voices. Picking one switches to it at once. With no pick, your own cloned voice comes first, else the first listed. Under the picker, a meter of your ElevenLabs allowance: what is left, the tier, the reset date (the agent's server asks ElevenLabs at most every five minutes; `credits.sh` says the same out loud).
 
 From a terminal or by voice: `console.sh voice list`, `console.sh voice elevenlabs "Rachel"`, `console.sh voice kokoro`. The change applies from the next reply, and Kokoro takes over the moment ElevenLabs cannot answer. The same key powers meeting transcription (`meeting.py`).
 
@@ -59,6 +59,7 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   - Faint "ignored" lines show what the filters dropped and why: a rejected voice shows its similarity score, and a line with no wake word says so.
   - Type and press Enter; a typed turn is answered here and out loud. Charts, tables, pictures and players the agent draws appear right in the conversation.
   - **Sounds**: a soft pad from the browser while the agent works and a chime when it is done; off in Modes (Sounds) or More on a phone, per device.
+  - **Mood**: a soundscape from the Mac itself while you work (Focus, Calm, Café, Forest, Night, Storm, Fire, Hum, or your own), with its own volume; the first play of a mood has ElevenLabs make its 30-second seamless loop (about 1,200 credits, once), then the loop is kept and costs nothing; it dips while the agent speaks. By voice: "play rain sounds", "something calm", "sounds off" (`sounds.py`).
   - **Library**: the bin on a picture or on a whole book sends it to the macOS Trash (its row marked archived); Select in a book gives checkboxes, Select all and one Delete; each asks first and needs an unlocked console.
   - **Sessions** (the bar, or More on the phone) lists every conversation in the record with its first line, opens any of them to read, and starts a new one on your word alone: the button asks, then sends the same "clear the session" you would say; the agent never starts one itself. Sessions get a title written by a small model (the pencil renames one); the bin deletes one off the list (unlocked console; its lines stay, Restore brings it back), and the agent's own deletion request (sessions.sh) lands on Approvals for your yes.
   - The composer is one card on the desktop: the + menu adds files or photos, takes a screenshot of the Mac or points at a file with @; a photo attached shows as its thumbnail, a file as a small card; the microphone and the send arrow stand on the right, the arrow becoming Stop while a reply is under way. The eraser in the header clears the page (a reload stays clear; the record and the session stay).
@@ -71,7 +72,8 @@ The console is a web app at http://localhost:3100. Behind the pages is space: th
   | Permissions | Ask first / Auto-approve (two clicks to confirm) |
   | Microphone | Push to talk (hold Right Option) / Hands-free |
   | Wake word | In hands-free, only sentences containing the agent's name are acted on |
-  | Model | Fast / Deep (Deep lasts for this session). Effort: Low to Max |
+  | Brain | the models by name, for this session; the switch shows the brain the session runs on, as the voice line reports it. Effort: Low to Max |
+  | Mood | Off, or a soundscape from the Mac while you work (its loop made once with ElevenLabs), with its volume |
   | Eyes | Off / Every reply / Watch / Screen |
   | Voice ID | Off / Only me / Learn my voice (about a minute of push-to-talk speech) |
   | Strictness | How closely a voice must match your voice print. Move it right if someone else gets through, left if it starts ignoring you |

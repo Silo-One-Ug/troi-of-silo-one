@@ -24,10 +24,12 @@ cat <<'TXT'
   ../barehands/bin/board.sh '{"a":"add_card",...}'   add_card | add_img | present | yank | hover | clear | add_ui | ui | layout | tidy   the board (mouse-driven, white, it keeps what is up)
   ../barehands/bin/board-state.sh [events|json]    what is on the board (or the saved scene), and the last clicks on its buttons
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
-  brain.sh     status · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
+  brain.sh     status · live · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
   share.sh     start | stop | status | build   screen sharing: the Mac's picker, then the shared frames for your eyes (look-screen.sh) and hands (click --share)
   show.py     '<json tree>' [--board|--both] | chart ... | table ... | board "<title>" <op> | board tidy|clear | vocabulary   draw interface from data, in the conversation or as a tile on the board (never an HTML file)
   media.py     now · play [words] · pause · resume · stop · next · prev · volume N · louder · quieter · shuffle on|off · like · movie on|off   Apple Music by voice, and movie mode
+  sounds.py    play <mood> · stop · volume 0-100 · status [--json] · list · add <mood> "<prompt>" [--label "<L>"] · regen <mood>   the room's soundscape: a 30-second ElevenLabs loop per mood (made once, 1,200 credits), looped on the Mac, dipping while the agent speaks
+  credits.sh   [--fresh] [--json]   what is left of the ElevenLabs allowance (the voice and the loops share it), from the agent server
   db.py        tail [N] · sessions · stats · star <id|path> · retain   the record: data/troi.db (conversation, cards, approvals, pictures, reports, runs);
                captures (looks, screens, Telegram) go to the Trash after 14 days unless starred
   meeting.py   devices · start <name> [--device NAME] · stop · status · transcribe <file> [--lang xx] [--speakers N] · list   record a meeting, transcript with speaker labels (ElevenLabs Scribe) in data/blobs/meetings/
