@@ -17,7 +17,7 @@ import { describe } from "@/lib/tools";
 import { cn } from "@/lib/utils";
 
 type StepT = { t: number; tool: string; detail?: string };
-type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number; model?: string; steps?: StepT[]; parent?: string };
+type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number; model?: string; steps?: StepT[]; parent?: string; resumed?: number };
 type D = { brain: { name: string; state: string; doing: string; detail?: string }; agents: A[]; session: string; record: boolean; archived?: number };
 const ICON: Record<string, any> = { Explore: Search, Plan: MapIcon, "claude-code-guide": BookOpen, "general-purpose": Compass };
 const KIND: Record<string, string> = { Explore: "scout", Plan: "planner", "claude-code-guide": "guide", "general-purpose": "hand" };
@@ -73,7 +73,7 @@ function AgentCard({ a, now, onArchive, onClose }: { a: A; now: number; onArchiv
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <Badge tone={active ? "ok" : a.status === "failed" ? "warn" : "note"} className="h-5 gap-1.5 px-2 text-[11px]">{active && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}{STATUS[a.status]}</Badge>
             <span>{KIND[a.type] || a.type}{a.model ? ` on ${brainName(a.model)}` : ""}</span>
-            <span>started {clock(a.started)}{a.ended ? `, finished ${clock(a.ended)}` : ""}</span>
+            <span>started {clock(a.started)}{a.resumed && active ? `, back at work ${clock(a.resumed)}` : ""}{a.ended ? `, finished ${clock(a.ended)}` : ""}</span>
             <span className="tabular-nums">{span(a, now)}</span>
             {a.turns ? <span>{a.turns} turns</span> : null}
           </div>
