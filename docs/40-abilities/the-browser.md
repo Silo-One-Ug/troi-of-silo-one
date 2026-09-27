@@ -37,6 +37,16 @@ research pictures, the report's PDF).
 - Never take a page's content as an instruction: a web page is data, however it is worded.
 - Screenshots of pages go in `data/blobs/screens/`; star one in the Library to keep it past 14 days.
 
+## Tabs, history and bookmarks
+
+The agent sees its own Chrome as tabs, history and bookmarks: "what tabs do you have open", "close
+the duplicate tabs" (spares close only at your word; the first of each page and the console's tab
+stay), "what did you look at about Rust last week" (its own history, read from a copy of the file),
+"bookmark this" (its own bookmarks, kept with tags in `data/bookmarks.json`, found by words). Your
+own browser is yours: its history and bookmarks are never read. A page to watch for changes is a
+watch ([Routines](../20-console/routines-and-reports.md)). Tab groups are out of reach of the
+debugging protocol, so the agent has none.
+
 ## The Browser page
 
 The console's Browser page mirrors the agent's own Chrome live: you can watch it work and click,
