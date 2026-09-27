@@ -141,8 +141,9 @@
     const g = el("div", "uigrid uicols" + gapClass(n.gap)); g.style.gridTemplateColumns = list.map((_, i) => `${clamp(num(w[i], 1), 0.2, 12)}fr`).join(" ");
     return append(g, list);
   }
+  const CARD_STYLES = ["plain", "filled", "outline", "top", "left", "glass", "raised"];
   function card(n, cx, path, depth) {
-    const c = el("div", "uicard" + (n.tone ? " tone-" + tone(n.tone) : ""));
+    const c = el("div", "uicard uicard-" + (CARD_STYLES.includes(n.style) ? n.style : "filled") + (n.tone ? " tone-" + tone(n.tone) : ""));
     if (n.title || n.subtitle) { const h = el("div", "uicardhead"); if (n.title) h.appendChild(el("div", "uicardtitle", n.title)); if (n.subtitle) h.appendChild(el("div", "uimuted", n.subtitle)); c.appendChild(h); }
     const body = append(el("div", "uistack"), kids(n, cx, path, depth)); if (body.childNodes.length) c.appendChild(body);
     if (n.footer) c.appendChild(el("div", "uicardfoot", n.footer));
@@ -263,7 +264,7 @@
     });
     return root;
   }
-  function divider(n) { const h = el("div", "uidivider" + (n.label ? " labelled" : "")); if (n.label) h.appendChild(el("span", null, n.label)); return h; }
+  function divider(n) { const h = el("div", "uidivider" + (n.label ? " labelled" : "") + (["dashed", "dots", "space", "thick"].includes(n.style) ? " uidiv-" + n.style : "") + (n.tone ? " tone-" + tone(n.tone) : "")); if (n.label) h.appendChild(el("span", null, n.label)); return h; }
   function spacer(n) { const d = el("div", "uispacer"); d.style.height = clamp(num(n.h, 12), 0, 400) + "px"; return d; }
   function aspectBox(n, cx, path, depth) {
     const d = el("div", "uiaspect"); d.style.aspectRatio = aspect(n.ratio || n.aspect) || "16 / 9";
@@ -273,28 +274,32 @@
   function hero(n) {
     const d = el("div", "uihero"); d.style.aspectRatio = aspect(n.aspect) || "16 / 7";
     const u = safeUrl(n.src || n.url); if (u) d.style.backgroundImage = `url("${u.replace(/"/g, "%22")}")`;
-    else {   // no picture: a band in the theme's two hues (or the tone named), with a quiet pattern over it
-      d.classList.add("band", "pattern-" + (PATTERNS.includes(n.pattern) ? n.pattern : "dots")); if (n.tone) d.classList.add("tone-" + tone(n.tone));
+    else {   // no picture: a band in the theme's two hues (or the tone named); a pattern only when asked; look.gradient for hues of its own
+      d.classList.add("band", "pattern-" + (PATTERNS.includes(n.pattern) ? n.pattern : "none")); if (n.tone) d.classList.add("tone-" + tone(n.tone));
       if (!aspect(n.aspect)) d.style.aspectRatio = "16 / 5";
     }
+    if (["center", "right", "top"].includes(n.align)) d.classList.add("uihero-" + n.align);
+    if (n.overlay != null) { const o = Number(n.overlay); if (o >= 0 && o <= 1) d.style.setProperty("--shade-a", String(o)); }
+    if (FONTS[n.font]) d.classList.add("uif-" + n.font);
     const t = el("div", "uiherotext"); if (n.kicker) t.appendChild(el("div", "uilabel", n.kicker)); if (n.title) t.appendChild(el("div", "uiherotitle", n.title)); if (n.subtitle) { const s = el("div", "uiherosub"); s.appendChild(inline(n.subtitle)); t.appendChild(s); }
     d.appendChild(t); return d;
   }
-  function heading(n) { const lv = clamp(Math.round(num(n.level, 2)), 1, 4); const h = el("h" + lv, "uih uih" + lv); h.appendChild(inline(n.text)); if (n.align) h.style.textAlign = n.align; return h; }
+  function heading(n) { const lv = clamp(Math.round(num(n.level, 2)), 1, 4); const h = el("h" + lv, "uih uih" + lv + fontClass(n.font) + (n.tone ? " tone-" + tone(n.tone) + " uitoned" : "")); h.appendChild(inline(n.text)); if (n.align) h.style.textAlign = n.align; return h; }
   function textNode(n) {
-    const p = el("p", "uitext" + (n.size ? " size-" + ({ sm: "sm", md: "md", lg: "lg", xl: "xl" }[n.size] || "md") : "") + (n.muted ? " uimuted" : "") + (n.mono ? " mono" : ""));
+    const p = el("p", "uitext" + (n.size ? " size-" + ({ sm: "sm", md: "md", lg: "lg", xl: "xl" }[n.size] || "md") : "") + (n.muted ? " uimuted" : "") + (n.mono ? " mono" : "") + fontClass(n.font) + (n.tone ? " tone-" + tone(n.tone) + " uitoned" : ""));
     p.appendChild(inline(n.text)); if (n.align) p.style.textAlign = n.align; return p;
   }
   function md(n) { return markdown(n.text); }
-  function quote(n) { const q = el("blockquote", "uiquote"); q.appendChild(inline(n.text)); if (n.cite) q.appendChild(el("cite", null, n.cite)); return q; }
+  function quote(n) { const q = el("blockquote", "uiquote" + (["big", "plain"].includes(n.style) ? " uiquote-" + n.style : "") + fontClass(n.font) + (n.tone ? " tone-" + tone(n.tone) : "")); q.appendChild(inline(n.text)); if (n.cite) q.appendChild(el("cite", null, n.cite)); return q; }
   function code(n) { const w = el("div", "uicodewrap"); if (n.lang || n.title) w.appendChild(el("div", "uilabel", n.title || n.lang)); w.appendChild(el("pre", "uicode", n.text)); return w; }
   function kbd(n) { const w = el("span", "uikbds"); const keys = Array.isArray(n.keys) ? n.keys : str(n.keys || n.text).split(/\s+/); keys.filter(Boolean).slice(0, 8).forEach(k => w.appendChild(el("kbd", null, k))); return w; }
-  function badge(n) { return el("span", "uibadge tone-" + tone(n.tone), n.text); }
+  function badge(n) { return el("span", "uibadge tone-" + tone(n.tone) + (["solid", "outline"].includes(n.style) ? " uibadge-" + n.style : ""), n.text); }
   function tags(n) { const w = el("div", "uitags"); (Array.isArray(n.items) ? n.items : []).slice(0, 40).forEach(t => w.appendChild(el("span", "uibadge tone-" + tone(typeof t === "object" ? t.tone : n.tone), typeof t === "object" ? t.text : t))); return w; }
-  function callout(n) { const d = el("div", "uicallout tone-" + tone(n.tone)); if (n.title) d.appendChild(el("b", null, n.title)); const p = el("div"); p.appendChild(inline(n.text)); d.appendChild(p); return d; }
+  function callout(n) { const d = el("div", "uicallout tone-" + tone(n.tone) + (["soft", "outline", "solid", "plain"].includes(n.style) ? " uicallout-" + n.style : "")); if (n.title) d.appendChild(el("b", null, n.title)); const p = el("div"); p.appendChild(inline(n.text)); d.appendChild(p); return d; }
   function link(n) { return anchor(n.text, n.href, true); }
   function stat(n) {
-    const d = el("div", "uistat" + (n.tone ? " tone-" + tone(n.tone) : "") + (n.boxed ? " boxed" : "")); d.title = [n.label, fmt(n.value) + str(n.unit || ""), n.delta != null && n.delta !== "" ? str(n.delta) : "", n.note].filter(Boolean).join(" · ");
+    const stStyle = ["plain", "tile", "pill", "big"].includes(n.style) ? n.style : (n.boxed ? "tile" : "plain");
+    const d = el("div", "uistat uistat-" + stStyle + (n.tone ? " tone-" + tone(n.tone) : "") + fontClass(n.font)); d.title = [n.label, fmt(n.value) + str(n.unit || ""), n.delta != null && n.delta !== "" ? str(n.delta) : "", n.note].filter(Boolean).join(" · ");
     if (n.label) d.appendChild(el("div", "uilabel", n.label));
     const v = el("div", "uistatrow"); v.appendChild(el("span", "uistatvalue", fmt(n.value))); if (n.unit) v.appendChild(el("span", "uistatunit", n.unit));
     if (n.delta != null && n.delta !== "") v.appendChild(el("span", "uibadge tone-" + tone(n.tone || (String(n.delta).trim().startsWith("-") ? "bad" : "ok")), n.delta));
@@ -664,12 +669,41 @@
     heading, text: textNode, md, markdown: md, quote, code, kbd, badge, tags, callout, link, stat, progress, gauge, meter: gauge, kv, list, table, chart, sparkline, rating,
     countdown, clock, calendar, image, gallery, video, youtube, vimeo, audio, embed, web: embed, map, avatar, avatars, skeleton, button, choice, empty: () => null };
 
+  // ---- the look: the composer's own design on any component (Paul, 2026-09-27: "let the LLM decide the design"). A `look`
+  // object of plain words and numbers, each checked and turned into a style by this code; never a raw style string.
+  const FONTS = { display: "var(--display)", serif: "var(--display-serif)", sans: "var(--sans)", mono: "var(--mono)" };
+  const NAMED = { paper: "var(--paper)", ink: "var(--ink)", muted: "var(--muted)", accent: "var(--accent)", gold: "var(--gold)", ok: "var(--ok)", warn: "var(--warn)", bad: "var(--bad)", note: "var(--note)", white: "#fff", black: "#000" };
+  const colorVal = v => { v = str(v).trim(); if (!v) return ""; if (COLS.includes(v)) return `var(--col-${v})`; if (NAMED[v]) return NAMED[v]; return /^#[0-9a-f]{3,8}$/i.test(v) ? v : ""; };
+  const px = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? clamp(n, lo, hi) + "px" : ""; };
+  const fontClass = f => FONTS[f] ? " uif-" + f : "";
+  function applyLook(e, n) {
+    const L = n && n.look; if (!L || typeof L !== "object" || !e || !e.style) return;
+    const s = e.style;
+    const bg = colorVal(L.bg); if (bg) s.background = bg;
+    if (L.gradient) { const g = Array.isArray(L.gradient) ? L.gradient : String(L.gradient).split(/[ ,]+/); const cols = g.map(colorVal).filter(Boolean); const ang = g.map(Number).find(x => Number.isFinite(x)); if (cols.length >= 2) s.background = `linear-gradient(${Number.isFinite(ang) ? clamp(ang, 0, 360) : 135}deg, ${cols.join(", ")})`; }
+    const fg = colorVal(L.fg || L.color); if (fg) s.color = fg;
+    const bd = colorVal(L.border); if (bd) s.border = `1px solid ${bd}`;
+    if (L.radius != null) s.borderRadius = px(L.radius, 0, 80);
+    if (L.pad != null) { const p = String(L.pad).split(/\s+/).map(v => px(v, 0, 160)).filter(Boolean).slice(0, 4); if (p.length) s.padding = p.join(" "); }
+    if (L.gap != null) s.gap = px(L.gap, 0, 120);
+    if (["left", "center", "right"].includes(L.align)) s.textAlign = L.align;
+    if (FONTS[L.font]) s.fontFamily = FONTS[L.font];
+    if (L.size != null) s.fontSize = px(L.size, 9, 120);
+    if (L.weight != null) { const w = Number(L.weight); if ([300, 400, 500, 600, 700, 800].includes(w)) s.fontWeight = String(w); }
+    if (L.italic) s.fontStyle = "italic";
+    if (L.upper) { s.textTransform = "uppercase"; s.letterSpacing = ".12em"; }
+    if (L.opacity != null) { const o = Number(L.opacity); if (o >= 0 && o <= 1) s.opacity = String(o); }
+    if (L.shadow != null) s.boxShadow = ["none", "0 2px 8px rgba(0,0,0,.08)", "0 8px 24px rgba(0,0,0,.14)", "0 18px 48px rgba(0,0,0,.22)"][clamp(Math.round(Number(L.shadow) || 0), 0, 3)];
+    if (L.width != null) { const w = String(L.width).trim(); if (/^\d{1,3}%$/.test(w)) s.width = w; else if (px(w, 40, 2400)) s.width = px(w, 40, 2400); }
+    if (L.minh != null) s.minHeight = px(L.minh, 0, 1600);
+    if (L.height != null) s.height = px(L.height, 8, 1600);
+  }
   function render(node, cx, path, depth) {
     cx = cx || { state: {}, live: false }; if (!cx.state) cx.state = {}; path = path || "0"; depth = depth || 0;
     if (!node || typeof node !== "object" || depth > MAX_DEPTH) return null;
     const fn = RENDER[node.type];
     if (!fn) return null;
-    try { const e = fn(node, cx, path, depth); if (e && node.type !== "empty") e.classList.add("ui-" + node.type); return e; }
+    try { const e = fn(node, cx, path, depth); if (e && node.type !== "empty") { e.classList.add("ui-" + node.type); applyLook(e, node); } return e; }
     catch (e) { console.warn("[board-render]", node.type, e); return null; }
   }
   function count(node) { if (!node || typeof node !== "object") return 0; let n = RENDER[node.type] ? 1 : 0; (node.children || []).forEach(c => n += count(c)); if (node.child) n += count(node.child); (Array.isArray(node.items) ? node.items : []).forEach(i => { if (i && typeof i === "object" && i.child) n += count(i.child); }); return n; }
