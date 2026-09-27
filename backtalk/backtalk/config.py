@@ -165,6 +165,16 @@ DEFAULTS = {
     #
     # NOT "stt_device" below, which is the Whisper COMPUTE device.
     "mic_device": "",
+    # The open microphone (hands-free), ears.Ears. webrtcvad's mode
+    # (0..3; 3 lets the least non-speech through), the quiet that ends
+    # a sentence, the speech that makes one, and how far a voice must
+    # rise above the room's own level before the transcriber runs: a
+    # keyboard, a fan, a television across the room are "speech" to the
+    # VAD and are dropped here, unheard and unlogged to the console.
+    "vad_aggressiveness": 3,
+    "vad_silence_ms": 640,
+    "vad_min_speech_ms": 300,
+    "vad_snr_db": 9,
     # Optional premium voice: ElevenLabs on YOUR key. The key NEVER
     # goes in a file: it's read from the macOS Keychain (item
     # `backtalk-elevenlabs`) or Linux secret-tool, with the

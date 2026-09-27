@@ -81,4 +81,9 @@ file uses (`file_roots`, `vault`), run `python3 troi-console/setup.py render`.
 
 `backtalk/backtalk.json` is rendered by `setup.py render` and keeps your microphone choices:
 `mic_device` (set it to the Mac's own microphone if a Bluetooth headset garbles transcription) and
-`voice` (the Kokoro voice, `bm_lewis` by default).
+`voice` (the Kokoro voice, `bm_lewis` by default). The open microphone's gates live there too:
+`vad_aggressiveness` (0 to 3; 3, the default, lets the least non-speech through), `vad_silence_ms`
+(640: the quiet that ends a sentence), `vad_min_speech_ms` (300: the speech that makes one) and
+`vad_snr_db` (9: how far a voice must rise above the room's own level before anything is
+transcribed). Lower the last one if hands-free starts missing you in a quiet room; raise it in a
+loud one.

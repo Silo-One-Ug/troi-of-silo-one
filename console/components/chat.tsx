@@ -80,7 +80,7 @@ function fromRow(r: Row): Msg | null {
   if (r.role === "you") return { id: nid(), role: "user", text: r.text, t: r.t };
   if (r.role === "agent") return { id: nid(), role: "assistant", text: r.text, t: r.t };
   if (r.role === "note") return { id: nid(), role: "note", text: r.text };
-  if (r.role === "ignored") return { id: nid(), role: "ignored", text: (r.why ? r.why + " · " : "") + r.text };
+  if (r.role === "ignored") return { id: nid(), role: "ignored", text: r.text, data: { why: r.why || r.meta?.why || "", n: 1 } };   // the reason rides on top in the live tail and under meta in the history; n: how many sounds this line stands for
   if (r.role === "card" && r.meta) return fromCard(r.meta);
   return null;
 }
@@ -98,9 +98,20 @@ export function join(a: string, b: string): string {
 }
 const joinAll = (lines: string[]) => lines.slice(1).reduce((a, b) => join(a, b), lines[0] || "");   // a reply from its lines, as the record gives them
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+/** An ignored line's words: the reason, how many sounds it stands for, the score of the last, and what was heard, if anything. */
+const whyBase = (why: string) => why.replace(/\s*\(.*\)\s*$/, "");
+export function ignoredText(m: Msg): string {
+  const why = String(m.data?.why || ""), n = Number(m.data?.n || 1), score = (why.match(/\(([^)]*)\)\s*$/) || [])[1];
+  if (why === "name only") return "heard my name, listening for the rest" + (m.text ? " · " + m.text : "");
+  const base = whyBase(why) || "ignored";
+  return base + (n > 1 ? ` · ${n} sounds` : "") + (score ? (n > 1 ? ` (last ${score})` : ` (${score})`) : "") + (m.text ? " · " + m.text : "");
+}
 function append(ms: Msg[], m: Msg): Msg[] {
   const last = ms[ms.length - 1];
   if (m.role === "assistant" && last && last.role === "assistant" && !last.live && (last.t || "") === (m.t || "")) return [...ms.slice(0, -1), { ...last, text: join(last.text, m.text) }];
+  // a run of sounds the voice line dropped without a word in them (the room, not a sentence) is one faint line with a count
+  if (m.role === "ignored" && !m.text && last && last.role === "ignored" && !last.text && whyBase(String(last.data?.why || "")) === whyBase(String(m.data?.why || "")))
+    return [...ms.slice(0, -1), { ...last, data: { why: m.data?.why || last.data?.why, n: Number(last.data?.n || 1) + 1 } }];
   return [...ms, m];
 }
 const group = (rows: Msg[]) => rows.reduce<Msg[]>((acc, m) => append(acc, m), []);
@@ -193,6 +204,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   const [files, setFiles] = useState<Attached[]>([]); const [drag, setDrag] = useState(false); const [menu, setMenu] = useState(false); const [shooting, setShooting] = useState(false);
   const [pick, setPick] = useState<{ start: number; q: string; items: Found[]; i: number; loading: boolean } | null>(null);   // the @ picker: where the mention starts, what is typed so far, what was found
   const [rec, setRec] = useState<Rec | null>(null); const [recT, setRecT] = useState(0); const [hearing, setHearing] = useState(false);
+  const [mic, setMic] = useState("ptt");                       // the voice line's microphone: "open" is hands-free, and the composer says so
   const [below, setBelow] = useState(0); const [tail, setTail] = useState(true);        // at the end of the conversation, or reading above; lines that arrived meanwhile
   const scroller = useRef<HTMLDivElement>(null); const atBottom = useRef(true); const seen = useRef(0);
   const pos = useRef(0), cpos = useRef(0), skip = useRef<Set<string>>(new Set()), end = useRef<HTMLDivElement>(null), busyRef = useRef(false);
@@ -233,7 +245,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   useEffect(() => {
     let stop = false; const stopFns: (() => void)[] = [];
     (async () => {
-      eget("/config").then(c => setOwner(c.owner || "")).catch(() => {});
+      eget("/config").then(c => { setOwner(c.owner || ""); setMic(c.mic_mode === "open" ? "open" : "ptt"); }).catch(() => {});
       try { since.current = JSON.parse(localStorage.getItem("silo.chatSince") || "null"); } catch {}
       try {
         const h = await eget("/history?limit=120"); let rows = h.items as Row[]; pos.current = h.pos || 0; cpos.current = h.cpos || 0;
@@ -248,7 +260,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         try {
           const d = await eget(`/transcript?pos=${pos.current}&cpos=${cpos.current}`); pos.current = d.pos; if (d.cpos !== undefined) cpos.current = d.cpos;
           for (const it of d.items as Row[]) {
-            if (it.role === "ctl") continue;
+            if (it.role === "ctl") { if (it.key === "mic_mode" && it.val) setMic(it.val === "open" ? "open" : "ptt"); continue; }   // a live switch flip: the composer follows the microphone
             const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             if (it.role === "agent") {
               const n = norm(it.text);
@@ -416,7 +428,10 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     typed.current.splice(0, Math.max(0, typed.current.length - 6));
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
-  const shape = talkShape(); const mobile = useMobile(); const talking = busy || (state !== "idle" && state !== "off");
+  const shape = talkShape(); const mobile = useMobile(); const hearingYou = state === "listening";   // the voice line is inside a sentence of yours
+  const talking = busy || (state !== "idle" && state !== "off" && !hearingYou);                     // a reply under way: thinking, working, speaking
+  const listening = mic === "open" && !talking && !rec;        // hands-free, between replies: the composer glows green and offers Stop
+  const stopListening = () => { epost("/say", { text: "push to talk mode" }); setHint("Back to push to talk: hold the talk key to speak."); };
   const uploading = files.some(f => f.uploading) || hearing; const something = text.trim().length > 0 || files.some(f => f.path && !f.uploading);
   const col = embedded ? "w-full" : "mx-auto w-full max-w-[880px]";                       // the window is the page's full width; the words keep a reading column
   const round = "grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors";
@@ -453,7 +468,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
                   <Md text={m.text} />{m.live && <span className="ml-0.5 animate-pulse text-primary">▍</span>}
                   {!m.live && <div className="mt-1 flex items-center gap-1.5"><CopyButton text={m.text} />{m.t && <span className="text-[10px] text-muted-foreground">{m.t}</span>}</div>}
                 </motion.div>)
-              : <motion.div key={m.id} {...rise} className="px-1 text-xs italic text-muted-foreground">{m.text}</motion.div>)}
+              : <motion.div key={m.id} {...rise} className="px-1 text-xs italic text-muted-foreground">{m.role === "ignored" ? ignoredText(m) : m.text}</motion.div>)}
           </AnimatePresence>
           <div ref={end} />
         </div>
@@ -481,20 +496,21 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
               {recording || (<>
                 <Button type="button" variant="outline" aria-label="Attach a file" title="Attach a file or a photo" disabled={uploading} onClick={() => fileIn.current?.click()} className="h-11 w-11 shrink-0 rounded-full p-0"><Paperclip className={cn("h-[18px] w-[18px]", uploading && "animate-pulse")} /></Button>
                 <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
-                  placeholder={`Message ${name}`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
-                  className="max-h-40 min-h-11 w-full flex-1 resize-none rounded-[22px] border border-border bg-background px-4 py-2.5 text-base leading-6 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" />
+                  placeholder={listening ? "Listening…" : `Message ${name}`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
+                  className={cn("max-h-40 min-h-11 w-full flex-1 resize-none rounded-[22px] border border-border bg-background px-4 py-2.5 text-base leading-6 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30", listening && "border-emerald-500/60 shadow-[0_0_26px_hsl(152_72%_48%/.55)] placeholder:text-emerald-600 dark:placeholder:text-emerald-300")} />
               </>)}
+              {listening && <Button type="button" variant="outline" onClick={stopListening} aria-label="Stop listening" title="Back to push to talk" className="h-11 shrink-0 rounded-full border-emerald-500/40 bg-emerald-500/10 px-3 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"><span className="listen-dots mr-2" aria-hidden><i /><i /><i /></span>Stop</Button>}
               {rec ? <Button type="submit" aria-label="Send the recording" className="h-11 w-11 shrink-0 rounded-full p-0"><Send className="h-5 w-5" /></Button>
                 : !something ? <Button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" className="h-11 w-11 shrink-0 rounded-full p-0"><Mic className="h-5 w-5" /></Button>
                 : <Button type="submit" disabled={busy || uploading} aria-label="Send" className="h-11 w-11 shrink-0 rounded-full p-0"><Send className="h-5 w-5" /></Button>}
               {talking && <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off" aria-label="Stop the reply" className="h-11 w-11 shrink-0 rounded-full p-0"><Square className="h-4 w-4" /></Button>}
             </div>
           </>) : (
-            <div className={cn("rounded-2xl border bg-background/80 shadow-sm transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15", drag ? "border-primary bg-accent/30" : "border-border", talking && "composer-glow")}>
+            <div className={cn("rounded-2xl border bg-background/80 shadow-sm transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15", drag ? "border-primary bg-accent/30" : "border-border", talking ? "composer-glow" : listening && "composer-listen")}>
               {previews}
               {recording || <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
-                placeholder={`Type to ${name} · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
-                className="block max-h-[200px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-6 placeholder:text-muted-foreground focus:outline-none" />}
+                placeholder={listening ? (hearingYou ? "Hearing you…" : "Listening…") : `Type to ${name} · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}
+                className={cn("block max-h-[200px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-6 placeholder:text-muted-foreground focus:outline-none", listening && "placeholder:text-emerald-600 dark:placeholder:text-emerald-300")} />}
               <div className="flex items-center gap-1 px-2 pb-2 pt-1">
                 <div ref={menuRef} className="relative">
                   <button type="button" onClick={() => setMenu(v => !v)} aria-label="Add" aria-haspopup="menu" aria-expanded={menu} title="Add files or photos, a screenshot, a file on the Mac" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground", menu && "bg-accent/60 text-foreground")}><Plus className={cn("h-4 w-4 transition-transform", menu && "rotate-45")} /></button>
@@ -504,7 +520,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
                     </div>)}
                 </div>
                 <button type="button" onClick={() => fileIn.current?.click()} aria-label="Attach a file" title="Attach a file or a photo: choose one, drop it here, or paste it" className={cn(round, "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><Paperclip className={cn("h-4 w-4", uploading && "animate-pulse")} /></button>
-                {!rec && <button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" title="A voice note: speak, then send it" className={cn(round, "ml-auto text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50")}><Mic className="h-4 w-4" /></button>}
+                {listening && <button type="button" onClick={stopListening} aria-label="Stop listening" title="Stop listening: back to push to talk (hold the talk key to speak)" className="ml-auto inline-flex h-8 items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/20 dark:text-emerald-300"><span className="listen-dots" aria-hidden><i /><i /><i /></span>Stop</button>}
+                {!rec && <button type="button" onClick={startRec} disabled={busy || uploading} aria-label="Record a voice note" title="A voice note: speak, then send it" className={cn(round, !listening && "ml-auto", "text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50")}><Mic className="h-4 w-4" /></button>}
                 {rec ? <button type="submit" aria-label="Send the recording" title="Send the recording" className={cn(round, "ml-auto bg-primary text-primary-foreground hover:bg-primary/90")}><ArrowUp className="h-4 w-4" /></button>
                   : talking && !something ? <button type="button" onClick={() => epost("/say", { text: "stop" })} aria-label="Stop the reply" title="Cut the reply off (Esc)" className={cn(round, "border border-border bg-background text-foreground hover:bg-accent/60")}><Square className="h-3.5 w-3.5" /></button>
                   : <button type="submit" disabled={busy || uploading || !something} aria-label="Send" title="Send (Enter)" className={cn(round, "bg-primary text-primary-foreground hover:bg-primary/90 disabled:cursor-default disabled:bg-muted disabled:text-muted-foreground")}><ArrowUp className="h-4 w-4" /></button>}

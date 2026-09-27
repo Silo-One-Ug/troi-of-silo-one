@@ -30,7 +30,12 @@ The window takes the console's full width; the words keep a reading column in th
   The record and the agent's memory of the conversation are untouched: for a fresh start of those,
   say or type "clear the session".
 - Faint **"ignored"** lines show what the filters dropped and why: a rejected voice shows its
-  similarity score, and a line with no wake word says so.
+  similarity score, and a line with no wake word says so. A run of sounds dropped without a word in
+  them is one line with a count ("not your voice · 6 sounds (last 0.62)"), and the name said on its
+  own reads "heard my name, listening for the rest".
+- **Hands-free shows.** While the voice line listens hands-free, the composer glows green, reads
+  "Listening…" ("Hearing you…" while you speak) and carries a **Stop** pill: one click goes back to
+  push to talk, no verification needed. The working light takes over while the agent answers.
 - **Type** and press Enter. A typed turn is answered here and out loud on the Mac, like a spoken
   one.
 - **Replies keep their shape.** A reply of several sentences is one bubble, and it renders
