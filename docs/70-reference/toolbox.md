@@ -25,7 +25,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `remind.sh` | `20m "text"`, `15:00 "text"`, `list`, `cancel N` | Reminders |
 | `brain.sh` | `status`, `live`, `models`, `deep`, `fast`, `model <name>`, `effort <level>`, `for "<task>" --deep --effort high`, `back`, `rest [<level>]` | The brain for the job: the deep model and a higher effort for heavy work, back to rest after |
 | `share.sh` | `start`, `stop`, `status`, `build` | Screen sharing: the Mac's own picker, then the shared frames for the agent's eyes and hands |
-| `show.py` | `'<json tree>' [--board\|--both]`, `chart …`, `table …`, `board "<title>" <op>`, `board tidy\|clear`, `vocabulary` | Interface drawn in the conversation, or as a tile on the board |
+| `show.py` | `'<json tree>' [--board\|--both] [--theme <name>] [--surface <name>]`, `chart …`, `table …`, `board "<title>" <op>` (`theme`, `surface` among the ops), `board tidy\|clear`, `vocabulary` | Interface drawn in the conversation, or as a tile on the board, in a theme by subject |
 | `media.py` | `now`, `play [words]`, `pause`, `resume`, `stop`, `next`, `prev`, `volume N`, `louder`, `quieter`, `shuffle on\|off`, `like`, `movie on\|off` | Apple Music by voice, and movie mode |
 | `sounds.py` | `play <mood>`, `stop`, `volume 0-100`, `status [--json]`, `list`, `add <mood> "<prompt>" [--label "<L>"]`, `regen <mood>` | The room's soundscape: a 30-second ElevenLabs loop per mood, made once (about 1,200 credits), looped on the Mac, dipping while the agent speaks |
 | `credits.sh` | `[--fresh] [--json]` | What is left of the ElevenLabs allowance (the voice and the loops share it), from the agent server |

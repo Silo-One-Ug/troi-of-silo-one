@@ -157,6 +157,7 @@
       const cx = { state: t.state, live: true, onState: st => { t.state = st; dirty(); }, onEvent: ev => sendEvent(t, ev) };
       t.root = R().render(t.spec, cx) || el("div"); b.appendChild(t.root); t.cx = cx;
       if (t.aspect || t.h != null) e.classList.add("fixed");
+      if (t.theme) e.classList.add("theme-" + t.theme); if (t.surface) e.classList.add("surface-" + t.surface);
     } else if (t.type === "model") {
       e.appendChild(bar(t.title || "3D model")); const b = el("div", "tilebody"); b.appendChild(el("p", "uimuted", (t.src || "").split("/").pop() + " · 3D models are not shown on this board")); e.appendChild(b);
     }
@@ -310,9 +311,14 @@
   }
 
   // ---- UI panels
+  // a panel's theme (a pair of hues, a display face, a chart palette: board-theme.css) and its surface; paper and card are the defaults and carry no class
+  const THEMES = ["paper", "rust", "ocean", "forest", "sand", "berry", "slate", "gold", "night"], SURFACES = ["card", "paper", "tint", "dark"];
+  const themeName = v => { v = str(v).toLowerCase(); return THEMES.includes(v) && v !== "paper" ? v : ""; };
+  const surfaceName = v => { v = str(v).toLowerCase(); return SURFACES.includes(v) && v !== "card" ? v : ""; };
+  function dress(t) { [...t.el.classList].filter(k => k.startsWith("theme-") || k.startsWith("surface-")).forEach(k => t.el.classList.remove(k)); if (t.theme) t.el.classList.add("theme-" + t.theme); if (t.surface) t.el.classList.add("surface-" + t.surface); }
   function addUI(c) {
     if (!c.spec || typeof c.spec !== "object") return null;
-    const t = { type: "ui", title: str(c.title || "PANEL"), spec: c.spec, uid: str(c.uid) || newUid(), uv: num(c.uv, 1), state: c.state, w: clamp(num(c.w, 0.3), 0.1, 1), h: c.scroll ? clamp(num(c.h, 0.62), 0.2, 0.95) : (typeof c.h === "number" ? clamp(c.h, 0.1, 0.95) : undefined), aspect: c.aspect || undefined, hidebar: c.hidebar ? 1 : undefined, x: c.x, y: c.y };
+    const t = { type: "ui", title: str(c.title || "PANEL"), spec: c.spec, uid: str(c.uid) || newUid(), uv: num(c.uv, 1), state: c.state, theme: themeName(c.theme), surface: surfaceName(c.surface), w: clamp(num(c.w, 0.3), 0.1, 1), h: c.scroll ? clamp(num(c.h, 0.62), 0.2, 0.95) : (typeof c.h === "number" ? clamp(c.h, 0.1, 0.95) : undefined), aspect: c.aspect || undefined, hidebar: c.hidebar ? 1 : undefined, x: c.x, y: c.y };
     return addTile(t, { hand: c.hand, present: c.present });
   }
   function uiOp(c) {
@@ -326,6 +332,7 @@
     }
     if (c.state && typeof c.state === "object") { Object.assign(t.state, c.state); r.applyState(t.root, t.state); }
     if (c.name != null) { t.title = str(c.name); const h = t.el.querySelector(".tilebar h3"); if (h) h.textContent = t.title; }
+    if (c.theme != null || c.surface != null) { if (c.theme != null) t.theme = themeName(c.theme); if (c.surface != null) t.surface = surfaceName(c.surface); dress(t); }
     const op = str(c.op);
     if (op === "next" || op === "prev" || op === "goto") r.step(t.root, t.state, op, c.i != null ? c.i : c.n, c.id);
     else if (["play", "pause", "toggle", "mute", "unmute", "seek"].includes(op)) r.media(t.root, op, c.t != null ? c.t : c.i, c.id);
@@ -541,7 +548,7 @@
     const b = t.body, sy = b && b.scrollHeight > b.clientHeight ? +(b.scrollTop / (b.scrollHeight - b.clientHeight)).toFixed(3) : undefined;
     const us = t.type === "ui" && t.state && Object.keys(t.state).length ? t.state : undefined;
     return { id: t.id, type: t.type, title: t.title, body: t.type === "card" ? t.body : undefined, src: t.src, file: t.file, x: +t.x.toFixed(4), y: +t.y.toFixed(4), scale: 1,
-      tw: t.w != null ? +t.w.toFixed(4) : undefined, th: t.h != null ? +t.h.toFixed(4) : undefined, ui: t.type === "ui" ? 1 : undefined, uid: t.uid, uv: t.uv, us, ua: t.aspect || undefined, ub: t.hidebar,
+      tw: t.w != null ? +t.w.toFixed(4) : undefined, th: t.h != null ? +t.h.toFixed(4) : undefined, ui: t.type === "ui" ? 1 : undefined, uid: t.uid, uv: t.uv, us, ua: t.aspect || undefined, ub: t.hidebar, ut: t.theme || undefined, usf: t.surface || undefined,
       sy, pres: presented === t ? 1 : undefined, g: 0, op: 1 };
   }
   let dirtyFlag = true, touched = Date.now();
@@ -573,7 +580,7 @@
       try {
         let t = null;
         const base = { title: str(s.title), x: num(s.x, 0.5), y: num(s.y, 0.45), w: s.tw != null ? num(s.tw, undefined) : undefined, h: s.th != null ? num(s.th, undefined) : undefined };
-        if (s.type === "ui") { const rec = specs[s.uid]; if (!rec || !rec.spec) continue; t = addTile({ ...base, type: "ui", spec: rec.spec, uid: s.uid, uv: num(rec.v, 1), state: s.us, aspect: s.ua || undefined, hidebar: s.ub }); }
+        if (s.type === "ui") { const rec = specs[s.uid]; if (!rec || !rec.spec) continue; t = addTile({ ...base, type: "ui", spec: rec.spec, uid: s.uid, uv: num(rec.v, 1), state: s.us, aspect: s.ua || undefined, hidebar: s.ub, theme: themeName(s.ut), surface: surfaceName(s.usf) }); }
         else if (s.type === "card") t = addTile({ ...base, type: "card", body: str(s.body), file: str(s.file) });
         else if (s.type === "img" && s.src) t = addTile({ ...base, type: "img", src: s.src });
         else if (s.type === "model" && s.src) t = addTile({ ...base, type: "model", src: s.src });

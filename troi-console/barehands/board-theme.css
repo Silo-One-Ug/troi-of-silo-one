@@ -1,0 +1,153 @@
+/* board-theme.css — the board's design system, second pass (Silo One, 2026-09-27; Paul: "too plain, no sense of design;
+   be open-minded on colours, as many as the content calls for"). Loaded after board.css and board-ui.css, it gives a panel:
+     a theme by subject   .theme-<name> on the tile: rust, ocean, forest, sand, berry, slate, gold, night (paper is the default),
+                          each a pair of hues, a display face and a chart palette of its own;
+     a surface            .surface-<name>: card (the default: a filled, rounded, softly lifted panel), paper (flat, the old look),
+                          tint (the theme's wash), dark (a night surface on any theme);
+     a palette            twenty named colours any component can wear as a tone (a stat, a badge, a card, a callout, a step,
+                          a list item, a chart series): --col-<name>, in a light and a dark version;
+     a display face       Fraunces (an editorial serif) or Bricolage Grotesque (a sharp grotesque), by theme, for titles,
+                          big numbers, quotes and step titles; Inter stays the reading face, JetBrains Mono the labels;
+     chart colours        --c1 … --c8 per theme, read by board-render.js through classes, so a chart belongs to its paper.
+   Every colour is a token: light and dark both read. */
+
+/* ---- the palette (light paper) */
+:root {
+  --col-rust: #b7410e; --col-clay: #d9713a; --col-ocean: #1e5aa8; --col-sky: #2d97c2; --col-navy: #1d2b4f;
+  --col-forest: #2f6b3a; --col-moss: #7a9f3f; --col-lime: #9ab532; --col-sand: #a8651d; --col-sun: #dca032; --col-gold: #c98a2a;
+  --col-berry: #7c2d6e; --col-rose: #c2467c; --col-coral: #de5a3a; --col-violet: #5b4bd6; --col-lavender: #8b7fd8;
+  --col-slate: #334155; --col-steel: #64748b; --col-teal: #0f7f78; --col-mint: #2a9d8f;
+  --display-serif: "Fraunces", "Iowan Old Style", "Palatino", Georgia, serif;
+  --display-sans: "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+/* the same palette on a dark ground: lifted toward white so it reads, the hue kept */
+:root[data-theme="dark"], .surface-dark, .theme-night {
+  --col-rust: #ee8a5c; --col-clay: #f0a070; --col-ocean: #7fb0f0; --col-sky: #79c8ea; --col-navy: #9fb0e0;
+  --col-forest: #7fc48a; --col-moss: #b4d36b; --col-lime: #c9dd6a; --col-sand: #e0a45c; --col-sun: #f0c25a; --col-gold: #e3ad55;
+  --col-berry: #d582c4; --col-rose: #f08bb0; --col-coral: #f39072; --col-violet: #a89cf5; --col-lavender: #c1b8f5;
+  --col-slate: #aeb9cb; --col-steel: #b6c1d1; --col-teal: #5fd0c4; --col-mint: #7fdccf;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --col-rust: #ee8a5c; --col-clay: #f0a070; --col-ocean: #7fb0f0; --col-sky: #79c8ea; --col-navy: #9fb0e0;
+    --col-forest: #7fc48a; --col-moss: #b4d36b; --col-lime: #c9dd6a; --col-sand: #e0a45c; --col-sun: #f0c25a; --col-gold: #e3ad55;
+    --col-berry: #d582c4; --col-rose: #f08bb0; --col-coral: #f39072; --col-violet: #a89cf5; --col-lavender: #c1b8f5;
+    --col-slate: #aeb9cb; --col-steel: #b6c1d1; --col-teal: #5fd0c4; --col-mint: #7fdccf;
+  }
+}
+/* the paper itself: a faint dot grid on the gray, a designer's sheet rather than a blank screen */
+body { background: radial-gradient(circle, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1.2px) 0 0 / 22px 22px, var(--bg) fixed; }
+
+/* ---- tones: the five meanings, and the twenty colours */
+.tone-rust { --tone: var(--col-rust); } .tone-clay { --tone: var(--col-clay); } .tone-ocean { --tone: var(--col-ocean); } .tone-sky { --tone: var(--col-sky); } .tone-navy { --tone: var(--col-navy); }
+.tone-forest { --tone: var(--col-forest); } .tone-moss { --tone: var(--col-moss); } .tone-lime { --tone: var(--col-lime); } .tone-sand { --tone: var(--col-sand); } .tone-sun { --tone: var(--col-sun); } .tone-gold { --tone: var(--col-gold); }
+.tone-berry { --tone: var(--col-berry); } .tone-rose { --tone: var(--col-rose); } .tone-coral { --tone: var(--col-coral); } .tone-violet { --tone: var(--col-violet); } .tone-lavender { --tone: var(--col-lavender); }
+.tone-slate { --tone: var(--col-slate); } .tone-steel { --tone: var(--col-steel); } .tone-teal { --tone: var(--col-teal); } .tone-mint { --tone: var(--col-mint); }
+
+/* ---- the themes: a pair of hues, a display face, a chart palette. The default (paper) is teal and gold on the serif. */
+.tile-ui { --hue: var(--col-teal); --hue-2: var(--col-gold); --display: var(--display-serif);
+  --c1: var(--col-teal); --c2: var(--col-gold); --c3: var(--col-ocean); --c4: var(--col-coral); --c5: var(--col-berry); --c6: var(--col-moss); --c7: var(--col-violet); --c8: var(--col-steel); }
+.tile-ui.theme-rust { --hue: var(--col-rust); --hue-2: var(--col-sun); --display: var(--display-sans);
+  --c1: var(--col-rust); --c2: var(--col-sun); --c3: var(--col-slate); --c4: var(--col-teal); --c5: var(--col-berry); --c6: var(--col-moss); --c7: var(--col-clay); --c8: var(--col-steel); }
+.tile-ui.theme-ocean { --hue: var(--col-ocean); --hue-2: var(--col-sky); --display: var(--display-sans);
+  --c1: var(--col-ocean); --c2: var(--col-sky); --c3: var(--col-coral); --c4: var(--col-gold); --c5: var(--col-violet); --c6: var(--col-mint); --c7: var(--col-navy); --c8: var(--col-steel); }
+.tile-ui.theme-forest { --hue: var(--col-forest); --hue-2: var(--col-lime); --display: var(--display-serif);
+  --c1: var(--col-forest); --c2: var(--col-moss); --c3: var(--col-sun); --c4: var(--col-clay); --c5: var(--col-ocean); --c6: var(--col-berry); --c7: var(--col-lime); --c8: var(--col-steel); }
+.tile-ui.theme-sand { --hue: var(--col-sand); --hue-2: var(--col-sun); --display: var(--display-serif);
+  --c1: var(--col-sand); --c2: var(--col-sun); --c3: var(--col-teal); --c4: var(--col-rust); --c5: var(--col-ocean); --c6: var(--col-moss); --c7: var(--col-berry); --c8: var(--col-steel); }
+.tile-ui.theme-berry { --hue: var(--col-berry); --hue-2: var(--col-rose); --display: var(--display-serif);
+  --c1: var(--col-berry); --c2: var(--col-rose); --c3: var(--col-gold); --c4: var(--col-teal); --c5: var(--col-violet); --c6: var(--col-coral); --c7: var(--col-lavender); --c8: var(--col-steel); }
+.tile-ui.theme-slate { --hue: var(--col-slate); --hue-2: var(--col-steel); --display: var(--display-sans);
+  --c1: var(--col-slate); --c2: var(--col-sky); --c3: var(--col-gold); --c4: var(--col-coral); --c5: var(--col-teal); --c6: var(--col-violet); --c7: var(--col-steel); --c8: var(--col-moss); }
+.tile-ui.theme-gold { --hue: var(--col-gold); --hue-2: var(--col-sun); --display: var(--display-serif);
+  --c1: var(--col-gold); --c2: var(--col-sun); --c3: var(--col-navy); --c4: var(--col-teal); --c5: var(--col-berry); --c6: var(--col-coral); --c7: var(--col-sand); --c8: var(--col-steel); }
+.tile-ui.theme-night { --hue: var(--col-sun); --hue-2: var(--col-teal); --display: var(--display-sans);
+  --c1: var(--col-sun); --c2: var(--col-teal); --c3: var(--col-sky); --c4: var(--col-coral); --c5: var(--col-lavender); --c6: var(--col-moss); --c7: var(--col-rose); --c8: var(--col-steel); }
+/* the derived tokens every component reads */
+.tile-ui { --accent: var(--hue); --note: var(--hue); --glow: color-mix(in srgb, var(--hue) 14%, transparent);
+  --tint: color-mix(in srgb, var(--hue) 7%, var(--paper-2)); --band: linear-gradient(135deg, var(--hue), var(--hue-2)); }
+
+/* ---- surfaces */
+.tile-ui { background: var(--paper-2); border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--line)); border-radius: 16px; padding: 12px 18px 16px;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--ink) 9%, transparent), 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent); }
+.tile-ui.surface-paper { background: transparent; border: 0; box-shadow: none; padding: 0 2px 4px; }
+.tile-ui.surface-tint { background: linear-gradient(180deg, var(--tint), var(--paper-2) 55%); }
+.tile-ui.surface-dark, .tile-ui.theme-night { --paper: #14181d; --paper-2: #1b2026; --ink: #ece7dc; --ink-2: #dad4c8; --muted: #9aa5ab; --line: rgba(236,231,220,.14);
+  --fill: rgba(236,231,220,.05); --well: rgba(236,231,220,.08); color-scheme: dark; color: var(--ink); background: linear-gradient(160deg, #1b2026, #13171c); border-color: rgba(236,231,220,.12); }
+.tile-ui .tilebar { border-bottom-color: color-mix(in srgb, var(--hue) 40%, transparent); }
+.tile-ui .tilegrip { right: 6px; bottom: 6px; }
+.tile-ui.surface-paper .tilegrip { right: -2px; bottom: -2px; }
+
+/* ---- type: the display face where a page would use one */
+.uiherotitle, .uih1, .uih2, .uicardtitle, .uisteptitle, .uitltitle, .uicallout > b, .uicaltitle, .uiavatarname { font-family: var(--display); }
+.uiherotitle { font-size: 27px; font-weight: 600; letter-spacing: -.012em; line-height: 1.15; text-wrap: balance; }
+.uih1 { font-size: 26px; font-weight: 600; letter-spacing: -.012em; text-wrap: balance; } .uih2 { font-size: 19px; font-weight: 600; }
+.uisteptitle, .uitltitle { font-size: 16px; }
+.uiquote { font-family: var(--display); font-size: 18px; line-height: 1.45; border-left-color: var(--tone, var(--hue-2)); border-left-width: 3px; padding-left: 18px; }
+.uiquote cite { font-family: var(--sans); }
+.uistatvalue { font-family: var(--display); font-size: 32px; font-weight: 600; letter-spacing: -.01em; color: var(--tone, var(--accent)); font-variant-numeric: tabular-nums; }
+.uicountvalue, .uiclockvalue { color: var(--tone, var(--accent)); }
+.uigaugevalue { fill: var(--tone, var(--accent)); }
+
+/* ---- components with presence */
+.uihero { border-radius: 12px; min-height: 96px; }
+.uihero.band { background: var(--band); }
+.uihero.band.tone-ok, .uihero.band[class*="tone-"] { background: linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--hue-2))); }
+/* the band's overlay: a quiet pattern, and a shade under the words so they read on the light end of the gradient */
+.uihero.band { --shade: linear-gradient(100deg, rgba(8,10,20,.28), rgba(8,10,20,.06) 55%, rgba(8,10,20,0) 75%); --pat: none; }
+.uihero.band::before { background: var(--pat), var(--shade); }
+.uihero.band.pattern-dots { --pat: radial-gradient(rgba(255,255,255,.22) 1.3px, transparent 1.5px) 0 0 / 14px 14px; }
+.uihero.band.pattern-grid { --pat: linear-gradient(rgba(255,255,255,.14) 1px, transparent 1px) 0 0 / 22px 22px, linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px) 0 0 / 22px 22px; }
+.uihero.band.pattern-rays { --pat: repeating-conic-gradient(from 200deg at 100% 0%, rgba(255,255,255,.12) 0 6deg, transparent 6deg 14deg); }
+.uihero.band.pattern-waves { --pat: repeating-radial-gradient(circle at 110% 120%, rgba(255,255,255,.14) 0 2px, transparent 2px 26px); }
+.uihero.band .uiherotext { text-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.uihero.band .uiherotext { padding: 20px 22px; }
+.uihero.band .uilabel { color: rgba(255,255,255,.85); }
+.uihero.band .uiherosub { color: rgba(255,255,255,.9); }
+.uicard { border-top: 3px solid var(--tone, var(--accent)); border-radius: 12px; padding: 12px 14px 14px; background: color-mix(in srgb, var(--tone, var(--accent)) 5%, var(--paper-2)); }
+.uicard.tone-ok, .uicard.tone-warn, .uicard.tone-bad, .uicard.tone-note, .uicard.tone-muted { border-top-width: 3px; }
+.uicallout { padding: 10px 14px; border-radius: 10px; border-left-width: 4px; background: color-mix(in srgb, var(--tone, var(--note)) 10%, var(--paper-2)); }
+.uicallout > b { font-size: 16px; }
+.uibadge { background: color-mix(in srgb, var(--tone, var(--note)) 12%, transparent); border-color: color-mix(in srgb, var(--tone, var(--note)) 35%, transparent); }
+.uistat.boxed { padding: 12px 14px 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--tone, var(--accent)) 8%, var(--paper-2)); border-left: 3px solid var(--tone, var(--accent)); }
+.uistat .uilabel { color: color-mix(in srgb, var(--tone, var(--muted)) 75%, var(--muted)); }
+.uiprog { height: 6px; background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent); }
+.uistepmark { font-family: var(--display); font-weight: 700; color: var(--tone, var(--accent)); border-color: color-mix(in srgb, var(--tone, var(--accent)) 45%, transparent); background: color-mix(in srgb, var(--tone, var(--accent)) 10%, var(--paper-2)); }
+.uistep.current .uistepmark { background: var(--tone, var(--accent)); color: var(--paper-2); border-color: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone, var(--accent)) 18%, transparent); }
+.uistep.done .uistepmark { background: var(--tone, var(--accent)); border-color: transparent; }
+.uistep:not(:last-child)::before { background: color-mix(in srgb, var(--tone, var(--accent)) 28%, transparent); }
+.uistep.tone-ok, .uistep[class*="tone-"] { --stepcol: var(--tone); }
+.uilist li[class*="tone-"]::marker { color: var(--tone); }
+.uilist li[class*="tone-"] > b:first-child { color: var(--tone); }
+.uidivider.labelled { color: var(--hue); }
+.uitable th { color: var(--hue); border-bottom-color: color-mix(in srgb, var(--hue) 45%, transparent); }
+.uitab.on::after { background: var(--hue); }
+.uitags .uibadge { padding: 3px 10px; }
+.uiavatar { background: color-mix(in srgb, var(--tone, var(--accent)) 16%, var(--paper-2)); }
+.uiaspect, .uiimgbox, .uimedia, .uiview { border-radius: 12px; }
+
+/* ---- charts: the palette by class, so the theme colours the marks; a named colour when the tree names one */
+.uicf1 { fill: var(--c1); } .uicf2 { fill: var(--c2); } .uicf3 { fill: var(--c3); } .uicf4 { fill: var(--c4); } .uicf5 { fill: var(--c5); } .uicf6 { fill: var(--c6); } .uicf7 { fill: var(--c7); } .uicf8 { fill: var(--c8); }
+.uics1 { stroke: var(--c1); } .uics2 { stroke: var(--c2); } .uics3 { stroke: var(--c3); } .uics4 { stroke: var(--c4); } .uics5 { stroke: var(--c5); } .uics6 { stroke: var(--c6); } .uics7 { stroke: var(--c7); } .uics8 { stroke: var(--c8); }
+.uicb1 { background: var(--c1); } .uicb2 { background: var(--c2); } .uicb3 { background: var(--c3); } .uicb4 { background: var(--c4); } .uicb5 { background: var(--c5); } .uicb6 { background: var(--c6); } .uicb7 { background: var(--c7); } .uicb8 { background: var(--c8); }
+[class*="uicf-"] { fill: var(--tone); } [class*="uics-"] { stroke: var(--tone); } [class*="uicb-"] { background: var(--tone); }
+.uislice { stroke: var(--paper-2) !important; stroke-width: 2px; }
+.uibar { rx: 3px; }
+/* hovers and the tip: a column lights under the mouse (the others step back), a dashed guide marks it, a small dark card names
+   the values; slices and scatter dots answer on their own */
+.uichartwrap.hastip { position: relative; }
+.uitip { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); background: var(--ink); color: var(--paper); font: 12px/1.4 var(--sans);
+  padding: 7px 10px; border-radius: 9px; box-shadow: 0 8px 22px rgba(0,0,0,.22); white-space: nowrap; opacity: 0; transition: opacity .12s; display: grid; gap: 3px; }
+.uitip.on { opacity: 1; }
+.uitip b { font: 600 10.5px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .78; }
+.uitiprow { display: flex; align-items: center; gap: 7px; }
+.uitiprow i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
+.uitipval { margin-left: auto; padding-left: 12px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.uihit { cursor: crosshair; }
+.uiguide { stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.uiguide.on { opacity: 1; }
+.uibar { transition: filter .12s, opacity .12s; }
+.uibar.hot { filter: brightness(1.12) saturate(1.1); }
+svg.uichart:has(.uibar.hot) .uibar:not(.hot) { opacity: .72; }
+.uislice { transition: filter .12s; } .uislice:hover { filter: brightness(1.1); }
+.uidot2 { transition: r .12s; } .uidot2:hover { r: 6.5px; }
