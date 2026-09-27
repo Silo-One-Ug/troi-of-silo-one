@@ -84,6 +84,12 @@ Commuza", "switch to the research board", "put this on the money board". The age
 `boards.sh` (`list`, `new`, `use`, `rename`, `archive`, `restore`), and any of its board commands may
 name the board it is for.
 
+The Main board is the hall of boards: every board stands as a card in a curved row in depth, the one
+the hall turns to upright in front, the others receding left and right. Each card shows the board's
+name, a glimpse of what is on it, how many items and when it last changed. Hovering turns the hall,
+the wheel and the arrow keys turn it too, a click opens the board, and the last card makes a new one.
+Whatever lands on Main itself flows below the hall. On a phone the same cards are a row to scroll.
+
 ## The empty board
 
 With nothing up, the board says what it is for and offers a few requests to click; a click sends the

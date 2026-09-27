@@ -215,8 +215,17 @@ def load_boards():
     if not board_by(BOARDS["current"]) or board_by(BOARDS["current"]).get("archived"):
         BOARDS["current"] = "main"
     if BOARDS["current"] != "main":
-        SCENE_FILE = scene_file_for(BOARDS["current"]); load()
+        load_scene(BOARDS["current"])
     save_boards()
+
+
+def load_scene(bid):
+    """That board's scene into memory, from nothing: a missing file means an empty board, never the last board's tiles."""
+    global SCENE, SPECS, SCENE_FILE, _sig
+    with LOCK:
+        SCENE = {"items": [], "ui": {}, "t": 0}; SPECS = {}; _sig = None
+    SCENE_FILE = scene_file_for(bid)
+    load()
 
 
 def save_boards():
@@ -279,10 +288,14 @@ def boards_cmd():
 
 
 def boards_payload():
+    """The boards for the strip and the overview: each with its count, when it last changed, and a glimpse of what is on it."""
     out = []
     for b in BOARDS["boards"]:
-        n = len(SCENE["items"]) if b["id"] == BOARDS["current"] else len(read_scene(b["id"]).get("items") or [])
-        out.append({"id": b["id"], "name": b.get("name") or b["id"], "archived": bool(b.get("archived")), "items": n, "created": b.get("created", 0)})
+        sc = scene_payload() if b["id"] == BOARDS["current"] else read_scene(b["id"])
+        items = sc.get("items") or []
+        preview = [{"type": i.get("type", ""), "title": str(i.get("title") or "")[:40]} for i in items[:6] if isinstance(i, dict)]
+        out.append({"id": b["id"], "name": b.get("name") or b["id"], "archived": bool(b.get("archived")), "items": len(items),
+                    "updated": float(sc.get("t") or 0), "created": b.get("created", 0), "preview": preview})
     return {"v": _BV[0], "current": BOARDS["current"], "boards": out}
 
 
@@ -296,10 +309,7 @@ def switch_board(bid):
         b.pop("archived", None); b.pop("archived_at", None)
     if b["id"] != BOARDS["current"]:
         flush()
-        with LOCK:
-            SCENE = {"items": [], "ui": {}, "t": 0}; SPECS = {}; _sig = None
-        SCENE_FILE = scene_file_for(b["id"])
-        load()
+        load_scene(b["id"])
         BOARDS["current"] = b["id"]
     _BV[0] += 1
     save_boards()
@@ -636,13 +646,17 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(st, dict):
                 st = {}
             page_board = str(st.get("board") or "")
-            if page_board and page_board != BOARDS["current"]:            # a page still on another board: its items are not this board's; it catches up first
+            if page_board != BOARDS["current"]:                            # a page on another board, or one too old to say: its items are not this board's; it catches up first
                 out = [board_cmd()]
             else:
                 _STATE = body
                 snapshot(body)
-                out = _CMDS[:8]
-                del _CMDS[:8]
+                now = time.time()
+                _CMDS[:] = [c for c in _CMDS if not c.get("_t") or now - c["_t"] < 600]        # a command nobody showed for ten minutes is stale
+                out = [c for c in _CMDS if c.get("_b") in (None, BOARDS["current"])][:8]       # this board's commands (and the board switches, which are everyone's)
+                for c in out:
+                    _CMDS.remove(c)
+                out = [{k: v for k, v in c.items() if k not in ("_b", "_t")} for c in out]
             try:
                 if int(st.get("bv") or 0) != _BV[0]:                       # its strip is older than the registry
                     out.append(boards_cmd())
@@ -694,6 +708,7 @@ class Handler(BaseHTTPRequestHandler):
                 prepare(cmd)
             except ValueError as e:
                 return self._json({"error": str(e)}, 400)
+            cmd["_b"] = BOARDS["current"]; cmd["_t"] = time.time()          # for the board that is up now: a page shows it only when on that board
             _CMDS.append(cmd)
             return self._send(204)
         if self.path == "/event":
