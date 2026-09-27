@@ -8,6 +8,7 @@ import { Archive, BookOpen, Bot, Compass, Map as MapIcon, Orbit, Search, X } fro
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { eget, epost } from "@/lib/edge";
+import { agentName, useAgentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +37,14 @@ function Node({ title, sub, Icon, active, dim, badge, selected, onClick, onArchi
 }
 
 export function Agents() {
+  const fallback = useAgentName();
   const [d, setD] = useState<D | null>(null); const [err, setErr] = useState(""); const [sel, setSel] = useState<string | null>(null); const [now, setNow] = useState(() => Date.now() / 1000);
   const mobile = useMobile(); const wrap = useRef<HTMLDivElement>(null); const brainRef = useRef<HTMLDivElement>(null); const refs = useRef<Record<string, HTMLDivElement | null>>({});
   const [lines, setLines] = useState<string[]>([]); const [box, setBox] = useState({ w: 0, h: 0 }); const [showGone, setShowGone] = useState(false);
   const archive = async (what: string) => { const r = await epost("/agents", { archive: what }); if (r.ok) { setSel(null); try { setD(await eget("/agents")); } catch {} } };
   useEffect(() => {
     let stop = false;
-    const tick = async () => { if (stop) return; try { setD(await eget("/agents")); setErr(""); } catch { setErr("Troi's server is not answering: start Troi from the Desktop."); } setNow(Date.now() / 1000); setTimeout(tick, 2000); };
+    const tick = async () => { if (stop) return; try { setD(await eget("/agents")); setErr(""); } catch { setErr(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); } setNow(Date.now() / 1000); setTimeout(tick, 2000); };
     tick(); return () => { stop = true; };
   }, []);
   const all = d?.agents || []; const agents = all.filter(a => showGone || !a.archived); const active = agents.filter(a => a.status === "active"); const finished = agents.filter(a => a.status !== "active" && !a.archived);
@@ -63,7 +65,7 @@ export function Agents() {
     };
     draw(); const ro = new ResizeObserver(draw); if (wrap.current) ro.observe(wrap.current); return () => ro.disconnect();
   }, [mobile, d]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const brain = d?.brain; const name = brain?.name || "Troi";
+  const brain = d?.brain; const name = brain?.name || fallback;
   const brainSub = !brain ? "…" : brain.state === "off" ? "not running" : brain.doing ? `${brain.state} · ${brain.doing}` : brain.state;
   const selA = agents.find(a => a.id === sel) || null;
   return (

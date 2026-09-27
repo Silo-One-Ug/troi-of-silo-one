@@ -5,10 +5,11 @@
 import { useEffect, useState } from "react";
 import { Chat } from "@/components/chat";
 import { eget } from "@/lib/edge";
+import { DEFAULT_NAME, agentName, rememberName } from "@/lib/name";
 
 export default function Float() {
-  const [name, setName] = useState("Troi");
-  useEffect(() => { eget("/config").then(c => setName(c.name)).catch(() => {}); }, []);
+  const [name, setName] = useState(DEFAULT_NAME);
+  useEffect(() => { setName(agentName()); eget("/config").then(c => { rememberName(c.name); setName(c.name || agentName()); }).catch(() => {}); }, []);
   useEffect(() => { document.documentElement.classList.add("float-panel"); return () => document.documentElement.classList.remove("float-panel"); }, []);
   return (
     <>

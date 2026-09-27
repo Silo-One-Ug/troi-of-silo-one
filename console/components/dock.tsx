@@ -11,6 +11,7 @@ import { notifyOn, setNotify } from "./alerts";
 import { LockButton } from "./mobile/bars";
 import { ThemeToggle } from "./theme-toggle";
 import { eget, type State } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ export function Dock({ name }: { name: string }) {
     const p = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
     if (p !== "granted") return;
     setNotify(true); setBell(true);
-    try { new Notification(name || "Troi", { body: "Notifications are on.", tag: "troi-hello", silent: true }); } catch {}
+    try { new Notification(name || agentName(), { body: "Notifications are on.", tag: "troi-hello", silent: true }); } catch {}
   };
   useEffect(() => { if (mobile) return; let stop = false; const tick = async () => { if (stop) return; try { const d = await eget("/state"); setSt(d); setPending((d.pending || []).length); } catch { setSt(null); } setTimeout(tick, 500); }; tick(); return () => { stop = true; }; }, [mobile]);   // a phone has its own bars, and their own poll
   const state = st ? (st.voice ? st.state : "off") : "off";

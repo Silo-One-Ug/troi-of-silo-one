@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { edgeUrl, eget, emit, epost, on, type Config } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 import { isMobile } from "@/lib/mobile";
 
 export function View({ kind }: { kind: "face" | "hands" | "files" | "apps" | "vault" }) {
@@ -14,7 +15,7 @@ export function View({ kind }: { kind: "face" | "hands" | "files" | "apps" | "va
     const h = (e: MessageEvent) => {
       let from = ""; try { from = new URL(edgeUrl()).origin; } catch {}
       const m = e.data || {};
-      if (e.origin === from && m.troi === "ask" && typeof m.text === "string" && m.text) { epost("/say", { text: m.text }); epost("/ui", { hint: `Asked ${c?.name || "Troi"} to look at it.` }); }
+      if (e.origin === from && m.troi === "ask" && typeof m.text === "string" && m.text) { epost("/say", { text: m.text }); epost("/ui", { hint: `Asked ${c?.name || agentName()} to look at it.` }); }
       if (m.troi === "hands" && typeof m.on === "boolean") { try { localStorage.setItem("silo.hands", m.on ? "1" : "0"); } catch {} emit("hands", m.on); }   // the board's own Hands button: the console's switch follows
     };
     addEventListener("message", h); return () => removeEventListener("message", h);

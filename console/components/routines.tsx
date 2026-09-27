@@ -7,6 +7,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { eget, epost } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;          // a GitHub org or user name
 
@@ -28,7 +29,7 @@ function Orgs({ orgs, busy, onSave }: { orgs: string[]; busy: boolean; onSave: (
 
 export function Routines() {
   const [d, setD] = useState<any>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
-  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg("Troi's server is not answering: start Troi from the Desktop."); } };
+  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); } };
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
   const post = async (body: any) => { setBusy(body.id); try { const r = await epost("/routines", body); setMsg(r.done || (r.ok ? "saved" : r.error || "")); } finally { setBusy(""); load(); } };
   const saveOrgs = async (orgs: string[]) => { setBusy("orgs"); try { const r = await epost("/settings", { github_orgs: orgs }); setMsg(r.ok ? (orgs.length ? `Watching ${orgs.join(", ")}: the newest run on main of every repo, every three minutes.` : "Watching no GitHub org or user.") : r.error || "not saved"); } finally { setBusy(""); load(); } };

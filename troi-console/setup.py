@@ -28,13 +28,13 @@ import paths as P  # noqa: E402
 
 ROOT = P.ROOT
 TPL = P.CONSOLE / "templates"
-AGENT = "Troi"
+DEFAULT_AGENT = "Troi"      # the agent's name is a setting (`agent` in console.json); this is the name until the owner picks one
 LABEL = "com.troi-of-silo-one"
 SERVICES = ("pulse", "ring", "telegram", "vault-backup")
 LAUNCH = Path.home() / "Library" / "LaunchAgents"
 
 DEFAULTS = {
-    "owner": "", "owner_full": "", "address": "", "call": "sir",
+    "agent": DEFAULT_AGENT, "owner": "", "owner_full": "", "address": "", "call": "sir",
     "vault": "", "vault_repo": "", "backup_repo": "", "github_org": "", "github_account": "ayesigapaul", "backup_org": "Silo-One-Ug",
     "wake_word": True, "wake_names": ["troi", "troy", "troye", "troie", "troix", "troya"], "barge_in": True,
     "eyes": "off", "voice_id": "off", "voice_id_threshold": 0.78, "face_id_threshold": 0.7, "face_gate": False,
@@ -44,6 +44,30 @@ DEFAULTS = {
     "file_roots": [], "projects": {}, "projects_root": str(Path.home() / "Projects"),
     "hands": {"pinch_close": 0.32, "pinch_open": 0.48, "ext": 1.45, "dwell_ms": 1300, "magnet": 16},
 }
+
+
+_LETTERS = {"a": "ay", "b": "bee", "c": "see", "d": "dee", "e": "ee", "f": "ef", "g": "jee", "h": "aitch", "i": "eye", "j": "jay", "k": "kay", "l": "el", "m": "em",
+            "n": "en", "o": "oh", "p": "pee", "q": "cue", "r": "ar", "s": "ess", "t": "tee", "u": "you", "v": "vee", "w": "double you", "x": "ex", "y": "why", "z": "zed"}
+
+
+def agent(cfg=None) -> str:
+    """The agent's name: `agent` in the settings, Troi until the owner picks another. Everything that shows or says the
+    name (the boot file, the voice line, the face, the console, the Desktop shortcut) takes it from here."""
+    name = str((cfg if cfg is not None else load()).get("agent") or "").strip()
+    return name[:24] if name else DEFAULT_AGENT
+
+
+def wake_names_for(name: str) -> list:
+    """The spellings the transcriber may give the name, so any of them wakes the agent: the name itself; for Troi the
+    sound-alikes Whisper produces; for an initialism (CJ, KT) its letters spaced, dotted and as they are said."""
+    low = name.strip().lower()
+    if low == "troi":
+        return ["troi", "troy", "troye", "troie", "troix", "troya"]
+    out = [low]
+    if name.isupper() and name.isalpha() and 2 <= len(name) <= 4:
+        said = [_LETTERS[c] for c in low]
+        out += [" ".join(low), ".".join(low), " ".join(said), "".join(said)]
+    return out
 
 
 def load() -> dict:
@@ -64,7 +88,7 @@ def save(cfg: dict):
 def fields(cfg: dict) -> dict:
     owner = (cfg.get("owner") or "").strip() or "the owner"
     return {"__ROOT__": str(ROOT), "__HOME__": str(Path.home()), "__VAULT__": cfg.get("vault") or str(P.DATA / "vault"),
-            "__AGENT__": AGENT, "__agent__": AGENT.lower(), "__OWNER__": owner,
+            "__AGENT__": agent(cfg), "__agent__": agent(cfg).lower(), "__OWNER__": owner,
             "__OWNER_FULL__": (cfg.get("owner_full") or "").strip() or owner,
             "__ADDRESS__": (cfg.get("address") or "").strip() or owner, "__CALL__": (cfg.get("call") or "").strip() or "sir"}
 
@@ -93,6 +117,9 @@ def _merge_json(path: Path, managed: dict, example: Path | None = None):
 
 def render() -> list:
     cfg = load(); f = fields(cfg); done = []
+    name = agent(cfg)
+    if name.lower() not in [str(w).lower() for w in cfg.get("wake_names") or []]:     # the wake names follow the name until the owner edits them
+        cfg["wake_names"] = wake_names_for(name)
     if not cfg.get("vault"):
         cfg["vault"] = f["__VAULT__"]
     default_vault = str(P.DATA / "vault")                          # the vault is always one of the folders it may organise;
@@ -110,8 +137,8 @@ def render() -> list:
     # the components
     owner = f["__OWNER__"]
     _merge_json(P.BACKTALK / "backtalk.json", {
-        "agent_dir": str(ROOT), "name": AGENT, "extra_dirs": sorted(set([f["__VAULT__"], *cfg.get("file_roots", [])])),
-        "greeting": f"Hello {f['__ADDRESS__']}." if cfg.get("owner") else f"Hello. I'm {AGENT}. Let's get you set up.",
+        "agent_dir": str(ROOT), "name": name, "extra_dirs": sorted(set([f["__VAULT__"], *cfg.get("file_roots", [])])),
+        "greeting": f"Hello {f['__ADDRESS__']}." if cfg.get("owner") else f"Hello. I'm {name}. Let's get you set up.",
         "barehands_state_dir": str(P.BAREHANDS / "state"), "thinking_sound": str(P.CONSOLE / "assets" / "thinking-soft.wav"),
         "resume_last_session": True, "elevenlabs": {"key_slot": "troi-of-silo-one.elevenlabs", "enabled": cfg.get("tts") == "elevenlabs" and bool(cfg.get("elevenlabs_voice")), "voice_id": cfg.get("elevenlabs_voice", "")},
     }, P.BACKTALK / "backtalk.json.example")
@@ -122,7 +149,7 @@ def render() -> list:
     _merge_json(P.BAREHANDS / "barehands.json", {"name": cfg.get("board_label") or "Chief of Staff", "port": 8794,
                                                  "orbs": [{"title": "Notes", "path": f["__VAULT__"], "kind": "notes"}, {"title": "Props", "path": "media", "kind": "media"}]},
                 P.BAREHANDS / "barehands.json.example"); done.append("barehands.json")
-    _merge_json(ROOT / "ai-visualizer" / "ai-visualizer.json", {"name": AGENT.upper(), "face": "board", "port": 8790, "bus_dir": str(P.BACKTALK), "thinking_sound": True},
+    _merge_json(ROOT / "ai-visualizer" / "ai-visualizer.json", {"name": name.upper(), "face": "board", "port": 8790, "bus_dir": str(P.BACKTALK), "thinking_sound": True},
                 ROOT / "ai-visualizer" / "ai-visualizer.json.example"); done.append("ai-visualizer.json")
     # Claude Code's own per-folder memory points at the vault: one memory, never two drifting layers
     mem = Path.home() / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(ROOT)) / "memory"
@@ -161,7 +188,7 @@ def vault_new(path: str | None = None) -> str:
             dst.write_text(fill(p.read_text(), f))
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=target)
     subprocess.run(["git", "add", "-A"], cwd=target)
-    subprocess.run(["git", "-c", "user.name=" + AGENT, "-c", "user.email=troi@localhost", "commit", "-q", "-m", "vault created"], cwd=target)
+    subprocess.run(["git", "-c", "user.name=" + agent(), "-c", "user.email=troi@localhost", "commit", "-q", "-m", "vault created"], cwd=target)
     render()
     return str(target)
 
@@ -211,7 +238,7 @@ def _set_icon(path: Path, png: Path) -> bool:
 
 
 def shortcut() -> str:
-    p = Path.home() / "Desktop" / f"{AGENT}.command"
+    p = Path.home() / "Desktop" / f"{agent()}.command"
     p.write_text(f'#!/bin/bash\nexport PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"\nexec "{ROOT}/start.sh"\n')
     p.chmod(0o755)
     _set_icon(p, ROOT / "console" / "public" / "brand" / "icon-1024.png")
@@ -223,8 +250,8 @@ def status() -> dict:
     cfg = load(); uid = os.getuid()
     svc = {s: _launchctl("print", f"gui/{uid}/{LABEL}.{s}").returncode == 0 for s in SERVICES}
     vault = Path(cfg["vault"]).expanduser() if cfg.get("vault") else None
-    return {"owner": cfg.get("owner"), "welcomed": cfg.get("welcomed"), "vault": str(vault) if vault else "", "vault_ready": bool(vault and (vault / "VAULT-INDEX.md").exists()),
-            "rendered": (ROOT / "CLAUDE.md").exists(), "services": svc, "secrets": KC.status(), "shortcut": (Path.home() / "Desktop" / f"{AGENT}.command").exists(),
+    return {"agent": agent(cfg), "owner": cfg.get("owner"), "welcomed": cfg.get("welcomed"), "vault": str(vault) if vault else "", "vault_ready": bool(vault and (vault / "VAULT-INDEX.md").exists()),
+            "rendered": (ROOT / "CLAUDE.md").exists(), "services": svc, "secrets": KC.status(), "shortcut": (Path.home() / "Desktop" / f"{agent(cfg)}.command").exists(),
             "voice_env": (P.BACKTALK / ".venv" / "bin" / "python").exists(), "face_env": (P.CONSOLE / ".venv-face" / "bin" / "python").exists(),
             "console_built": (ROOT / "console" / ".next" / "BUILD_ID").exists(), "data": str(P.DATA)}
 

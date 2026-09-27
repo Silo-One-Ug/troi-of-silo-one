@@ -9,6 +9,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { eget, epost, img } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 import { rise } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 type Pic = { id?: number; path: string; name: string; where: string; kind: string; t: number; starred?: boolean; credit?: string };
@@ -38,7 +39,7 @@ export function Library() {
       const gone = new Set(pics.map(p => p.path)); setRows(rs => rs.filter(r => !gone.has(r.path))); setPicked(new Set()); setSelecting(false); if (open && gone.has(open.path)) setOpen(null);
       say(`${some(d.deleted)} to the Trash.`);
       if (book && list.every(p => gone.has(p.path))) leave();
-    } catch { say("Troi's server is not answering."); }
+    } catch { say(`${agentName()}'s server is not answering.`); }
   };
   const toggle = (p: Pic) => setPicked(s => { const n = new Set(s); if (n.has(p.path)) n.delete(p.path); else n.add(p.path); return n; });
   const chosen = list.filter(p => picked.has(p.path));
