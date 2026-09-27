@@ -86,8 +86,9 @@ name the board it is for.
 
 The Main board is the hall of boards: every board stands as a card in a curved row in depth, the one
 the hall turns to upright in front, the others receding left and right. Each card shows the board's
-name, a glimpse of what is on it, how many items and when it last changed. Hovering turns the hall,
-the wheel and the arrow keys turn it too, a click opens the board, and the last card makes a new one.
+name, a glimpse of what is on it, how many items and when it last changed. The arrows at its sides,
+the arrow keys and a sideways wheel turn the hall; a click opens a board; the last card makes a new
+one. It never turns on hover, so it holds still while you choose.
 Whatever lands on Main itself flows below the hall. On a phone the same cards are a row to scroll.
 
 ## The empty board
