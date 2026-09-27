@@ -45,8 +45,15 @@ function fromCard(c: Card): Msg | null {
   if (c.name === "silo.pictures") return { id: nid(), role: "pictures", text: "", data: fixPics(c.value) };
   if (c.name === "silo.headlines") return { id: nid(), role: "headlines", text: "", data: c.value };
   if (c.name === "silo.ui") return { id: nid(), role: "ui", text: "", data: c.value };
+  if (c.name === "silo.step") {                                    // a step of a reply, kept in the record: the tool row where it ran, after a reload too
+    const v = c.value || {}; const tool = String(v.tool || ""); const { label } = kind(tool); if (!tool || !label) return null;
+    return { id: nid(), role: "steps", text: "", steps: [{ id: nid(), tool, label, detail: v.detail ? String(v.detail) : undefined }] };
+  }
   return null;
 }
+/** A step card from the record for a step the page showed live already (the same tool, the same detail or none yet): not twice. */
+const seenStep = (ms: Msg[], s: Step) => ms.slice(-6).some(m => m.role === "steps" && m.steps?.some(x => x.tool === s.tool && (!s.detail || !x.detail || x.detail === s.detail)));
+const addCard = (ms: Msg[], m: Msg) => m.role === "steps" ? (seenStep(ms, m.steps![0]) ? ms : append(ms, m)) : [...ms, m];
 function fromRow(r: Row): Msg | null {
   if (r.role === "you") return { id: nid(), role: "user", text: r.text, t: r.t };
   if (r.role === "agent") return { id: nid(), role: "assistant", text: r.text, t: r.t };
@@ -83,6 +90,8 @@ export function ignoredText(m: Msg): string {
 function append(ms: Msg[], m: Msg): Msg[] {
   const last = ms[ms.length - 1];
   if (m.role === "assistant" && last && last.role === "assistant" && !last.live && (last.t || "") === (m.t || "")) return [...ms.slice(0, -1), { ...last, text: join(last.text, m.text) }];
+  // the steps of one stretch are one line (the record keeps one card a step)
+  if (m.role === "steps" && last && last.role === "steps" && !last.live) return [...ms.slice(0, -1), { ...last, steps: [...(last.steps || []), ...(m.steps || [])] }];
   // a run of sounds the voice line dropped without a word in them (the room, not a sentence) is one faint line with a count
   if (m.role === "ignored" && !m.text && last && last.role === "ignored" && !last.text && whyBase(String(last.data?.why || "")) === whyBase(String(m.data?.why || "")))
     return [...ms.slice(0, -1), { ...last, data: { why: m.data?.why || last.data?.why, n: Number(last.data?.n || 1) + 1 } }];
@@ -247,7 +256,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
             const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             const m = fromRow(it); if (m) setMsgs(ms => append(m.role === "assistant" ? settle(ms) : ms, m));
           }
-          for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
+          for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => addCard(ms, m)); }
         } catch {}
         // the record's pace follows the moment too: brisk while a reply is under way, a walk when idle, a stroll when the tab is hidden
         const st = lastState(); const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
@@ -401,7 +410,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         onToolCallStartEvent: ({ event }) => { toolSince = true; runRows.current.push(TOOL_MARK); const { label } = kind(event.toolCallName); if (label) setMsgs(ms => addStep(ms, { id: event.toolCallId, tool: event.toolCallName, label })); },
         onToolCallArgsEvent: ({ event }) => { const buf = (args.current[event.toolCallId] = (args.current[event.toolCallId] || "") + event.delta); try { const d = JSON.parse(buf); if (d && typeof d.detail === "string" && d.detail) setMsgs(ms => withDetail(ms, event.toolCallId, d.detail)); } catch {} },   // what the tool is on, once the brain has said
         onToolCallEndEvent: ({ event }) => { delete args.current[event.toolCallId]; },
-        onCustomEvent: ({ event }) => { if (event.name === "silo.state") setState(String(event.value)); const m = fromCard({ name: event.name, value: event.value }); if (m) setMsgs(ms => [...ms, m]);
+        onCustomEvent: ({ event }) => { if (event.name === "silo.state") setState(String(event.value)); const m = fromCard({ name: event.name, value: event.value }); if (m) setMsgs(ms => addCard(ms, m));
           if (event.name === "silo.approval") setMsgs(ms => [...ms, { id: nid(), role: "note", text: `waiting for your approval: ${(event.value as any).kind} · ${(event.value as any).subject}` }]); },
         onRunErrorEvent: ({ event }) => setMsgs(ms => [...ms, { id: nid(), role: "note", text: event.message }]),
       });
