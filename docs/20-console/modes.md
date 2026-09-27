@@ -126,3 +126,15 @@ the transcript the same). **Power** picks how much of it the page may spend:
 A hidden tab draws nothing at all, in every mode. The setting is this device's (the browser's
 storage). The ring's globe follows the Mac's power on its own: fewer frames at idle, fewer still on
 battery, the full rate while the agent speaks or works.
+
+## Stances
+
+A stance is several switches and a way of working, taken in one word: "developer mode" (the deep
+brain at high effort, text only, quiet hours, the focus sound), "researcher mode" (the deep brain,
+the board in front, the calm sound), "guardian mode" (watching and reporting, nothing held),
+"maintenance mode" (the machine, the disk, the plan before any move), "scheduler mode" (the
+calendar, the priorities, the reminders), "focus mode" (speak only when spoken to, the action items
+held) and "meeting mode" (text only, sounds off, held). "Mode off" puts back whatever the stance
+changed. A stance pulls only the switches that need no verification; the microphone and the
+permissions stay where they are. The stances are in `data/modes.json`, yours to change by asking;
+`mode.py` is the tool.
