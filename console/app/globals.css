@@ -127,6 +127,13 @@ html.dark body { background: #02040a; }
   background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
   animation: shimmer 1.8s linear infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+/* The steps of a turn, opened: a thin rail with a dot a step, one short line each (the icon, the plain words, the exact
+   command in small type), the last step's dot marked as where it ended. */
+.steps-rail { position: relative; margin: 2px 0 2px 5px; padding-left: 14px; }
+.steps-rail::before { content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 1px; background: hsl(var(--muted-foreground) / .3); }
+.steps-rail li { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; height: 18px; line-height: 18px; }
+.steps-rail li::before { content: ""; position: absolute; left: -16.5px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: hsl(var(--muted-foreground) / .5); box-shadow: 0 0 0 2px hsl(var(--background)); }
+.steps-rail li:last-child::before { background: hsl(var(--primary)); }
 @media (prefers-reduced-motion: reduce) { .shimmer { animation: none; background: none; color: hsl(var(--muted-foreground)); -webkit-text-fill-color: currentColor; } }
 
 /* the composer while the agent works: a slow turning light around the card, and a soft halo behind it (the owner's ask, 2026-09-27) */

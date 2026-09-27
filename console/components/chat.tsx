@@ -19,7 +19,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { HttpAgent } from "@ag-ui/client";
 import ReactMarkdown from "react-markdown";
 import { GFM } from "@/lib/compat";                       // GFM markdown where the browser can read it (an iOS 15 phone cannot)
-import { AppWindow, ArrowDown, ArrowUp, AtSign, Bot, CalendarDays, Check, ChevronDown, ChevronRight, Columns2, Copy, Eraser, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderSearch, Globe, Hand, HardDrive, Link2, ListChecks, Loader2, Mail, Mic, Monitor, Paperclip, PictureInPicture2, Plug, Plus, Send, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
+import { AlarmClock, AppWindow, ArrowDown, ArrowUp, AtSign, AudioLines, Bot, Braces, Brain, CalendarDays, Camera, ChartLine, Check, ChevronDown, ChevronRight, Coins, Columns2, Command as CommandKey, Container, Copy, Eraser, ExternalLink, FileCode2, FilePen, FilePlus, FileSpreadsheet, FileText, Folder, FolderInput, FolderSearch, GitBranch, GitPullRequest, Github, Globe, Hand, HardDrive, HeartPulse, Image as ImageIcon, LayoutGrid, Layers, Link2, ListChecks, Loader2, Mail, Mic, Monitor, MonitorCog, Music, Newspaper, Paperclip, PictureInPicture2, Plug, Plus, Presentation, ScanEye, Send, Server, Sparkles, Square, Terminal, TextSearch, User, Users, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
@@ -50,24 +50,24 @@ function kind(tool: string): { label: string; Icon: any } {
   if (/hands/.test(server)) return { label: "using the hands", Icon: Hand };
   return { label: "using " + server.replace(/[-_]/g, " "), Icon: Plug };
 }
-// a command on the working line is said by what it does (which of the agent's tools it runs, or which program), never as the
-// raw command: that stays in the tooltip. The owner reads "putting it on the board", not `cd "…" && board.sh '{…}'`.
-const DOING: [RegExp, string][] = [
-  [/\bboards\.sh\b/, "sorting the boards"], [/\bboard\.sh\b|\bboard-state\.sh\b|\bshow-image\.sh\b/, "putting it on the board"], [/\bshow\.py\b/, "drawing a panel"],
-  [/\bpictures\.py\b/, "finding pictures"], [/\bimagine\.py\b/, "making a picture"], [/\bnews\.py\b/, "reading the news"], [/\bsounds\.py\b/, "at the sounds"],
-  [/\bcredits\.sh\b/, "checking the voice's credits"], [/\bmedia\.py\b/, "at the music"], [/\bspaces\.sh\b|\bapps\.sh\b|\bcursor\.sh\b/, "moving windows about"],
-  [/\bconsole\.sh\b/, "steering the console"], [/\bbrain\.sh\b/, "picking a brain"], [/\blook-screen\.sh\b|\bshare\.sh\b/, "taking a look at the screen"], [/\blook\.sh\b/, "looking through the camera"],
-  [/\bfs\.sh\b/, "tidying files"], [/\bremind\.sh\b/, "setting a reminder"], [/\btelegram\.py\b/, "reaching your phone"], [/\bmeeting\.py\b/, "on the meeting"], [/\bservers\.py\b/, "checking the servers"],
-  [/\bgrafana\.py\b/, "in Grafana"], [/\bagenda\.py\b/, "reading your calendar"], [/\bpr\.py\b/, "on a pull request"], [/\bci-status\.sh\b|\bgh\b/, "on GitHub"], [/\bgit\b/, "in the repository"],
-  [/\bcurl\b|\bwget\b/, "asking a server"], [/\bssh\b|\bscp\b/, "on a server"], [/\bdocker\b|\bkubectl\b/, "among the containers"], [/\bnpx\b|\bnpm\b|\btsc\b|\bnode\b/, "in the console's code"],
-  [/\bpython3?\b/, "running a script"], [/\b(?:grep|rg|find|ls|cat|head|tail|sed|awk|wc|stat|du|diff)\b/, "looking through files"], [/\bosascript\b/, "having a word with the Mac"], [/\bopen\b/, "opening something"],
+// a command on the working line is said by what it does (which of the agent's tools it runs, or which program), with its own
+// icon, and the exact command sits beside the words in small type (a leading `cd "…" &&` left off the row; whole in the tooltip).
+const DOING: [RegExp, string, any][] = [
+  [/\bboards\.sh\b/, "sorting the boards", Layers], [/\bboard\.sh\b|\bboard-state\.sh\b|\bshow-image\.sh\b/, "putting it on the board", Presentation], [/\bshow\.py\b/, "drawing a panel", LayoutGrid],
+  [/\bpictures\.py\b/, "finding pictures", ImageIcon], [/\bimagine\.py\b/, "making a picture", Sparkles], [/\bnews\.py\b/, "reading the news", Newspaper], [/\bsounds\.py\b/, "at the sounds", AudioLines],
+  [/\bcredits\.sh\b/, "checking the voice's credits", Coins], [/\bmedia\.py\b/, "at the music", Music], [/\bspaces\.sh\b|\bapps\.sh\b|\bcursor\.sh\b/, "moving windows about", AppWindow],
+  [/\bconsole\.sh\b/, "steering the console", MonitorCog], [/\bbrain\.sh\b/, "picking a brain", Brain], [/\blook-screen\.sh\b|\bshare\.sh\b/, "taking a look at the screen", ScanEye], [/\blook\.sh\b/, "looking through the camera", Camera],
+  [/\bfs\.sh\b/, "tidying files", FolderInput], [/\bremind\.sh\b/, "setting a reminder", AlarmClock], [/\btelegram\.py\b/, "reaching your phone", Send], [/\bmeeting\.py\b/, "on the meeting", Mic], [/\bservers\.py\b/, "checking the servers", HeartPulse],
+  [/\bgrafana\.py\b/, "in Grafana", ChartLine], [/\bagenda\.py\b/, "reading your calendar", CalendarDays], [/\bpr\.py\b/, "on a pull request", GitPullRequest], [/\bci-status\.sh\b|\bgh\b/, "on GitHub", Github], [/\bgit\b/, "in the repository", GitBranch],
+  [/\bcurl\b|\bwget\b/, "asking a server", Globe], [/\bssh\b|\bscp\b/, "on a server", Server], [/\bdocker\b|\bkubectl\b/, "among the containers", Container], [/\bnpx\b|\bnpm\b|\btsc\b|\bnode\b/, "in the console's code", Braces],
+  [/\bpython3?\b/, "running a script", FileCode2], [/\b(?:grep|rg|find|ls|cat|head|tail|sed|awk|wc|stat|du|diff)\b/, "looking through files", FolderSearch], [/\bosascript\b/, "having a word with the Mac", CommandKey], [/\bopen\b/, "opening something", ExternalLink],
 ];
 function said(s: Step): { Icon: any; label: string; note?: string; raw?: string } {
   const k = kind(s.tool);
   if (s.tool !== "Bash" || !s.detail) return { Icon: k.Icon, label: k.label, note: s.detail, raw: s.detail };
   const cmd = s.detail.replace(/^cd\s+(?:"[^"]*"|\S+)\s*&&\s*/, "");
   const hit = DOING.find(([re]) => re.test(cmd));
-  return { Icon: k.Icon, label: hit ? hit[1] : "at the terminal", raw: s.detail };
+  return { Icon: hit ? hit[2] : Terminal, label: hit ? hit[1] : "at the terminal", note: cmd, raw: s.detail };
 }
 const fixPics = (v: any) => !v || !Array.isArray(v.items) ? v : { ...v, items: v.items.map((i: any) => ({ ...i, url: i.url && i.url.startsWith("/img?") ? img(i.url) : i.url })) };
 function fromCard(c: Card): Msg | null {
@@ -150,24 +150,25 @@ function Avatar({ name }: { name: string }) {                // the owner's init
   const i = initials(name);
   return <span title={name || undefined} aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-1 ring-primary/30">{i || <User className="h-3.5 w-3.5" />}</span>;
 }
-const Detail = ({ d }: { d?: string }) => d ? <code className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/75" title={d}>{d}</code> : null;
-/** The steps of a turn: while it runs, the step under way (shimmering, with what it is on), each replacing the last;
- *  done, the count of steps per kind, opened with a click to the list. */
+const Detail = ({ d }: { d?: string }) => d ? <code className="min-w-0 truncate font-mono text-[10.5px] text-muted-foreground/60">{d}</code> : null;   // the exact command, or the file, the page, the pattern; whole in the row's tooltip
+/** The steps of a turn: while it runs, the step under way (shimmering, the exact command beside the words), each replacing
+ *  the last; done, a count of the steps and one small icon a kind, opened with a click to a timeline, one line a step. */
 function Steps({ m, onToggle }: { m: Msg; onToggle: () => void }) {
   const steps = m.steps || []; const cur = steps[steps.length - 1]; if (!cur) return null;
   if (m.live || steps.length === 1) {
     const { Icon, label, note, raw } = said(cur);
     return <div className="flex min-w-0 items-center gap-2 px-1 text-xs text-muted-foreground" title={raw}><Icon className="h-3.5 w-3.5 shrink-0" /><span className={cn("shrink-0", m.live && "shimmer")}>{label}</span><Detail d={note} /></div>;
   }
-  const counts: [string, number][] = []; for (const s of steps) { const c = counts.find(x => x[0] === s.tool); if (c) c[1]++; else counts.push([s.tool, 1]); }
+  const kinds: { label: string; Icon: any; n: number }[] = [];
+  for (const s of steps) { const { Icon, label } = said(s); const k = kinds.find(x => x.label === label); if (k) k.n++; else kinds.push({ label, Icon, n: 1 }); }
   return (
-    <div className="min-w-0 px-1 text-xs text-muted-foreground">
-      <button type="button" onClick={onToggle} aria-expanded={!!m.open} title={m.open ? "Fold the steps away" : "What it did, step by step"} className="flex items-center gap-2.5 rounded-md py-0.5 transition-colors hover:text-foreground">
-        {m.open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        {counts.map(([tool, n]) => { const { Icon, label } = kind(tool); return <span key={tool} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" />{n}</span>; })}
-        <span className="text-muted-foreground/70">{steps.length} steps</span>
+    <div className="min-w-0 px-1 text-[11px] text-muted-foreground">
+      <button type="button" onClick={onToggle} aria-expanded={!!m.open} title={m.open ? "Fold the steps away" : "What it did, step by step"} className="flex h-6 items-center gap-2 rounded-md transition-colors hover:text-foreground">
+        {m.open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <span>{steps.length} steps</span>
+        <span className="flex items-center gap-1.5 text-muted-foreground/70">{kinds.map(k => <span key={k.label} title={`${k.label}${k.n > 1 ? ` ×${k.n}` : ""}`} className="inline-flex items-center gap-0.5"><k.Icon className="h-3 w-3" />{k.n > 1 && <span>{k.n}</span>}</span>)}</span>
       </button>
-      {m.open && <ul className="mt-1 space-y-0.5 border-l border-border pl-3">{steps.map(s => { const { Icon, label, note, raw } = said(s); return <li key={s.id} className="flex min-w-0 items-center gap-2" title={raw}><Icon className="h-3.5 w-3.5 shrink-0" /><span className="shrink-0">{label}</span><Detail d={note} /></li>; })}</ul>}
+      {m.open && <ol className="steps-rail">{steps.map(s => { const { Icon, label, note, raw } = said(s); return <li key={s.id} title={raw}><Icon className="h-3 w-3 shrink-0 opacity-80" /><span className="shrink-0">{label}</span><Detail d={note} /></li>; })}</ol>}
     </div>);
 }
 /** What is attached, before it is sent: a photo as its thumbnail, anything else as a small card; × leaves it out. */

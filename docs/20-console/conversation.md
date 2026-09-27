@@ -12,17 +12,19 @@ The window takes the console's full width; the words keep a reading column in th
   the reply as written, with the time beside it.
 - While the agent works, the composer wears a slow turning light and a soft halo, and one line
   above it says what the agent is on in plain words: "putting it on the board", "reading the
-  news", "in the repository", never a raw command (the command itself is in the tooltip). The
-  line settles into a count of the steps, opened with a click.
+  news", "on a server", with the exact command beside the words in small type. The line settles
+  into a count of the steps, opened with a click.
 - A reply grows word by word, then settles into the finished text as the record has it, whole and
   in order, so what you see live is what a reload shows; a line the log delivers late joins the
   same reply instead of opening another, and a reply typed here is not shown twice when the voice
   reads it out.
 - **What it is doing.** While the agent works, one line under your message shows the tool in its
-  hands and what it is on: the command, the file, the search, the page. The line shimmers, and each
-  new step takes the last one's place, so the conversation never fills with them. When the reply
-  comes, the line settles into a count of the steps by kind (commands, files, searches); click it to
-  see them all.
+  hands and what it is on: the plain words with their own icon (a server for `ssh`, a container for
+  `docker`, a branch for `git`, a globe for a request, a folder for a look through files, the board,
+  the news, the phone, and so on) and the exact command, file, search or page beside them. The line
+  shimmers, and each new step takes the last one's place, so the conversation never fills with them.
+  When the reply comes, the line settles into "N steps" with one small icon a kind; click it for the
+  timeline, one short line a step, the exact command in small type and whole in its tooltip.
 - **Clear the chat.** The eraser in the header (in the top bar on a phone) empties the page and
   remembers where it stood, so a reload stays clear; "Show what came before" brings the lines back.
   The record and the agent's memory of the conversation are untouched: for a fresh start of those,
