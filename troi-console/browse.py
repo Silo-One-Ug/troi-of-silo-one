@@ -191,8 +191,15 @@ def cmd_bookmark(a):
         if not items:
             print("no bookmarks yet"); return 0
         for i, b in enumerate(items, 1):
-            print(f"{i:>3}. {str(b.get('title') or '')[:55]:<55}  {short(b.get('url', ''), 60)}" + (f"  [{', '.join(b.get('tags') or [])}]" if b.get("tags") else ""))
+            if b.get("archived") and "--all" not in a:
+                continue
+            print(f"{i:>3}. {str(b.get('title') or '')[:55]:<55}  {short(b.get('url', ''), 60)}" + (f"  [{', '.join(b.get('tags') or [])}]" if b.get("tags") else "") + ("  (archived)" if b.get("archived") else ""))
         return 0
+    if a[0] == "archive" and len(a) > 1:                             # the undo of a bookmark: kept, out of the list (nothing is deleted)
+        items = load_bm(); n = int(a[1]) - 1
+        if not (0 <= n < len(items)):
+            print("no such bookmark"); return 2
+        items[n]["archived"] = True; save_bm(items); print(f"#{n + 1} archived: {items[n].get('title', '')[:60]}"); return 0
     if a[0] == "find" and len(a) > 1:
         words = [w.lower() for w in a[1:]]; hits = []
         for i, b in enumerate(load_bm(), 1):

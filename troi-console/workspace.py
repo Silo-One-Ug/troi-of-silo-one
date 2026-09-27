@@ -232,7 +232,8 @@ def run(name, which, dry):
         if status == "fail":
             fails += 1
         print(f"  {marks.get(status, '·')} {what}")
-        log(f"{name} {which}: {status} {what}")
+        if not dry:
+            log(f"{name} {which}: {status} {what}")               # a dry run changes nothing, so the journal never sees it
     for s in says:
         print(f"  » say: {s}")
     print(("done" if not fails else f"done with {fails} failure{'s' if fails != 1 else ''}") + (" (nothing was done: a dry run)" if dry else ""))
