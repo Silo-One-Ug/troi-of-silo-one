@@ -7,7 +7,7 @@ Written for someone setting Troi up on a Mac for the first time. Budget half an 
 1. **A Mac with Apple Silicon** (M1 or newer) on macOS 14 or newer. The speech models run on the Apple GPU through MLX; Intel Macs are not supported.
 2. **Homebrew.** Paste the one-liner from [brew.sh](https://brew.sh) into Terminal.
 3. **Claude Code**, signed in: [claude.com/claude-code](https://claude.com/claude-code). Run `claude` once and log in.
-4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The page tools that run without a window need it, and without Arc it is the agent's own browser. If **Arc** is installed, Arc becomes the browser the agent drives, and yours at the same time (Arc runs one instance only): the agent starts it with its debugging port, and asks it to quit and come back, tabs and spaces intact, if you opened it from the Dock first.
+4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The page tools that run without a window need it, and it is the agent's browser: a Chrome of its own by default (its own profile and window, the debugging port the console mirrors). Optionally the **Playwright extension** in your own Chrome ([Chrome Web Store](https://chromewebstore.google.com/detail/playwright-extension/mmlmfjhmonkocbjadbfplnigmagldckm)): with it installed the agent drives your Chrome instead, your logins included, and asks you which tab the first time. Arc is no longer preferred; `troi-console/browser-mcp.sh use arc` brings the old way back.
 
 The installer adds these command-line tools with Homebrew if they are missing:
 
@@ -57,7 +57,7 @@ Quit and reopen Terminal after granting them. The welcome checks Screen Recordin
 
 ## 4. Start, and the welcome
 
-Double-click **Troi** on the Desktop, or type `troi` in a terminal. The agent's browser (Arc, or Chrome) opens the console at http://localhost:3100. The first time, it goes to the welcome:
+Double-click **Troi** on the Desktop, or type `troi` in a terminal. The agent's browser (Chrome) opens the console at http://localhost:3100. The first time, it goes to the welcome:
 
 1. **The story.** Who Troi is, in seven scenes. Use the arrow keys or the scroll wheel, or skip straight to the setup.
 2. **You.** Your name (Troi greets you by the first word of it), and what it calls you mid-conversation.
@@ -127,7 +127,7 @@ Choose them in the welcome's **This Mac** step, or list them as `file_roots` in 
 | Voice and face prints | `data/prints/` |
 | Logs | `data/logs/`, `backtalk/logs/backtalk.log` |
 | Speech models | `data/models/` |
-| The agent's browser profile | Arc's own profile when the browser is Arc; `data/browser/` when it is a Chrome of the agent's own |
+| The agent's browser profile | `data/browser/` for the agent's own Chrome; your own Chrome's profile when it works through the Playwright extension; `data/browser-choice` keeps the choice |
 | Secrets | the Keychain, account `troi-of-silo-one` (`troi-console/keychain.py list`) |
 | Boot file (identity, rules, abilities) | `CLAUDE.md`, rendered from `troi-console/templates/CLAUDE.md` |
 | Claude Code hooks and permissions | `.claude/settings.json`, rendered from `troi-console/templates/settings.json` |
@@ -160,7 +160,7 @@ Run `troi-console/doctor.sh` first. Then:
 | A file you asked it to trash is still there | That is the design: the request waits in Approvals, across restarts too. Unlock with your PIN and approve it, or send "approve" on Telegram. |
 | "Approving needs you" | Unlock the console: the PIN box on the Approvals page, or **Check it's me** on the Eyes page. Or send "approve" on Telegram. |
 | The board shows only its placeholder | Nothing is up. Ask the agent to show you something, or click one of the requests written on the board. |
-| The agent's browser tools say the browser is not reachable | Arc was opened without its debugging port (from the Dock, before Troi). Quit Arc and start Troi again, or run `troi-console/browser-mcp.sh open`, which asks Arc to quit and brings it back with the port. |
+| The agent's browser tools say the browser is not reachable | Something else holds port 9223, or the agent's Chrome did not start: `troi-console/browser-mcp.sh status` says who answers, `browser-mcp.sh open` starts the agent's Chrome (an Arc still on the port is asked to quit first). In the extension mode, check the Playwright extension is installed in your Chrome and the connection approved. |
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |
 | Anything else | Describe it to Troi in the console. It reads the troubleshooting guide that ships with each piece. |
