@@ -459,7 +459,7 @@
     shelfEl.replaceChildren();
     const head = el("div", "shelf-head");
     head.appendChild(el("div", "kicker", `${str(CFG.name || "the agent")} · your boards · ${list.length}`));
-    head.appendChild(el("div", "shelf-hint", narrow() ? "Tap a board to open it; the last card makes a new one." : "Hover to turn the hall, click a board to open it, the last card makes a new one. Whatever lands here without a board's name stays on Main, below."));
+    head.appendChild(el("div", "shelf-hint", narrow() ? "Tap a board to open it; the last card makes a new one." : "Click a board to open it; the arrows turn the hall; the last card makes a new one. Whatever lands here without a board's name stays on Main, below."));
     shelfEl.appendChild(head);
     const scene = el("div", "shelf-scene"), ring = el("div", "shelf-ring"); scene.appendChild(ring); shelfEl.appendChild(scene);
     const cards = list.map((b, i) => {
@@ -471,7 +471,6 @@
       const n = num(b.items, 0);
       c.appendChild(el("div", "bmeta", (n ? `${n} item${n > 1 ? "s" : ""}` : "empty") + (b.updated ? ` · ${ago(num(b.updated, 0))}` : "")));
       c.appendChild(el("div", "bopen", b.id === BOARD.id ? "you are here" : "open →"));
-      c.addEventListener("mouseenter", () => { if (!narrow()) { shelfFocus = i; placeCards(); } });
       c.addEventListener("click", () => { if (b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
       c.addEventListener("keydown", e => { if (e.key === "Enter" && b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
       ring.appendChild(c); return c;
@@ -480,8 +479,16 @@
     plus.appendChild(el("div", "bplus", "+")); plus.appendChild(el("div", "bname", "New board")); plus.appendChild(el("div", "bmeta", "a name, then Enter"));
     const makeNew = () => { if (plus.querySelector("input")) return; const f = nameInput("", async v => { if (f.isConnected) f.remove(); if (v) await boardsPost({ a: "create", name: v }); }); plus.appendChild(f); f.focus(); };
     plus.addEventListener("click", makeNew); plus.addEventListener("keydown", e => { if (e.key === "Enter") makeNew(); });
-    plus.addEventListener("mouseenter", () => { if (!narrow()) { shelfFocus = list.length; placeCards(); } });
     ring.appendChild(plus); cards.push(plus);
+    // the hall turns only on purpose: the arrows at its sides, the arrow keys, a sideways wheel. Never on hover: a hover that
+    // turned it moved the cards under the pointer, the pointer entered the next card, and the hall ran from end to end.
+    const turn = d => { shelfFocus = clamp(shelfFocus + d, 0, cards.length - 1); placeCards(); };
+    if (!narrow()) {
+      const prev = el("button", "shelf-nav prev", "‹"), next = el("button", "shelf-nav next", "›"); prev.type = next.type = "button";
+      prev.title = "Turn the hall left"; next.title = "Turn the hall right";
+      prev.addEventListener("click", () => turn(-1)); next.addEventListener("click", () => turn(1));
+      scene.appendChild(prev); scene.appendChild(next);
+    }
     function placeCards() {
       if (narrow()) { cards.forEach(c => { c.style.transform = ""; c.style.opacity = ""; c.style.zIndex = ""; c.classList.remove("front"); }); return; }
       cards.forEach((c, i) => {
@@ -493,8 +500,15 @@
     }
     placeCards();
     let wheelAt = 0;
-    scene.addEventListener("wheel", e => { if (narrow()) return; const now = Date.now(); if (now - wheelAt < 260) { e.preventDefault(); return; } const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (Math.abs(dx) < 4) return; e.preventDefault(); wheelAt = now; shelfFocus = clamp(shelfFocus + (dx > 0 ? 1 : -1), 0, cards.length - 1); placeCards(); }, { passive: false });
-    shelfEl.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); shelfFocus = clamp(shelfFocus + (e.key === "ArrowRight" ? 1 : -1), 0, cards.length - 1); placeCards(); cards[shelfFocus].focus(); } });
+    scene.addEventListener("wheel", e => {                           // a sideways wheel (a trackpad swipe, or shift and the wheel) turns one card at a time; up and down scroll the page as ever
+      if (narrow()) return;
+      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.5 || e.shiftKey; if (!sideways) return;
+      e.preventDefault();
+      const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX; const now = Date.now();
+      if (Math.abs(dx) < 12 || now - wheelAt < 450) return;
+      wheelAt = now; turn(dx > 0 ? 1 : -1);
+    }, { passive: false });
+    shelfEl.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); turn(e.key === "ArrowRight" ? 1 : -1); cards[shelfFocus].focus(); } });
     shelfEl.appendChild(el("div", "shelf-floor"));
     const prompts = el("div", "prompts shelf-prompts");
     ["Show me today's headlines", "Put my active priorities on a board", "Draw this week's deploys as a chart", "Show me pictures of Kampala at night"].forEach(p => {
