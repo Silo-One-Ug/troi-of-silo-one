@@ -45,6 +45,21 @@ esac
 export TROI_BROWSER_APP="$NAME"
 
 cdp_up() { curl -s -m 2 "http://127.0.0.1:$PORT/json/version" >/dev/null; }
+# a Chrome already running on the agent's profile (the profile's lock names its pid), alive or not
+own_pid() { local t; t="$(readlink "$PROFILE/SingletonLock" 2>/dev/null)"; t="${t##*-}"; case "$t" in ''|*[!0-9]*) return 1;; esac; ps -p "$t" -o pid= >/dev/null 2>&1 && echo "$t"; }
+# such a Chrome whose debugging port has died cannot be replaced while it holds the profile: it is asked to quit through its own
+# menu (a polite quit: it keeps its tabs for the next start), addressed by its pid so the owner's own Chrome is never touched
+quit_own() {
+  local pid="$1"
+  osascript -e "tell application \"System Events\"
+    set p to first application process whose unix id is $pid
+    set frontmost of p to true
+    delay 0.4
+    click menu item \"Quit Google Chrome\" of menu 1 of menu bar item 2 of menu bar 1 of p
+  end tell" >/dev/null 2>&1
+  for i in $(seq 1 30); do ps -p "$pid" -o pid= >/dev/null 2>&1 || return 0; sleep 0.5; done
+  return 1
+}
 port_owner() { local pid; pid="$(lsof -t -i ":$PORT" -sTCP:LISTEN 2>/dev/null | head -1)"; [ -n "$pid" ] && ps -o comm= -p "$pid" | sed 's#.*/##'; }
 quit_arc() { osascript -e 'tell application "Arc" to quit' >/dev/null 2>&1; for i in $(seq 1 40); do pgrep -xq Arc || return 0; sleep 0.5; done; return 1; }
 describe() {
@@ -73,6 +88,11 @@ ensure_browser() {
     # a Chrome of the agent's own: its own profile, its own window (a second instance beside the owner's Chrome, if that is open);
     # its first tab is the console when the console already answers, so the window never opens empty
     mkdir -p "$PROFILE"
+    local stale; stale="$(own_pid)"
+    if [ -n "$stale" ]; then                                             # running on our profile without its port: a fresh start cannot take the profile until it quits
+      echo "the agent's Chrome (pid $stale) has lost its debugging port; asking it to quit, then starting it again" >&2
+      quit_own "$stale" || { echo "the agent's Chrome (pid $stale) did not quit; quit it yourself, then try again" >&2; return 1; }
+    fi
     local first="about:blank"; curl -s -m 1 -o /dev/null "$CONSOLE_URL" && first="$CONSOLE_URL"
     open -na "$APP" --args --remote-debugging-port=$PORT --user-data-dir="$PROFILE" --no-first-run --no-default-browser-check \
       --window-size=1280,900 --window-position=80,60 "$first" 2>/dev/null

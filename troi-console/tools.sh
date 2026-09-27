@@ -10,6 +10,7 @@ cat <<'TXT'
   cursor.sh    the pointer/keyboard fallback for what has no name: where | under | move | click | double | right | drag | type | key   (look-screen.sh first; risky buttons need the owner's approval)
   look.sh      one camera photo -> path (then Read it)          look-screen.sh [display]   one screenshot -> path (then Read it)
   apps.sh      list | running | open | focus | quit | kill (asks the owner)
+  spaces.sh    front · to "<app>" [window words] · windows "<app>" · next | prev · back   windows and Spaces: what is in front, bring a window over across Spaces (never send the owner to swipe), the keyboard's swipe
   fs.sh        move | rename | copy | mkdir | reveal | open [app] | undo | trash (asks the owner) | pending     (only inside the file roots in the settings; the vault is one)
   read.py      <file> [--sheet NAME] [--rows N]   a file the Read tool cannot open, as text: xlsx sheets as tables, csv, pptx slides, docx/rtf (textutil), pdf (pdftotext)
   google.sh    mcp | status | setup <client_secret.json> | enable [project] | signin <email>   the owner's Google account as your mcp__google__* tools (Calendar, Gmail, Drive, Docs, Sheets, Tasks, Contacts); sending, sharing and invitations need the owner's go-ahead
@@ -21,8 +22,9 @@ cat <<'TXT'
                voice list|kokoro|elevenlabs ["<name>"] · mode "<phrase>"      (console.sh with no arguments prints them all)
   console.sh hands <key> <value>   tune hand tracking (pinch_close, pinch_open, ext, dwell_ms, magnet); press P in the galaxy to sample a pose
   show-image.sh <file> [title] [x] [y]   put a picture (or a video) on the board; without x and y it flows into free space
-  ../barehands/bin/board.sh '{"a":"add_card",...}'   add_card | add_img | present | yank | hover | clear | add_ui | ui | layout | tidy   the board (mouse-driven, white, it keeps what is up)
-  ../barehands/bin/board-state.sh [events|json]    what is on the board (or the saved scene), and the last clicks on its buttons
+  ../barehands/bin/board.sh '{"a":"add_card",...}'   add_card | add_img | present | yank | hover | clear | add_ui | ui | layout | tidy | board ("name", "create":1)   the board (mouse-driven page); any command may carry "board":"<name>" to land on that board and bring it up
+  ../barehands/bin/board-state.sh [events|json|boards]    what is on the board (or the saved scene), which board it is, the last clicks on its buttons
+  boards.sh    list · current · new "<name>" · use "<name>" · rename "<name>" "<new>" · archive "<name>" · restore "<name>"   the boards, plural: one scene each, one up, every screen follows
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
   brain.sh     status · live · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
   share.sh     start | stop | status | build   screen sharing: the Mac's picker, then the shared frames for your eyes (look-screen.sh) and hands (click --share)
@@ -40,7 +42,7 @@ cat <<'TXT'
   grafana.py   check · alerts [--all] · rules · silences · query '<PromQL>' [--range 1h] [--show] · logs '<LogQL>' [--since 15m] · dashboards [words] · panel <uid> <id> [--show] · watch   Grafana, read-only (data/grafana.json; the token is the Keychain item grafana); the pulse watches the alerts every minute
   agenda.py    today · next · week · soon [min] · current   the Mac's Calendar app (Google etc.); the pulse warns 15 min before an event
   face.py verify|check              face ID (its own env: .venv-face); learning the owner's face is theirs to do (Modes › Face ID)
-  browser-mcp.sh  open · which · status · use own|yours|arc|auto   the agent's browser: its own Chrome on port 9223 (the console mirrors it), or your Chrome through the Playwright extension when it is installed; arc is the old way
+  browser-mcp.sh  open · console · which · describe · status · use own|yours|arc|auto   the agent's browser: its own Chrome on port 9223 (the console mirrors it), or your Chrome through the Playwright extension when it is installed; arc is the old way
   news.py brief [uganda|world|all] [--n N] [--hours H] [--show] · topic "<words>" · read <url> · videos <outlet> · social <outlet> · sources   the news, Uganda first (news.json lists the outlets)
   pictures.py search "topic" [--n 6] [--show] [--add] · page <url> [--show] · shot <url> [--show] · board <title> <files…> · focus <n|word> · unfocus · clear   research pictures (free, credited) as a grid on the board
   telegram.py photo <file> [caption]   a picture to the owner's phone
