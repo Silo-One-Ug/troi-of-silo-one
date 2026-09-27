@@ -17,6 +17,8 @@ com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's ty
   calendar      a heads-up 15 minutes before each event in the Mac's Calendar (agenda.py)
   the Mac       every 15 minutes, machine.py reads the Mac's own health (the startup disk, memory pressure, a process hot
                 for two rounds, the battery, the heat); only what is new is said, through the triage
+  the owner's time  every 30 seconds, usage.py notes the app in front (names only, never a title), unless the Mac is idle;
+                usage.py today|week reads it back; usage_tracking false in the settings stops it
   morning brief at "brief_time" (default 08:00), once a day, only if the voice line is up; the agent runs
                 its Morning Brief job
   day's report  at "report_time" (default 18:30), report.py builds the end-of-day report
@@ -36,6 +38,7 @@ import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent)); i
 import db as _DB  # noqa: E402  (small documents live in troi.db)
 import watches as _W  # noqa: E402  (the owner's watches: "watch this, and when it happens, do that")
 import triage as _T  # noqa: E402  (what the pulse says is sorted first: urgent, action, fyi, ignore; quiet hours hold the middle)
+import usage as _U  # noqa: E402  (the owner's time at the Mac: the app in front, sampled every 30 seconds; usage_tracking false stops it)
 
 import sys as _sp, os as _osp; _sp.path.insert(0, _osp.path.dirname(_osp.path.abspath(__file__))); import paths as _Pa  # noqa: E402
 
@@ -338,6 +341,7 @@ def main():
     state = jload(STATE, {})
     _T.bind(tell, log)
     last_gh = 0.0; last_mc = time.time() - MACHINE_EVERY + 120     # the first look at the Mac two minutes in, once the rest has settled
+    last_us = 0.0
     last_srv = last_cal = last_gf = 0.0
     while True:
         try:
@@ -355,6 +359,12 @@ def main():
                     last_gf = time.time(); check_grafana(state)
                 if time.time() - last_mc > MACHINE_EVERY:
                     last_mc = time.time(); check_machine(state)
+                if time.time() - last_us > _U.EVERY:
+                    last_us = time.time()
+                    try:
+                        _U.sample(state)
+                    except Exception as e:
+                        log(f"[pulse]  usage: sample failed ({e!r})")
                 check_brief(state)
                 check_report(state)
                 check_nightly(state)
