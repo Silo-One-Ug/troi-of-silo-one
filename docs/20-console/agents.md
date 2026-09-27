@@ -24,6 +24,10 @@ they took.
   sits last, whole, and folds to two lines if you want it out of the way. An agent's report never
   lands in the conversation: it comes back to the brain, which answers in its own words; the report
   itself lives here.
+- **Every node on a line.** The brain runs down to a bus, the bus across the first row and a stub
+  down to each agent. When the row wraps, every further row has a bus of its own, fed by a rail down
+  the left of the chart, so no agent is ever left hanging. An agent can send agents too: its own
+  delegations hang under it on a short rail of their own, three levels deep, each with its card.
 - **The brain's own line.** The top node shows the brain's state and the tool in its hands, as the
   bar does.
 - **Archiving.** A finished agent can be archived off the chart: the × on its node, or **Archive

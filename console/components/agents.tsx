@@ -17,7 +17,7 @@ import { describe } from "@/lib/tools";
 import { cn } from "@/lib/utils";
 
 type StepT = { t: number; tool: string; detail?: string };
-type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number; model?: string; steps?: StepT[] };
+type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number; model?: string; steps?: StepT[]; parent?: string };
 type D = { brain: { name: string; state: string; doing: string; detail?: string }; agents: A[]; session: string; record: boolean; archived?: number };
 const ICON: Record<string, any> = { Explore: Search, Plan: MapIcon, "claude-code-guide": BookOpen, "general-purpose": Compass };
 const KIND: Record<string, string> = { Explore: "scout", Plan: "planner", "claude-code-guide": "guide", "general-purpose": "hand" };
@@ -125,18 +125,27 @@ export function Agents() {
     tick(); return () => { stop = true; };
   }, []);
   const all = d?.agents || []; const agents = all.filter(a => showGone || !a.archived); const active = agents.filter(a => a.status === "active"); const finished = agents.filter(a => a.status !== "active" && !a.archived);
-  const gone = all.filter(a => a.archived).length; const shown = agents.slice(0, 12);   // the newest twelve on the chart
-  // the connectors, measured, so they follow the row wherever it wraps: the brain down to a bus, the bus across, a stub down to each node on the first row
+  const gone = all.filter(a => a.archived).length; const shown = agents.filter(a => !a.parent).slice(0, 12);   // the brain's own delegations, the newest twelve on the chart; an agent's own hang under it
+  const kids = (id: string) => agents.filter(a => a.parent === id);
+  // the connectors, measured, so they follow the nodes wherever the row wraps: the brain down to a bus, the bus across the first row and a stub down to
+  // each node; every further row has a bus of its own, fed by a rail down the left, clear of the nodes, so no node is ever left hanging
   useLayoutEffect(() => {
     if (mobile) { setLines([]); return; }
     const draw = () => {
       const w = wrap.current, b = brainRef.current; if (!w || !b) return;
       const W = w.getBoundingClientRect(), B = b.getBoundingClientRect(); const bx = B.left + B.width / 2 - W.left, by = B.bottom - W.top;
-      const tops = shown.map(a => refs.current[a.id]).filter(Boolean).map(el => { const r = el!.getBoundingClientRect(); return { x: r.left + r.width / 2 - W.left, y: r.top - W.top }; });
+      const pts = shown.map(a => refs.current[a.id]).filter(Boolean).map(el => { const r = el!.getBoundingClientRect(); return { x: r.left + r.width / 2 - W.left, y: r.top - W.top, l: r.left - W.left }; }).sort((p, q) => p.y - q.y);
+      const rows: (typeof pts)[] = []; for (const p of pts) { const r = rows[rows.length - 1]; if (r && Math.abs(p.y - r[0].y) < 8) r.push(p); else rows.push([p]); }
       const out: string[] = [];
-      if (tops.length) {
-        const top = Math.min(...tops.map(t => t.y)); const row = tops.filter(t => t.y - top < 8); const bus = by + Math.max(12, (top - by) / 2); const xs = row.map(t => t.x);
-        out.push(`M${bx},${by} V${bus}`, `M${Math.min(...xs, bx)},${bus} H${Math.max(...xs, bx)}`); for (const t of row) out.push(`M${t.x},${bus} V${t.y}`);
+      if (rows.length) {
+        const rail = Math.max(4, Math.min(...pts.map(p => p.l)) - 14);
+        const buses = rows.map((r, i) => i === 0 ? by + Math.max(12, (r[0].y - by) / 2) : r[0].y - 20);
+        out.push(`M${bx},${by} V${buses[0]}`);
+        rows.forEach((r, i) => {
+          const xs = r.map(p => p.x); const ends = i === 0 ? [bx] : []; const from = rows.length > 1 ? Math.min(rail, ...xs, ...ends) : Math.min(...xs, ...ends);
+          out.push(`M${from},${buses[i]} H${Math.max(...xs, ...ends)}`); for (const p of r) out.push(`M${p.x},${buses[i]} V${p.y}`);
+        });
+        if (rows.length > 1) out.push(`M${rail},${buses[0]} V${buses[buses.length - 1]}`);
       }
       setLines(out); setBox({ w: W.width, h: W.height });
     };
@@ -145,6 +154,11 @@ export function Agents() {
   const brain = d?.brain; const name = brain?.name || fallback;
   const brainSub = !brain ? "…" : brain.state === "off" ? "not running" : brain.doing ? `${brain.state} · ${brain.doing}` : brain.state;
   const selA = agents.find(a => a.id === sel) || null;
+  const nodeOf = (a: A) => <Node title={a.name} sub={`${KIND[a.type] || a.type}${a.status === "active" ? (a.doing ? " · " + a.doing : " · at work") : " · " + span(a, now)}${a.archived ? " · archived" : ""}`} Icon={ICON[a.type] || Bot} active={a.status === "active"} dim={a.status !== "active"}
+    badge={a.status === "active" ? "Active" : a.status === "failed" ? "Failed" : a.status === "quiet" ? "Quiet" : undefined} selected={sel === a.id} onClick={() => setSel(sel === a.id ? null : a.id)} onArchive={a.status !== "active" && !a.archived ? () => archive(a.id) : undefined} />;
+  // an agent's own delegations hang under it, on a short rail of their own (an agent can send agents too)
+  const branch = (a: A, depth = 0): React.ReactNode => { const ch = kids(a.id); return (<>{nodeOf(a)}{ch.length > 0 && depth < 3 && (
+    <div className="ml-7 mt-2 grid gap-2 border-l border-border pl-5">{ch.map(c => <div key={c.id} className="relative before:absolute before:-left-5 before:top-[30px] before:h-px before:w-5 before:bg-border">{branch(c, depth + 1)}</div>)}</div>)}</>); };
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4">
       <div className="hairline p-4 sm:p-6">
@@ -153,16 +167,13 @@ export function Agents() {
           <span className="ml-auto flex items-center gap-2">
             {finished.length > 0 && <Button size="sm" variant="ghost" onClick={() => archive("finished")} title="Off the chart; the record keeps them"><Archive className="h-3.5 w-3.5" />Archive finished</Button>}
             {gone > 0 && <Button size="sm" variant="ghost" onClick={() => setShowGone(v => !v)}>{showGone ? "Hide archived" : `Show archived (${gone})`}</Button>}</span></div>
-        <div ref={wrap} className="relative">
+        <div ref={wrap} className={cn("relative", !mobile && "px-6")}>
           {!mobile && <svg className="pointer-events-none absolute left-0 top-0" width={box.w} height={box.h} aria-hidden>{lines.map((p, i) => <path key={i} d={p} fill="none" stroke="hsl(var(--border))" strokeWidth={1.5} />)}</svg>}
           <div className="relative flex justify-center"><div ref={brainRef} className={mobile ? "w-full max-w-[320px]" : ""}><Node title={name} sub={brainSub} Icon={Orbit} active={!!brain && !["off", "idle"].includes(brain.state)} /></div></div>
           {shown.length > 0 && (
             <div className={cn("relative flex justify-center", mobile ? "mt-5 flex-col items-center gap-y-4" : "mt-12 flex-wrap gap-x-6 gap-y-10")}>
               {shown.map(a => (
-                <div key={a.id} ref={el => { refs.current[a.id] = el; }} className={mobile ? "w-full max-w-[320px]" : ""}>
-                  <Node title={a.name} sub={`${KIND[a.type] || a.type}${a.status === "active" ? (a.doing ? " · " + a.doing : " · at work") : " · " + span(a, now)}${a.archived ? " · archived" : ""}`} Icon={ICON[a.type] || Bot} active={a.status === "active"} dim={a.status !== "active"}
-                    badge={a.status === "active" ? "Active" : a.status === "failed" ? "Failed" : a.status === "quiet" ? "Quiet" : undefined} selected={sel === a.id} onClick={() => setSel(sel === a.id ? null : a.id)} onArchive={a.status !== "active" && !a.archived ? () => archive(a.id) : undefined} />
-                </div>))}
+                <div key={a.id} ref={el => { refs.current[a.id] = el; }} className={mobile ? "w-full max-w-[320px]" : ""}>{branch(a)}</div>))}
             </div>)}
           {shown.length === 0 && <p className="mx-auto mt-8 max-w-md text-center text-sm text-muted-foreground">{err || (d && !d.record ? "No record of this session yet." : `No one is on a task right now. ${name} delegates when a job is big enough, a survey of files, a piece of research, a review, and names each one for the work. They appear here as it does.`)}</p>}
         </div>
