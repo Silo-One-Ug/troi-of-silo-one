@@ -38,7 +38,7 @@ const nid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const stamp = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 
 // ---- the tools, each with a few words and a small icon
-const NOTE: Record<string, string> = { Bash: "running a command", Read: "reading a file", Write: "writing a file", Edit: "editing a file", MultiEdit: "editing a file", NotebookEdit: "editing a notebook", Glob: "looking through files", Grep: "searching files", WebSearch: "searching the web", WebFetch: "reading a page", Task: "delegating", Agent: "delegating", ToolSearch: "" };
+const NOTE: Record<string, string> = { Bash: "at the terminal", Read: "reading a file", Write: "writing a file", Edit: "editing a file", MultiEdit: "editing a file", NotebookEdit: "editing a notebook", Glob: "looking through files", Grep: "searching files", WebSearch: "searching the web", WebFetch: "reading a page", Task: "delegating", Agent: "delegating", ToolSearch: "" };
 const TOOL_ICON: Record<string, any> = { Bash: Terminal, Read: FileText, Write: FilePlus, Edit: FilePen, MultiEdit: FilePen, NotebookEdit: FilePen, Glob: FolderSearch, Grep: TextSearch, WebSearch: Globe, WebFetch: Link2, Task: Bot, Agent: Bot };
 const GOOGLE: [RegExp, string, any][] = [[/calendar|event/, "in Google Calendar", CalendarDays], [/gmail|mail|message|draft|label|thread/, "in Gmail", Mail], [/task/, "in Google Tasks", ListChecks], [/contact|people/, "in Google Contacts", Users], [/drive|doc|sheet|form|slide|file|folder/, "in Google Drive", HardDrive]];
 function kind(tool: string): { label: string; Icon: any } {
@@ -49,6 +49,25 @@ function kind(tool: string): { label: string; Icon: any } {
   if (/playwright|browser|chrome/.test(server)) return { label: "in the browser", Icon: AppWindow };
   if (/hands/.test(server)) return { label: "using the hands", Icon: Hand };
   return { label: "using " + server.replace(/[-_]/g, " "), Icon: Plug };
+}
+// a command on the working line is said by what it does (which of the agent's tools it runs, or which program), never as the
+// raw command: that stays in the tooltip. The owner reads "putting it on the board", not `cd "…" && board.sh '{…}'`.
+const DOING: [RegExp, string][] = [
+  [/\bboards\.sh\b/, "sorting the boards"], [/\bboard\.sh\b|\bboard-state\.sh\b|\bshow-image\.sh\b/, "putting it on the board"], [/\bshow\.py\b/, "drawing a panel"],
+  [/\bpictures\.py\b/, "finding pictures"], [/\bimagine\.py\b/, "making a picture"], [/\bnews\.py\b/, "reading the news"], [/\bsounds\.py\b/, "at the sounds"],
+  [/\bcredits\.sh\b/, "checking the voice's credits"], [/\bmedia\.py\b/, "at the music"], [/\bspaces\.sh\b|\bapps\.sh\b|\bcursor\.sh\b/, "moving windows about"],
+  [/\bconsole\.sh\b/, "steering the console"], [/\bbrain\.sh\b/, "picking a brain"], [/\blook-screen\.sh\b|\bshare\.sh\b/, "taking a look at the screen"], [/\blook\.sh\b/, "looking through the camera"],
+  [/\bfs\.sh\b/, "tidying files"], [/\bremind\.sh\b/, "setting a reminder"], [/\btelegram\.py\b/, "reaching your phone"], [/\bmeeting\.py\b/, "on the meeting"], [/\bservers\.py\b/, "checking the servers"],
+  [/\bgrafana\.py\b/, "in Grafana"], [/\bagenda\.py\b/, "reading your calendar"], [/\bpr\.py\b/, "on a pull request"], [/\bci-status\.sh\b|\bgh\b/, "on GitHub"], [/\bgit\b/, "in the repository"],
+  [/\bcurl\b|\bwget\b/, "asking a server"], [/\bssh\b|\bscp\b/, "on a server"], [/\bdocker\b|\bkubectl\b/, "among the containers"], [/\bnpx\b|\bnpm\b|\btsc\b|\bnode\b/, "in the console's code"],
+  [/\bpython3?\b/, "running a script"], [/\b(?:grep|rg|find|ls|cat|head|tail|sed|awk|wc|stat|du|diff)\b/, "looking through files"], [/\bosascript\b/, "having a word with the Mac"], [/\bopen\b/, "opening something"],
+];
+function said(s: Step): { Icon: any; label: string; note?: string; raw?: string } {
+  const k = kind(s.tool);
+  if (s.tool !== "Bash" || !s.detail) return { Icon: k.Icon, label: k.label, note: s.detail, raw: s.detail };
+  const cmd = s.detail.replace(/^cd\s+(?:"[^"]*"|\S+)\s*&&\s*/, "");
+  const hit = DOING.find(([re]) => re.test(cmd));
+  return { Icon: k.Icon, label: hit ? hit[1] : "at the terminal", raw: s.detail };
 }
 const fixPics = (v: any) => !v || !Array.isArray(v.items) ? v : { ...v, items: v.items.map((i: any) => ({ ...i, url: i.url && i.url.startsWith("/img?") ? img(i.url) : i.url })) };
 function fromCard(c: Card): Msg | null {
@@ -137,8 +156,8 @@ const Detail = ({ d }: { d?: string }) => d ? <code className="min-w-0 truncate 
 function Steps({ m, onToggle }: { m: Msg; onToggle: () => void }) {
   const steps = m.steps || []; const cur = steps[steps.length - 1]; if (!cur) return null;
   if (m.live || steps.length === 1) {
-    const { Icon } = kind(cur.tool);
-    return <div className="flex min-w-0 items-center gap-2 px-1 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5 shrink-0" /><span className={cn("shrink-0", m.live && "shimmer")}>{cur.label}</span><Detail d={cur.detail} /></div>;
+    const { Icon, label, note, raw } = said(cur);
+    return <div className="flex min-w-0 items-center gap-2 px-1 text-xs text-muted-foreground" title={raw}><Icon className="h-3.5 w-3.5 shrink-0" /><span className={cn("shrink-0", m.live && "shimmer")}>{label}</span><Detail d={note} /></div>;
   }
   const counts: [string, number][] = []; for (const s of steps) { const c = counts.find(x => x[0] === s.tool); if (c) c[1]++; else counts.push([s.tool, 1]); }
   return (
@@ -148,7 +167,7 @@ function Steps({ m, onToggle }: { m: Msg; onToggle: () => void }) {
         {counts.map(([tool, n]) => { const { Icon, label } = kind(tool); return <span key={tool} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" />{n}</span>; })}
         <span className="text-muted-foreground/70">{steps.length} steps</span>
       </button>
-      {m.open && <ul className="mt-1 space-y-0.5 border-l border-border pl-3">{steps.map(s => { const { Icon } = kind(s.tool); return <li key={s.id} className="flex min-w-0 items-center gap-2"><Icon className="h-3.5 w-3.5 shrink-0" /><span className="shrink-0">{s.label}</span><Detail d={s.detail} /></li>; })}</ul>}
+      {m.open && <ul className="mt-1 space-y-0.5 border-l border-border pl-3">{steps.map(s => { const { Icon, label, note, raw } = said(s); return <li key={s.id} className="flex min-w-0 items-center gap-2" title={raw}><Icon className="h-3.5 w-3.5 shrink-0" /><span className="shrink-0">{label}</span><Detail d={note} /></li>; })}</ul>}
     </div>);
 }
 /** What is attached, before it is sent: a photo as its thumbnail, anything else as a small card; × leaves it out. */
@@ -467,7 +486,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
               {talking && <Button type="button" variant="outline" onClick={() => epost("/say", { text: "stop" })} title="Cut the reply off" aria-label="Stop the reply" className="h-11 w-11 shrink-0 rounded-full p-0"><Square className="h-4 w-4" /></Button>}
             </div>
           </>) : (
-            <div className={cn("rounded-2xl border bg-background/80 shadow-sm transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15", drag ? "border-primary bg-accent/30" : "border-border")}>
+            <div className={cn("rounded-2xl border bg-background/80 shadow-sm transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15", drag ? "border-primary bg-accent/30" : "border-border", talking && "composer-glow")}>
               {previews}
               {recording || <textarea ref={input} rows={1} value={text} onChange={onChange} onKeyDown={onKey} onBlur={() => setTimeout(() => setPick(null), 150)} onPaste={e => { if (e.clipboardData.files.length) { e.preventDefault(); upload(e.clipboardData.files); } }}
                 placeholder={`Type to ${name} · @ points at a file`} autoCapitalize="sentences" autoComplete="off" aria-label={`Message ${name}`}

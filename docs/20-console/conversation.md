@@ -10,6 +10,10 @@ The window takes the console's full width; the words keep a reading column in th
 - **Your lines** are bubbles on the right, with your initials beside them and the time in the
   corner. **The agent's replies** sit straight on the page, and under each one a copy button takes
   the reply as written, with the time beside it.
+- While the agent works, the composer wears a slow turning light and a soft halo, and one line
+  above it says what the agent is on in plain words: "putting it on the board", "reading the
+  news", "in the repository", never a raw command (the command itself is in the tooltip). The
+  line settles into a count of the steps, opened with a click.
 - A reply grows word by word, then settles into the finished text as the record has it, whole and
   in order, so what you see live is what a reload shows; a line the log delivers late joins the
   same reply instead of opening another, and a reply typed here is not shown twice when the voice
@@ -105,5 +109,5 @@ remembered. It shows the console's `/float` route, the conversation alone.
 The pane's header carries three buttons: back to the console (the conversation returns to its column
 and the console's window comes forward), larger or smaller, and put away; the glyph in the bottom
 right marks the corner that resizes, though every edge does. Typing lands in it once you click into
-it. The paperclip opens the Mac's file picker. The microphone cannot record inside the pane; on the
-Mac the voice line's own microphone is right there: hold the talk key and speak.
+it. The paperclip opens the Mac's file picker. The microphone asks the Mac once for the ring's
+permission, then records; if the Mac says no, hold the talk key and speak, the voice line hears you.

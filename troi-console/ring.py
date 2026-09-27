@@ -202,20 +202,36 @@ class FloatPanel(NSPanel):
         return False
 
 
+# WebKit hands these two delegate methods a completion block that reaches Python without a signature ("cannot call block without a
+# signature", whatever metadata is registered), so the ring cannot answer them from Python: it crashed inside WebKit's callback and
+# launchd brought it back, the pane vanishing and returning at every paperclip. The real delegate is therefore native: TroiWebUI,
+# forty lines of Objective-C compiled into the ring's bundle (WEBUI_M, built beside the launcher) and loaded here. This Python one
+# is the fallback when there is no compiler: the picker still opens, the chosen file does not reach the page.
 class WebUI(NSObject, protocols=[objc.protocolNamed("WKUIDelegate")]):
     """What the web view asks the host for: a file picker for the paperclip (a plain web view has none and the click does
-    nothing), and the microphone for the recorder (granted here; the Mac still asks once for Python's own permission)."""
+    nothing), and the microphone for the recorder (granted here; the Mac asks once more for the ring's own permission)."""
     def webView_runOpenPanelWithParameters_initiatedByFrame_completionHandler_(self, web, params, frame, handler):
+        # the picker runs beside the page, never as a modal loop inside WebKit's own callback: that stalled the web process (the
+        # pane went blank and came back) and the chosen file never reached the page
         panel = NSOpenPanel.openPanel()
         panel.setCanChooseFiles_(True); panel.setCanChooseDirectories_(False)
         try:
             panel.setAllowsMultipleSelection_(bool(params.allowsMultipleSelection()))
         except Exception:
             panel.setAllowsMultipleSelection_(True)
-        panel.setTitle_("A file or a photo for the conversation")
+        panel.setTitle_("A file or a photo for the conversation"); panel.setPrompt_("Attach")
+        panel.setLevel_(NSFloatingWindowLevel + 1)
+        self._panel = panel                                            # kept until it answers
+
+        def done(res):
+            try:
+                handler(panel.URLs() if res == 1 else None)
+            except Exception as e:
+                print("[ring] file picker:", e, file=sys.stderr)
+            self._panel = None
         NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
-        res = panel.runModal()
-        handler(panel.URLs() if res == 1 else None)
+        panel.beginWithCompletionHandler_(done)
+        panel.makeKeyAndOrderFront_(None)
 
     def webView_requestMediaCapturePermissionForOrigin_initiatedByFrame_type_decisionHandler_(self, web, origin, frame, kind, handler):
         handler(1)                                                     # WKPermissionDecisionGrant: the console asked for the microphone
@@ -250,10 +266,17 @@ class Floater:
         glass.setWantsLayer_(True); glass.layer().setCornerRadius_(14.0); glass.layer().setMasksToBounds_(True)
         glass.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
         cfg = WKWebViewConfiguration.alloc().init()
+        # a web view has no navigator.mediaDevices unless its host says so (WebKit's own switch, private): the pane's microphone needs it,
+        # and the console is plain http on localhost, which WebKit may not count as a secure connection for capture
+        for sel, val in (("_setMediaDevicesEnabled_", True), ("_setMediaCaptureRequiresSecureConnection_", False)):
+            try:
+                getattr(cfg.preferences(), sel)(val)
+            except Exception as e:
+                print("[ring] web view preference", sel, "not available:", e, file=sys.stderr)
         self.web = WKWebView.alloc().initWithFrame_configuration_(NSMakeRect(0, 0, w, h - self.STRIP), cfg)
         self.web.setValue_forKey_(False, "drawsBackground")
         self.web.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
-        self.ui = WebUI.alloc().init(); self.web.setUIDelegate_(self.ui)
+        self.ui = native_webui() or WebUI.alloc().init(); self.web.setUIDelegate_(self.ui)
         glass.addSubview_(self.web)
         self.strip = FloatDrag.alloc().initWithFrame_(NSMakeRect(0, h - self.STRIP, w, self.STRIP))
         self.strip.setAutoresizingMask_(NSViewWidthSizable | NSViewMinYMargin)
@@ -449,7 +472,125 @@ class App(NSObject):
         NSApplication.sharedApplication().terminate_(None)
 
 
+LAUNCHER_C = r'''
+// the ring's launcher: a real application bundle around the same Python, so the Mac can ask the owner for the microphone
+// (a usage description lives only in a bundle's Info.plist) and names the ring in its prompts. It loads the interpreter's
+// library and runs ring.py; nothing else.
+#include <dlfcn.h>
+#include <stdio.h>
+#include <stdlib.h>
+int main(int argc, char **argv) {
+  const char *lib = getenv("TROI_LIBPYTHON");
+  if (!lib) { fprintf(stderr, "ring: TROI_LIBPYTHON is not set\n"); return 2; }
+  void *h = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+  if (!h) { fprintf(stderr, "ring: %s\n", dlerror()); return 2; }
+  int (*pymain)(int, char **) = (int (*)(int, char **)) dlsym(h, "Py_BytesMain");
+  if (!pymain) { fprintf(stderr, "ring: no Py_BytesMain in %s\n", lib); return 2; }
+  return pymain(argc, argv);
+}
+'''
+
+
+WEBUI_M = r'''
+// TroiWebUI: what the conversation pane's web view asks its host for, answered natively. The paperclip's file picker (the Mac's
+// own, beside the page, never a modal loop inside WebKit's callback) and the microphone (granted; the Mac then asks the owner
+// once, in the ring's name). Built into the ring's bundle by ring.py and loaded from there.
+#import <AppKit/AppKit.h>
+#import <WebKit/WebKit.h>
+@interface TroiWebUI : NSObject <WKUIDelegate>
+@end
+@implementation TroiWebUI
+- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame
+      completionHandler:(void (^)(NSArray<NSURL *> *URLs))completionHandler {
+  NSOpenPanel *panel = [NSOpenPanel openPanel];
+  panel.canChooseFiles = YES; panel.canChooseDirectories = NO;
+  panel.allowsMultipleSelection = parameters.allowsMultipleSelection;
+  panel.title = @"A file or a photo for the conversation"; panel.prompt = @"Attach";
+  panel.level = NSFloatingWindowLevel + 1;
+  [NSApp activateIgnoringOtherApps:YES];
+  [panel beginWithCompletionHandler:^(NSModalResponse result) { completionHandler(result == NSModalResponseOK ? panel.URLs : nil); }];
+  [panel makeKeyAndOrderFront:nil];
+}
+- (void)webView:(WKWebView *)webView requestMediaCapturePermissionForOrigin:(WKSecurityOrigin *)origin initiatedByFrame:(WKFrameInfo *)frame
+      type:(WKMediaCaptureType)type decisionHandler:(void (^)(WKPermissionDecision decision))decisionHandler {
+  decisionHandler(WKPermissionDecisionGrant);
+}
+@end
+'''
+
+
+def native_webui():
+    """The native delegate from the bundle's dylib, or None (no compiler, no bundle): then the Python fallback serves."""
+    try:
+        dylib = bundle_dir() / "Contents" / "MacOS" / "TroiWebUI.dylib"
+        if not dylib.exists():
+            return None
+        import ctypes
+        ctypes.CDLL(str(dylib))
+        return objc.lookUpClass("TroiWebUI").alloc().init()
+    except Exception as e:
+        print("[ring] native web delegate not loaded:", e, file=sys.stderr)
+        return None
+
+
+def bundle_dir():
+    return P.DATA / "ring" / ("%s Ring.app" % _agent_name())
+
+
+def build_bundle():
+    """The app bundle, built here when missing or older than this file: Contents/MacOS/ring (the launcher, compiled with cc)
+    and an Info.plist with the microphone's usage description. Returns the launcher's path, or None when it cannot be built."""
+    import plistlib, shutil, subprocess
+    app = bundle_dir(); macos = app / "Contents" / "MacOS"; exe = macos / "ring"; plist = app / "Contents" / "Info.plist"
+    src = Path(__file__).resolve()
+    if exe.exists() and plist.exists() and exe.stat().st_mtime >= src.stat().st_mtime:
+        return exe
+    cc = shutil.which("cc") or shutil.which("clang")
+    if not cc:
+        return None
+    macos.mkdir(parents=True, exist_ok=True)
+    c = app / "Contents" / "launcher.c"; c.write_text(LAUNCHER_C)
+    r = subprocess.run([cc, "-O2", "-o", str(exe), str(c)], capture_output=True, text=True, timeout=120)
+    if r.returncode != 0:
+        print("[ring] the launcher did not compile:", r.stderr[-300:], file=sys.stderr); return None
+    m = app / "Contents" / "TroiWebUI.m"; m.write_text(WEBUI_M); dylib = macos / "TroiWebUI.dylib"
+    r = subprocess.run([cc, "-fobjc-arc", "-dynamiclib", "-framework", "AppKit", "-framework", "WebKit", "-o", str(dylib), str(m)], capture_output=True, text=True, timeout=180)
+    if r.returncode != 0:
+        print("[ring] the web delegate did not compile (the Python one serves):", r.stderr[-300:], file=sys.stderr)
+    else:
+        subprocess.run(["codesign", "--force", "--sign", "-", str(dylib)], capture_output=True, text=True, timeout=60)
+    name = _agent_name()
+    plistlib.dump({"CFBundleName": "%s Ring" % name, "CFBundleDisplayName": "%s Ring" % name, "CFBundleIdentifier": "com.troi-of-silo-one.ring",
+                   "CFBundleExecutable": "ring", "CFBundlePackageType": "APPL", "CFBundleVersion": "1", "CFBundleShortVersionString": "1.0",
+                   "LSUIElement": True, "NSHighResolutionCapable": True,
+                   "NSMicrophoneUsageDescription": "The floating conversation records your voice when you press its microphone.",
+                   "NSCameraUsageDescription": "The console's pages can show the camera when you ask."}, plist.open("wb"))
+    (app / "Contents" / "PkgInfo").write_text("APPL????")
+    subprocess.run(["codesign", "--force", "--sign", "-", str(exe)], capture_output=True, text=True, timeout=60)   # ad hoc: what Apple silicon asks of any binary
+    return exe
+
+
+def bundled_exec():
+    """Run again from inside the bundle (the same process id, so launchd is none the wiser). Plain Python when anything is missing."""
+    if os.environ.get("TROI_RING_BUNDLED") == "1" or "--no-bundle" in sys.argv:
+        return
+    try:
+        exe = build_bundle()
+        if not exe:
+            return
+        py = Path(sys.executable).resolve(); prefix = py.parent.parent
+        lib = prefix / "lib" / ("libpython%d.%d.dylib" % sys.version_info[:2])
+        if not lib.exists():
+            print("[ring] no shared Python library at", lib, "; running plain", file=sys.stderr); return
+        site = [p for p in sys.path if p.endswith("site-packages")]
+        env = dict(os.environ, TROI_RING_BUNDLED="1", TROI_LIBPYTHON=str(lib), PYTHONHOME=str(prefix), PYTHONPATH=":".join(site + [str(HERE)]))
+        os.execve(str(exe), [str(exe), str(Path(__file__).resolve()), *[a for a in sys.argv[1:]]], env)
+    except Exception as e:
+        print("[ring] running plain, no bundle:", e, file=sys.stderr)
+
+
 if __name__ == "__main__":
+    bundled_exec()
     app = NSApplication.sharedApplication()
     app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)     # no Dock icon
     delegate = App.alloc().init(); app.setDelegate_(delegate)
