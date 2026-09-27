@@ -26,6 +26,8 @@ cat <<'TXT'
   ../barehands/bin/board-state.sh [events|json|boards]    what is on the board (or the saved scene), which board it is, the last clicks on its buttons
   boards.sh    list · current · new "<name>" · use "<name>" · rename "<name>" "<new>" · archive "<name>" · restore "<name>"   the boards, plural: one scene each, one up, every screen follows
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
+  files.py     zip <path> [dest.zip] · unzip <archive> [folder] · size <folder> · dupes <folder> [--min 100k] · recent <folder> [--days 7] · tag <path> <tag>… · tags <path> · plan <folder> [--by-month]   deeper Finder hands inside the file roots; nothing overwritten, nothing removed (also as fs.sh verbs)
+  clip.py      get · set "<text>" · kind   the clipboard: text, copied files or a picture (saved to data/blobs/clips/); a secret is never printed
   watches.py   add time "every monday at 8am" "<do>" · add folder <path> [--glob "*.pdf"] "<do>" · add file|process|app <name> "<do>" · add url https://… [--every 15m] "<do>" · add disk|battery --below N "<do>" · add power [--on battery] "<do>" · add wifi "<do>" · list · on|off <id> · test <id> · when "<phrase>"   "watch this, and when it happens, do that": the pulse notices, you act (--tell for a plain heads-up)
   brain.sh     status · live · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
   share.sh     start | stop | status | build   screen sharing: the Mac's picker, then the shared frames for your eyes (look-screen.sh) and hands (click --share)
