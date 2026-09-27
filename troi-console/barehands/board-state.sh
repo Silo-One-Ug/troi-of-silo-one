@@ -26,11 +26,12 @@ fi
 PORT=$("$PYBIN" -c "import json;print(json.load(open('$DIR/barehands.json')).get('port',8794))" 2>/dev/null || echo 8794)
 PORT="${BOARD_PORT:-$PORT}"
 MODE="${1:-items}"
+BOARDS=$(curl -sS --max-time 3 "http://127.0.0.1:$PORT/boards" 2>/dev/null || echo "{}")
 STATE=$(curl -sS --max-time 3 "http://127.0.0.1:$PORT/state" 2>/dev/null) || {
     echo "The board is dark — the board server isn't running."; exit 1; }
 SCENE=$(curl -sS --max-time 3 "http://127.0.0.1:$PORT/scene" 2>/dev/null || echo "{}")
 EVENTS=$(curl -sS --max-time 3 "http://127.0.0.1:$PORT/events" 2>/dev/null || echo "{}")
-export STATE SCENE EVENTS MODE
+export STATE SCENE EVENTS MODE BOARDS
 "$PYBIN" <<'PY'
 import json, os, time
 
@@ -41,6 +42,18 @@ def load(s):
         return {}
 
 state, scene, events, mode = load(os.environ["STATE"]), load(os.environ["SCENE"]), load(os.environ["EVENTS"]), os.environ["MODE"]
+boards = load(os.environ.get("BOARDS", "{}"))
+cur = boards.get("current"); blist = boards.get("boards") or []
+bname = next((b["name"] for b in blist if b["id"] == cur), state.get("board", {}).get("name") if isinstance(state.get("board"), dict) else "") or "Main"
+others = [b["name"] for b in blist if b["id"] != cur and not b.get("archived")]
+
+if mode == "boards":
+    if not blist:
+        print("One board, Main (the server does not know boards yet: a restart brings them)."); raise SystemExit
+    print(f"BOARDS — {len([b for b in blist if not b.get('archived')])} up, {bname} is showing:")
+    for b in blist:
+        print(f"  {'*' if b['id'] == cur else ' '} {b['name']:<24} {b.get('items', 0):>3} item(s)" + ("  (put away)" if b.get("archived") else ""))
+    raise SystemExit
 specs = scene.get("ui") or {}
 
 if mode == "json":
@@ -65,7 +78,7 @@ saved = scene.get("items") or []
 if not live and saved:
     items = saved
 if not items:
-    print("The board is EMPTY" + (" (as of the tracker's last heartbeat)." if state else ": the page has not connected yet and nothing is saved."))
+    print(f"The board \"{bname}\" is EMPTY" + (" (as of the tracker's last heartbeat)." if state else ": the page has not connected yet and nothing is saved.") + (f"  [other boards: {', '.join(others)}]" if others else ""))
     raise SystemExit
 
 def zone(x, y):
@@ -97,7 +110,9 @@ def parts(node, out, depth=0):
             parts(it["child"], out, depth + 1)
     return out
 
-head = f"ON THE BOARD — {len(items)} item(s), " + ("last tracker heartbeat:" if live else "the SAVED scene (the board page is not open; it comes back when it is):")
+head = f"ON THE BOARD \"{bname}\" — {len(items)} item(s), " + ("last tracker heartbeat:" if live else "the SAVED scene (the board page is not open; it comes back when it is):")
+if others:
+    head += f"  [other boards: {', '.join(others)}; boards.sh use <name> switches]"
 print(head)
 for i in items:
     t = i.get("type", "?")

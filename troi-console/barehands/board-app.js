@@ -15,7 +15,7 @@
   const str = v => v == null ? "" : String(v);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
   const W = () => innerWidth, H = () => innerHeight;
-  const MARGIN = 24, GAP = 18, TOP = 24, BOTTOM = 24;
+  const MARGIN = 24, GAP = 18, TOP = 52, BOTTOM = 24;   // TOP leaves the strip of boards its band
   // a phone: one column in reading order (the model's y, then x), laid out by the page; the model keeps the glass's geometry
   const NARROW_MQ = matchMedia("(max-width: 767px)"), narrow = () => NARROW_MQ.matches;
   const rank = t => Math.round(clamp(num(t.y, 0.45), 0, 12) * 8) * 1000 + Math.round(clamp(num(t.x, 0.5), 0, 1) * 100);
@@ -31,6 +31,9 @@
   { const q = new URLSearchParams(location.search).get("theme"); if (q === "dark" || q === "light" || q === "system") applyTheme(q); }
   addEventListener("message", e => { const m = e.data || {}; if (m.theme === "dark" || m.theme === "light" || m.theme === "system") applyTheme(m.theme); });
   let tiles = [], UID = 1, presented = null, CFG = { name: "Assistant" }, seq = 1;
+  // the boards, plural: the one this page shows, the list for the strip (its version, so a stale strip redraws), and a switch under way
+  let BOARD = { id: "main", name: "Main" }, BOARDS = { v: 0, list: [] }, switching = false;
+  const boardsEl = $("#boards");
   const isModel = s => /\.(glb|gltf)(\?|$)/i.test(str(s));
   const isVideo = s => /\.(webm|mp4|mov|m4v)(\?|$)/i.test(str(s));
   const newUid = () => "u" + Date.now().toString(36) + (seq++).toString(36);
@@ -388,9 +391,65 @@
         case "ui": uiOp(c); break;
         case "layout": layout(c); break;
         case "tidy": tidy(); break;
+        case "board": if (c.id && c.id !== BOARD.id) switchBoard(c); else if (c.name && c.name !== BOARD.name) { BOARD.name = str(c.name); drawBoards(); buildEmpty(); } break;
+        case "boards": takeBoards(c); break;
         default: break;                            // widget, explode, assemble: the ring and the holograms are gone
       }
     });
+  }
+
+  // ---- the boards, plural: a strip of names at the top left, the one up lit; + makes one, a double-click renames, × puts one
+  //      away (kept on disk, restorable). Switching is the server's: every page showing the board follows the one chosen.
+  function takeBoards(d) {
+    BOARDS = { v: num(d.v, 0), list: Array.isArray(d.boards) ? d.boards : [] };
+    const cur = BOARDS.list.find(b => b.id === d.current); if (cur) BOARD = { id: cur.id, name: str(cur.name || cur.id) };
+    drawBoards(); buildEmpty();
+  }
+  async function switchBoard(c) {
+    switching = true;
+    if (presented) unpresent();
+    tiles.slice().forEach(t => t.el.remove()); tiles = [];         // the old board's tiles go at once: another board is coming
+    BOARD = { id: str(c.id), name: str(c.name || c.id) };
+    drawBoards(); buildEmpty();
+    const n = await restore(true);
+    switching = false; dirty();
+    toast(`${BOARD.name}${n ? `: ${n} item${n > 1 ? "s" : ""}` : ", empty"}`);
+  }
+  async function boardsPost(body) {
+    try {
+      const r = await fetch("/boards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.error) toast(d.error || "the board server said no");
+      else if (d.boards) takeBoards(d);
+      return d;
+    } catch (e) { toast("the board server is not answering"); return {}; }
+  }
+  function drawBoards() {
+    if (!boardsEl) return;
+    boardsEl.replaceChildren();
+    BOARDS.list.filter(b => !b.archived).forEach(b => {
+      const chip = el("button", "chip" + (b.id === BOARD.id ? " on" : ""), b.name); chip.type = "button";
+      chip.title = b.id === BOARD.id ? "this board · double-click to rename" : `switch to ${b.name}${b.items ? ` (${b.items} item${b.items > 1 ? "s" : ""})` : ""}`;
+      chip.addEventListener("click", () => { if (b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
+      chip.addEventListener("dblclick", () => rename(b, chip));
+      if (b.id !== "main") { const x = el("span", "chipx", "×"); x.title = `put ${b.name} away (kept; restore brings it back)`; x.addEventListener("click", e => { e.stopPropagation(); askAway(b, chip); }); chip.appendChild(x); }
+      boardsEl.appendChild(chip);
+    });
+    const plus = el("button", "chip plus", "+"); plus.type = "button"; plus.title = "a new board";
+    plus.addEventListener("click", () => newBoard(plus)); boardsEl.appendChild(plus);
+  }
+  function nameInput(initial, done) {                              // an inline field in the strip: Enter keeps, Esc or a click elsewhere leaves
+    const f = el("input", "chipin"); f.value = initial || ""; f.placeholder = "board name"; f.maxLength = 40; f.spellcheck = false;
+    f.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); done(f.value.trim()); } else if (e.key === "Escape") done(null); });
+    f.addEventListener("blur", () => setTimeout(() => { if (f.isConnected) done(null); }, 150));
+    return f;
+  }
+  function newBoard(plus) { const f = nameInput("", async v => { if (f.isConnected) f.replaceWith(plus); if (v) await boardsPost({ a: "create", name: v }); }); plus.replaceWith(f); f.focus(); }
+  function rename(b, chip) { const f = nameInput(b.name, async v => { if (f.isConnected) f.replaceWith(chip); if (v && v !== b.name) await boardsPost({ a: "rename", id: b.id, name: v }); }); chip.replaceWith(f); f.focus(); f.select(); }
+  function askAway(b, chip) {
+    if (chip.classList.contains("arm")) { boardsPost({ a: "archive", id: b.id }); return; }
+    chip.classList.add("arm"); const x = chip.querySelector(".chipx"); if (x) x.textContent = "put away?";
+    setTimeout(() => { chip.classList.remove("arm"); if (x) x.textContent = "×"; }, 3000);
   }
 
   // ---- what is up, reported every 300 ms (the reply carries the queued commands); the server saves it
@@ -404,9 +463,10 @@
   let dirtyFlag = true;
   function dirty() { dirtyFlag = true; emptyEl.hidden = tiles.some(t => t.el.isConnected && !t.el.classList.contains("leave")); fitStage(); }
   async function beat() {
+    if (switching) return;                                          // between two boards nothing of this page is anyone's scene
     const items = tiles.filter(t => t.el.isConnected && !t.el.classList.contains("leave")).map(snapshotOf);
     try {
-      const r = await fetch("/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cursors: [], items }) });
+      const r = await fetch("/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cursors: [], items, board: BOARD.id, bv: BOARDS.v }) });
       if (r.ok) { const cmds = await r.json(); if (Array.isArray(cmds) && cmds.length) applyCmds(cmds); }
     } catch (e) {}
   }
@@ -420,9 +480,10 @@
   }
 
   // ---- the saved scene, back on the board
-  async function restore() {
+  async function restore(quiet) {
     let sc = null;
     try { const r = await fetch("/scene", { cache: "no-store" }); if (r.ok) sc = await r.json(); } catch (e) {}
+    if (sc && sc.board && sc.board.id) { BOARD = { id: str(sc.board.id), name: str(sc.board.name || sc.board.id) }; drawBoards(); }
     const list = sc && Array.isArray(sc.items) ? sc.items : []; const specs = (sc && sc.ui) || {}; let pres = null, n = 0;
     for (const s of list) {
       try {
@@ -437,14 +498,14 @@
       } catch (e) { console.warn("[board] restore", s.type, e); }
     }
     if (n) requestAnimationFrame(() => { settle(); if (pres) present(pres); });
-    if (n) toast(`the board is back: ${n} item${n > 1 ? "s" : ""}`);
+    if (n && !quiet) toast(`the board is back: ${n} item${n > 1 ? "s" : ""}`);
     return n;
   }
 
   // ---- the empty board says what it is for
   function buildEmpty() {
     const card = el("div", "emptycard");
-    card.appendChild(el("div", "kicker", `${str(CFG.name || "the agent")} · the board`));
+    card.appendChild(el("div", "kicker", `${str(CFG.name || "the agent")} · ${BOARD.id === "main" ? "the board" : BOARD.name}`));
     card.appendChild(el("h1", null, "Ask me for something to see. It lands here."));
     card.appendChild(el("p", null, "Pictures and research, notes from the vault, charts and tables, a plan, a video, a map. Whatever I put up stays until you clear it."));
     const how = el("p", "how");
@@ -474,11 +535,12 @@
   (async () => {
     handOver();
     try { const r = await fetch("/config"); if (r.ok) CFG = await r.json(); } catch (e) {}
+    try { const r = await fetch("/boards", { cache: "no-store" }); if (r.ok) takeBoards(await r.json()); } catch (e) {}
     buildEmpty();
     await restore();
     dirty();
     setInterval(beat, 300); beat();
   })();
 
-  window.__board = { tiles: () => tiles, tidy, present, unpresent, applyCmds, autoPlace, layoutTile, narrow };
+  window.__board = { tiles: () => tiles, tidy, present, unpresent, applyCmds, autoPlace, layoutTile, narrow, board: () => BOARD, boards: () => BOARDS };
 })();

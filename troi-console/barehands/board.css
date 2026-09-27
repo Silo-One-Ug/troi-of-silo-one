@@ -131,3 +131,19 @@ body.presenting #stage::before { content: ""; position: fixed; inset: 0; backgro
   .emptycard h1 { font-size: 21px; }
   .emptycard p { font-size: 13.5px; }
 }
+
+/* the boards, plural: a strip of names at the top left; the one up is lit, + makes one, × on a chip puts it away */
+#boards { position: fixed; left: 20px; top: 12px; display: flex; gap: 6px; align-items: center; z-index: 30; max-width: calc(100vw - 230px); overflow-x: auto; scrollbar-width: none; }
+#boards::-webkit-scrollbar { display: none; }
+#boards .chip { display: inline-flex; align-items: center; gap: 6px; font: 500 11.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--paper-2) 82%, transparent); color: var(--muted); cursor: pointer; white-space: nowrap; transition: color .15s, border-color .15s, background .15s; }
+#boards .chip:hover { color: var(--accent); border-color: var(--accent); }
+#boards .chip.on { color: var(--paper); background: var(--accent); border-color: var(--accent); }
+#boards .chip.plus { padding: 4px 9px; font: 500 15px/1 var(--sans); }
+#boards .chip.arm { color: var(--paper); background: var(--bad); border-color: var(--bad); }
+#boards .chipx { opacity: .5; font: 500 13px/1 var(--sans); padding: 0 1px; }
+#boards .chip:hover .chipx, #boards .chip.on .chipx { opacity: .9; }
+#boards .chipin { font: 500 12px var(--mono); letter-spacing: .04em; padding: 4px 11px; border: 1px solid var(--accent); border-radius: 999px; background: var(--paper-2); color: var(--ink); outline: 0; width: 160px; }
+@media (max-width: 767px) {
+  #boards { left: 12px; top: 12px; max-width: calc(100vw - 150px); }
+  #stage { padding-top: 56px; }
+}
