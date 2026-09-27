@@ -37,6 +37,17 @@ clipboard history: only what is on it now, when asked.
 The same operations are on the [Files galaxy](../30-views/files-galaxy.md): drag a star onto a folder,
 right-click for rename or a new folder.
 
+## Workspaces
+
+"Start my work setup" sets the desk in one word: the apps open, what must run is started, the pages
+go up in your browser, and a sticky note carries the open priorities from the vault. A workspace is
+a list of steps in `data/workspaces.json`: an app to open or quit, a page (https), a command to run
+(skipped when its check already succeeds, and never anything that removes, kills, resets or forces;
+those words are refused), a sticky note, one of the agent's own tools, an app to bring forward, a
+line to say. Each step reports, and one failing does not stop the rest. "Start my work setup", "end
+my work setup", "add opening Slack to my work setup" are the words; `workspace.py` is the tool, and
+`--dry` says what a workspace would do without doing it.
+
 ## Removing anything
 
 "Delete X", "trash X", "get rid of it": the agent files a request (`fs.sh trash <path> "why"`) and
