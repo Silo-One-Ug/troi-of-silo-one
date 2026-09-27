@@ -113,6 +113,9 @@ wherever you are. Choosing the floating shape in the console, "float the convers
 `console.sh float on` raise it; the column shape, "put the conversation away" or `console.sh float
 off` put it away; the ring's menu has "Show / hide the conversation" too. Its place and size are
 remembered. It shows the console's `/float` route, the conversation alone.
+It follows the console's theme, light under a light console and dark under a dark one, live as you
+switch: the choice is kept in the settings, so this second window sees it, and `console.sh theme
+light|dark|system` sets it by voice.
 
 The pane's header carries three buttons: back to the console (the conversation returns to its column
 and the console's window comes forward), larger or smaller, and put away; the glyph in the bottom

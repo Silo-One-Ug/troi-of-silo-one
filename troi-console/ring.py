@@ -26,7 +26,8 @@ from AppKit import (NSView, NSApplication, NSApplicationActivationPolicyAccessor
                     NSWindowStyleMaskNonactivatingPanel, NSStatusWindowLevel, NSWorkspace,
                     NSWindowStyleMaskResizable, NSFloatingWindowLevel, NSVisualEffectView, NSVisualEffectMaterialHUDWindow,
                     NSVisualEffectBlendingModeBehindWindow, NSVisualEffectStateActive, NSViewWidthSizable, NSViewHeightSizable, NSViewMinYMargin,
-                    NSViewMinXMargin, NSViewMaxYMargin, NSButton, NSImage, NSImageView, NSImageOnly, NSOpenPanel)
+                    NSViewMinXMargin, NSViewMaxYMargin, NSButton, NSImage, NSImageView, NSImageOnly, NSOpenPanel,
+                    NSAppearance, NSAppearanceNameAqua, NSAppearanceNameDarkAqua, NSVisualEffectMaterialPopover)
 from Foundation import NSObject, NSTimer, NSURL
 from WebKit import WKWebView, WKWebViewConfiguration, WKUserContentController
 
@@ -300,6 +301,7 @@ class Floater:
         grip.setToolTip_("Drag an edge or this corner to resize"); grip.setAutoresizingMask_(NSViewMinXMargin | NSViewMaxYMargin)
         glass.addSubview_(grip)
         p.setContentView_(glass)
+        self.glass = glass; self._dark = None
         self.loaded_at = 0.0; self.lastframe = None; self.moved_at = 0.0; self.shown = False
 
     def toggle_size(self):
@@ -323,9 +325,29 @@ class Floater:
     def hide(self):
         self.win.orderOut_(None); self.shown = False
 
+    def follow_theme(self):
+        """The panel's glass follows the page it shows: dark HUD glass under a dark console, light glass under a light one
+        (the page takes the theme from the settings; Paul, 2026-09-27: "the floater not being light mode")."""
+        def done(result, error):
+            dark = True if error is not None or result is None else bool(result)
+            if self._dark == dark:
+                return
+            self._dark = dark
+            try:
+                self.glass.setMaterial_(NSVisualEffectMaterialHUDWindow if dark else NSVisualEffectMaterialPopover)
+                self.glass.setAppearance_(NSAppearance.appearanceNamed_(NSAppearanceNameDarkAqua if dark else NSAppearanceNameAqua))
+            except Exception as e:
+                print("[ring] floater theme not applied:", e, file=sys.stderr)
+        try:
+            self.web.evaluateJavaScript_completionHandler_("document.documentElement.classList.contains('dark')", done)
+        except Exception as e:
+            print("[ring] floater theme not read:", e, file=sys.stderr)
+
     def sync(self):
-        """Follow the state file (shown), and remember the frame a second after it stops moving."""
+        """Follow the state file (shown), and remember the frame a second after it stops moving; the glass follows the theme."""
         want = bool(float_state().get("shown", False))
+        if self.win.isVisible():
+            self.follow_theme()
         if want and not self.win.isVisible(): self.show()
         elif not want and self.win.isVisible(): self.hide()
         f = self.win.frame(); fr = (int(f.origin.x), int(f.origin.y), int(f.size.width), int(f.size.height))
