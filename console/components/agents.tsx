@@ -1,23 +1,41 @@
 "use client";
 // Agents: who the brain has put on a task, from Claude Code's own record of the session (the Agent tool's calls and
 // each subagent's transcript). The brain sits at the top; its delegations hang below it, the live ones ringed. A tap
-// opens the task and what the agent is doing now. Nothing here is a control: the brain decides whom to send, and names
-// each one for the job.
+// opens the agent's card: the role and the task, what it is doing now, its steps, its latest words and, once it is
+// done, its report, with the brief it was given folded underneath. Nothing here is a control: the brain decides whom
+// to send, and names each one for the job ("Role: the task").
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Archive, BookOpen, Bot, Compass, Map as MapIcon, Orbit, Search, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { Archive, BookOpen, Bot, Check, ChevronDown, ChevronRight, ClipboardCheck, Compass, Copy, FlaskConical, Map as MapIcon, Orbit, PenLine, Search, Wrench, X } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { GFM } from "@/lib/compat";
 import { eget, epost } from "@/lib/edge";
 import { agentName, useAgentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
+import { describe } from "@/lib/tools";
 import { cn } from "@/lib/utils";
 
-type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number };
-type D = { brain: { name: string; state: string; doing: string }; agents: A[]; session: string; record: boolean; archived?: number };
+type StepT = { t: number; tool: string; detail?: string };
+type A = { id: string; name: string; type: string; prompt: string; started: number; ended: number; status: "active" | "done" | "failed" | "quiet"; agent_id: string; result: string; archived?: boolean; doing?: string; detail?: string; said?: string; turns?: number; seen?: number; model?: string; steps?: StepT[] };
+type D = { brain: { name: string; state: string; doing: string; detail?: string }; agents: A[]; session: string; record: boolean; archived?: number };
 const ICON: Record<string, any> = { Explore: Search, Plan: MapIcon, "claude-code-guide": BookOpen, "general-purpose": Compass };
 const KIND: Record<string, string> = { Explore: "scout", Plan: "planner", "claude-code-guide": "guide", "general-purpose": "hand" };
+const STATUS: Record<A["status"], string> = { active: "at work", done: "finished", failed: "failed", quiet: "quiet" };
+// the brain names an agent "Role: the task"; the role picks the icon, the task is the title
+const ROLES: [RegExp, any][] = [
+  [/fix|repair|patch|build|implement|engineer|coder|developer|mechanic/i, Wrench], [/investigat|scout|explor|finder|hunter|detective|searcher/i, Search],
+  [/review|audit|inspector|checker|verif/i, ClipboardCheck], [/research|reader|librarian|analyst|historian|summar/i, BookOpen],
+  [/test|qa\b|prober|bench/i, FlaskConical], [/writ|draft|editor|scribe|author|reporter/i, PenLine], [/plan|architect|designer/i, MapIcon]];
+const parts = (name: string) => { const m = /^([^:]{2,28}):\s*(\S.*)$/s.exec(name || ""); return m ? { role: m[1].trim(), task: m[2].trim() } : { role: "", task: name || "an agent" }; };
+const iconOf = (a: A) => { const { role } = parts(a.name); const hit = role ? ROLES.find(([re]) => re.test(role)) : undefined; return hit ? hit[1] : ICON[a.type] || Bot; };
 const span = (a: A, now: number) => { const s = Math.max(0, Math.round((a.ended || now) - a.started)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`; };
 const clock = (t: number) => new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const brainName = (m?: string) => m ? m.replace(/^claude-/, "").replace(/-\d{8}$/, "").replace(/(\d)-(\d)/g, "$1.$2").replace(/-/g, " ") : "";
+// what the agent has in its hands right now: its last step, said the way the working line says it
+const nowOf = (a: A) => { const s = a.steps && a.steps.length ? a.steps[a.steps.length - 1] : null; return s ? describe(s.tool, s.detail || a.detail) : { Icon: Wrench, label: a.doing || "", note: a.detail, raw: a.detail }; };
+const Eyebrow = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn("flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.12em] text-muted-foreground", className)}>{children}</div>;
+const Small = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => <button type="button" onClick={onClick} className="ml-auto inline-flex items-center gap-1 font-normal normal-case tracking-normal transition-colors hover:text-foreground">{children}</button>;
 
 function Node({ title, sub, Icon, active, dim, badge, selected, onClick, onArchive }: { title: string; sub: string; Icon: any; active?: boolean; dim?: boolean; badge?: string; selected?: boolean; onClick?: () => void; onArchive?: () => void }) {
   return (
@@ -32,6 +50,65 @@ function Node({ title, sub, Icon, active, dim, badge, selected, onClick, onArchi
       </button>
       {onArchive && <button type="button" onClick={e => { e.stopPropagation(); onArchive(); }} title="Archive: off the chart (the record keeps it)" aria-label={`Archive ${title}`}
         className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full border border-border bg-background text-muted-foreground opacity-70 transition hover:text-foreground hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"><X className="h-3 w-3" /></button>}
+    </div>
+  );
+}
+
+/** One agent, opened: who it is and where it stands, what it has in its hands, its steps, its words, its report, its brief. */
+function AgentCard({ a, now, onArchive, onClose }: { a: A; now: number; onArchive?: () => void; onClose: () => void }) {
+  const { role, task } = parts(a.name); const Icon = iconOf(a); const active = a.status === "active";
+  const [brief, setBrief] = useState(true); const [allSteps, setAllSteps] = useState(false); const [copied, setCopied] = useState(false);
+  useEffect(() => { setBrief(true); setAllSteps(false); setCopied(false); }, [a.id]);
+  const steps = a.steps || []; const shownSteps = allSteps ? steps : steps.slice(-6);
+  const words = a.prompt ? a.prompt.trim().split(/\s+/).length : 0;
+  const copy = async () => { try { await navigator.clipboard.writeText(a.result); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} };
+  const n = active && a.doing ? nowOf(a) : null;
+  return (
+    <div className="hairline grid gap-4 p-4 text-sm sm:p-5">
+      <div className="flex items-start gap-3.5">
+        <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-full border bg-background", active ? "border-emerald-500/60" : "border-border")}><Icon className="h-5 w-5" /></span>
+        <div className="min-w-0 flex-1">
+          {role && <div className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{role}</div>}
+          <h2 className="text-balance text-[17px] font-semibold leading-snug">{task}</h2>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <Badge tone={active ? "ok" : a.status === "failed" ? "warn" : "note"} className="h-5 gap-1.5 px-2 text-[11px]">{active && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}{STATUS[a.status]}</Badge>
+            <span>{KIND[a.type] || a.type}{a.model ? ` on ${brainName(a.model)}` : ""}</span>
+            <span>started {clock(a.started)}{a.ended ? `, finished ${clock(a.ended)}` : ""}</span>
+            <span className="tabular-nums">{span(a, now)}</span>
+            {a.turns ? <span>{a.turns} turns</span> : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {onArchive && <Button size="sm" variant="ghost" onClick={onArchive} title="Off the chart; the record keeps it"><Archive className="h-3.5 w-3.5" />Archive</Button>}
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      </div>
+      {n && (
+        <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/[.06] px-3 py-2" title={n.raw}>
+          <n.Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" /><span className="shimmer shrink-0 font-medium">{n.label}</span>
+          {n.note && <code className="min-w-0 truncate rounded bg-muted px-1.5 py-0.5 text-[11.5px]">{n.note}</code>}
+        </div>)}
+      {steps.length > 0 && (
+        <section className="grid gap-1.5">
+          <Eyebrow><span>Steps</span><span className="font-normal normal-case tracking-normal">{steps.length}</span>
+            {steps.length > 6 && <Small onClick={() => setAllSteps(v => !v)}>{allSteps ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}{allSteps ? "The last six" : `All ${steps.length}`}</Small>}</Eyebrow>
+          <ol className="steps-rail text-xs text-muted-foreground">{shownSteps.map((s, i) => { const k = describe(s.tool, s.detail); return <li key={`${s.t}-${i}`} title={k.raw}><k.Icon className="h-3 w-3 shrink-0 opacity-80" /><span className="shrink-0">{k.label}</span>{k.note && <code className="min-w-0 truncate rounded bg-muted px-1 text-[11px]">{k.note}</code>}</li>; })}</ol>
+        </section>)}
+      {a.said && (
+        <section className="grid gap-1.5"><Eyebrow>{active ? "Latest words" : "Last words"}</Eyebrow>
+          <blockquote className="border-l-2 border-border pl-3 text-[13px] leading-relaxed text-muted-foreground">{a.said}</blockquote></section>)}
+      {a.result && (
+        <section className="grid gap-1.5">
+          <Eyebrow><span>{a.status === "failed" ? "What went wrong" : "Reported"}</span><Small onClick={copy}>{copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}{copied ? "Copied" : "Copy"}</Small></Eyebrow>
+          <div className="rounded-xl border border-border bg-surface/60 px-4 py-3"><div className="chat-md text-[13px] leading-relaxed"><ReactMarkdown remarkPlugins={GFM}>{a.result}</ReactMarkdown></div></div>
+        </section>)}
+      {a.prompt && (
+        <section className="grid gap-1.5">
+          <button type="button" onClick={() => setBrief(v => !v)} aria-expanded={brief} title={brief ? "Fold the brief to two lines" : "The whole brief"} className="flex items-center gap-2 text-left text-[11px] font-semibold uppercase tracking-[.12em] text-muted-foreground transition-colors hover:text-foreground">
+            {brief ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}<span>The task</span>{words > 0 && <span className="font-normal normal-case tracking-normal">{words} words</span>}</button>
+          {brief ? <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-muted/40 px-4 py-3 font-sans text-[12.5px] leading-relaxed text-muted-foreground">{a.prompt}</pre>
+            : <p className="line-clamp-2 text-[13px] text-muted-foreground">{a.prompt}</p>}
+        </section>)}
     </div>
   );
 }
@@ -90,15 +167,7 @@ export function Agents() {
           {shown.length === 0 && <p className="mx-auto mt-8 max-w-md text-center text-sm text-muted-foreground">{err || (d && !d.record ? "No record of this session yet." : `No one is on a task right now. ${name} delegates when a job is big enough, a survey of files, a piece of research, a review, and names each one for the work. They appear here as it does.`)}</p>}
         </div>
       </div>
-      {selA && (
-        <div className="hairline grid gap-3 p-4 text-sm sm:p-5">
-          <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{selA.name}</span><Badge tone={selA.status === "active" ? "ok" : selA.status === "failed" ? "warn" : "note"}>{selA.status}</Badge>
-            <span className="text-xs text-muted-foreground">{KIND[selA.type] || selA.type} · started {clock(selA.started)}{selA.ended ? `, finished ${clock(selA.ended)}` : ""} · {span(selA, now)}{selA.turns ? ` · ${selA.turns} turns` : ""}</span></div>
-          {selA.doing && <div><span className="text-muted-foreground">Now: </span>{selA.doing}{selA.detail ? <code className="ml-1 rounded bg-muted px-1 text-xs">{selA.detail}</code> : null}</div>}
-          {selA.said && <div><span className="text-muted-foreground">Last words: </span>{selA.said}</div>}
-          {selA.result && <div><span className="text-muted-foreground">Reported: </span>{selA.result}</div>}
-          <div><span className="text-muted-foreground">The task: </span><span className="whitespace-pre-wrap">{selA.prompt}</span></div>
-        </div>)}
+      {selA && <AgentCard a={selA} now={now} onClose={() => setSel(null)} onArchive={selA.status !== "active" && !selA.archived ? () => archive(selA.id) : undefined} />}
       {agents.length > shown.length && <div className="text-xs text-muted-foreground">And {agents.length - shown.length} earlier this session.</div>}
     </div>
   );

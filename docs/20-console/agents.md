@@ -13,9 +13,17 @@ they took.
 - **Named for the job.** The brain names each agent for what it is sent to do, a role and the task:
   "Scout: the Commuza notes", "Reviewer: PR 12", "Researcher: NBS on the budget". That name is what
   the chart shows, with the kind of agent under it (scout, planner, hand, guide).
-- **What each is doing.** Tap an agent for its task, what it is doing right now (reading a file,
-  searching, in the browser), its last words, how many turns it has taken, and its report once it
-  has finished. An agent that has not said a word in half an hour shows as **Quiet**.
+- **The agent's card.** Tap an agent for its card: the role above the task, with an icon for the
+  role (a wrench for a fixer, a glass for a scout, a clipboard for a reviewer, a book for a
+  researcher, a flask for a tester, a pen for a writer); whether it is at work, finished, failed or
+  quiet; the kind of agent and the brain it runs on; when it started, how long it has taken and how
+  many turns. While it works, a green line says what it has in its hands, the
+  exact command beside the words. Under that, its last steps on a rail, said the way the
+  conversation says the brain's own (at the terminal, reading a file, in the repository), its latest
+  words, and, once it has finished, its report, rendered, with a copy button. The task it was given
+  sits last, whole, and folds to two lines if you want it out of the way. An agent's report never
+  lands in the conversation: it comes back to the brain, which answers in its own words; the report
+  itself lives here.
 - **The brain's own line.** The top node shows the brain's state and the tool in its hands, as the
   bar does.
 - **Archiving.** A finished agent can be archived off the chart: the × on its node, or **Archive
