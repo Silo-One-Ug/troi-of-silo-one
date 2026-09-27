@@ -16,6 +16,10 @@ as a wall of cards drawn by the same engine as the galaxies, so every gesture is
   trash request.
 - **Search** lights up matches in titles, excerpts and tags. **Memory graph** draws the notes and
   their wikilinks instead.
+- **The lock.** With a PIN set, the wall stays blurred and untouchable until the console is
+  unlocked, and the PIN box sits on the blur itself; your face on the Eyes page unlocks it too. The
+  unlock holds for fifteen minutes, like the rest of the console, then the blur returns. A guest at
+  your desk sees the shape of your memory, never a word of it.
 
 "Open the vault" opens it by voice; "clear" goes back to the face. Renaming a note here keeps its
 wikilinks whole only when done inside Obsidian; the wall renames the file, so fix `[[links]]` after,
