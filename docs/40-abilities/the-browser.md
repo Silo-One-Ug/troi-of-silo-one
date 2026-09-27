@@ -21,7 +21,9 @@ testing a site you built. The browser is Google Chrome, one of two ways.
   connection. There is no port in this mode, so the Browser page has no live view; you watch the
   real window instead.
 
-`troi-console/browser-mcp.sh which` says which it is and `browser-mcp.sh status` what is up.
+`troi-console/browser-mcp.sh which` names the browser, `describe` says how it runs, `status` what is
+up; `console` opens the console in it, in one tab (the start script does this, so the console never
+lands in the Mac's default browser).
 `browser-mcp.sh use own|yours|arc|auto` keeps a choice: `auto`, the default, is your Chrome when the
 extension is installed, else the agent's own; `arc` is the old way, your Arc on its debugging port.
 Chrome is needed either way, for the page tools that run without a window as well (the news,
