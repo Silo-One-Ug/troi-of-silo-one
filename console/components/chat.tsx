@@ -339,14 +339,15 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   // ---- a voice note: the microphone, the agent's own ears, the words sent as the line
   const canMic = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined";
   const startRec = async () => {
-    if (!canMic) { setHint(typeof window !== "undefined" && !window.isSecureContext ? "The microphone needs an https address on a phone: see On your phone in the docs, or send a voice note on Telegram." : "This browser cannot record."); return; }
+    const floater = typeof document !== "undefined" && document.documentElement.classList.contains("float-panel");   // the ring's pane: the voice line's own microphone is right here
+    if (!canMic) { setHint(floater ? "This pane cannot record; hold the talk key (Right Option) and speak, the voice line hears you." : typeof window !== "undefined" && !window.isSecureContext ? "The microphone needs an https address on a phone: see On your phone in the docs, or send a voice note on Telegram." : "This browser cannot record."); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const type = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
       const media = new MediaRecorder(stream, type ? { mimeType: type } : undefined); const chunks: Blob[] = [];
       media.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
       media.start(250); setRec({ start: Date.now(), media, chunks, stream }); setHint("");
-    } catch { setHint("The microphone was not allowed."); }
+    } catch { setHint(floater ? "The microphone was not allowed here; hold the talk key (Right Option) and speak, the voice line hears you." : "The microphone was not allowed."); }
   };
   const stopRec = (keep: boolean) => {
     const r = rec; if (!r) return; setRec(null);

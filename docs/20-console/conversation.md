@@ -101,3 +101,9 @@ wherever you are. Choosing the floating shape in the console, "float the convers
 `console.sh float on` raise it; the column shape, "put the conversation away" or `console.sh float
 off` put it away; the ring's menu has "Show / hide the conversation" too. Its place and size are
 remembered. It shows the console's `/float` route, the conversation alone.
+
+The pane's header carries three buttons: back to the console (the conversation returns to its column
+and the console's window comes forward), larger or smaller, and put away; the glyph in the bottom
+right marks the corner that resizes, though every edge does. Typing lands in it once you click into
+it. The paperclip opens the Mac's file picker. The microphone cannot record inside the pane; on the
+Mac the voice line's own microphone is right there: hold the talk key and speak.
