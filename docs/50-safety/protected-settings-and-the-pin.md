@@ -21,8 +21,9 @@ Some switches lower the agent's guard. Anyone in the room could otherwise say "g
 
 Set a PIN once (the welcome's Security step does it, or `troi-console/keychain.py set pin`), then
 type it at the lock in the bar, or use **Check it's me** on the Eyes page. The console stays
-unlocked for 15 minutes: protected switches apply straight away, and approvals go through. Five
-wrong PINs lock the console for ten minutes. The PIN lives in the Keychain and is never shown.
+unlocked for 15 minutes: protected switches apply straight away, approvals go through, and the
+Vault view comes out of its blur. Five wrong PINs lock the console for ten minutes. The PIN lives
+in the Keychain and is never shown.
 
 ## The four verifiers
 
