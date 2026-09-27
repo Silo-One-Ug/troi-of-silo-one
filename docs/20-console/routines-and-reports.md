@@ -26,6 +26,18 @@ them are the reminders, with Cancel. The CI watch's card is where its GitHub org
 type a name and press Watch; × stops watching one. It needs `gh` signed in. "What's scheduled" or
 "open the routines" brings the page up.
 
+### Watches
+
+"Watch this, and when it happens, do that." Say it in words ("watch my Downloads for PDFs and file
+the invoices under Finance", "every Monday at eight, prepare my weekly briefing", "tell me when
+Docker stops", "when the disk is under ten gigabytes, warn me") and the agent files a watch. The
+triggers: a schedule in plain words, a folder, a file, a process, an app, a page, the disk, the
+power, the battery, the Wi-Fi. When one fires, the agent gets your instruction and does it under its
+usual rules: nothing is deleted, anything risky is filed for your approval. A watch can also only tell.
+The Routines page lists them with a switch; a watch is switched off, never removed. Each has a
+cooldown and a daily cap, a burst of new files comes as one line, and a one-off ("in twenty
+minutes", "at nine tomorrow") turns itself off after firing. Under the hood: `watches.py`.
+
 The pulse (`troi-console/pulse.py`) runs the clock. It is a background service, so the reminders,
 the watches and the nightly jobs run whether or not Troi is started; what it has to say goes to the
 agent when the voice line is up and to Telegram when it is down.

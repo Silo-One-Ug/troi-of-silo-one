@@ -563,6 +563,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(sounds.status_dict())
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)[:200]}, 500)
+        if path == "/watches":                                           # the owner's watches (watches.py), for the Routines page
+            try:
+                import watches
+                return self._json({"watches": watches.load()})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)[:200]}, 500)
         if path == "/config":
             return self._json({"name": CONFIG.get("name", "Assistant"), "orbs": [{"title": o.get("title", "?"), "kind": o.get("kind", "notes")} for o in CONFIG["orbs"]]})
         if path == "/note":
@@ -620,6 +626,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(cur)
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)}, 400)
+        if self.path == "/watches":                                    # a watch on or off from the Routines page (never removed: off keeps it)
+            try:
+                d = json.loads(body) if body.strip() else {}
+                wid = str(d.get("id") or "")
+                if not re.fullmatch(r"w\d{1,6}", wid) or not isinstance(d.get("on"), bool):
+                    return self._json({"ok": False, "error": "say id and on"}, 400)
+                import watches
+                items = watches.load(); w = next((x for x in items if str(x.get("id")) == wid), None)
+                if not w:
+                    return self._json({"ok": False, "error": "no such watch"}, 404)
+                w["on"] = d["on"]; watches.save(items)
+                return self._json({"ok": True, "id": wid, "on": w["on"]})
+            except Exception as e:
+                return self._json({"ok": False, "error": str(e)[:200]}, 400)
         if self.path == "/sounds":                                     # play a mood, stop, or set the volume: sounds.py does it, detached (making a loop takes a while)
             try:
                 d = json.loads(body) if body.strip() else {}

@@ -26,6 +26,7 @@ cat <<'TXT'
   ../barehands/bin/board-state.sh [events|json|boards]    what is on the board (or the saved scene), which board it is, the last clicks on its buttons
   boards.sh    list · current · new "<name>" · use "<name>" · rename "<name>" "<new>" · archive "<name>" · restore "<name>"   the boards, plural: one scene each, one up, every screen follows
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
+  watches.py   add time "every monday at 8am" "<do>" · add folder <path> [--glob "*.pdf"] "<do>" · add file|process|app <name> "<do>" · add url https://… [--every 15m] "<do>" · add disk|battery --below N "<do>" · add power [--on battery] "<do>" · add wifi "<do>" · list · on|off <id> · test <id> · when "<phrase>"   "watch this, and when it happens, do that": the pulse notices, you act (--tell for a plain heads-up)
   brain.sh     status · live · models · deep | fast · model <name> · effort low|medium|high|xhigh|max · for "<task>" [--deep|--model <name>] [--effort <level>] · back · rest [<level>]   the brain for the job (the names: the voice line's models map)
   share.sh     start | stop | status | build   screen sharing: the Mac's picker, then the shared frames for your eyes (look-screen.sh) and hands (click --share)
   show.py     '<json tree>' [--board|--both] | chart ... | table ... | board "<title>" <op> | board tidy|clear | vocabulary   draw interface from data, in the conversation or as a tile on the board (never an HTML file)

@@ -10,6 +10,9 @@ import { eget, epost } from "@/lib/edge";
 import { agentName } from "@/lib/name";
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;          // a GitHub org or user name
+// the board server (the agent's own, port 8794) keeps the owner's watches: on the Mac directly; from the phone through the same host over https
+const boardUrl = (p: string) => (typeof location !== "undefined" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? `${location.protocol}//${location.hostname}:8794` : "http://127.0.0.1:8794") + p;
+const KIND_WORDS: Record<string, string> = { time: "on a schedule", folder: "a folder", file: "a file", process: "a process", app: "an app", url: "a page", disk: "the disk", power: "the power", battery: "the battery", wifi: "the Wi-Fi" };
 
 function Orgs({ orgs, busy, onSave }: { orgs: string[]; busy: boolean; onSave: (orgs: string[]) => void }) {
   const [v, setV] = useState("");
@@ -28,8 +31,10 @@ function Orgs({ orgs, busy, onSave }: { orgs: string[]; busy: boolean; onSave: (
 }
 
 export function Routines() {
-  const [d, setD] = useState<any>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState("");
-  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); } };
+  const [d, setD] = useState<any>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(""); const [watches, setWatches] = useState<any[] | null>(null);
+  const loadWatches = async () => { try { const r = await fetch(boardUrl("/watches"), { cache: "no-store" }); const j = await r.json(); setWatches(Array.isArray(j.watches) ? j.watches : []); } catch { setWatches(null); } };
+  const switchWatch = async (id: string, on: boolean) => { setBusy(id); try { await fetch(boardUrl("/watches"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, on }) }); } finally { setBusy(""); loadWatches(); } };
+  const load = async () => { try { setD(await eget("/routines")); } catch { setMsg(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); } loadWatches(); };
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
   const post = async (body: any) => { setBusy(body.id); try { const r = await epost("/routines", body); setMsg(r.done || (r.ok ? "saved" : r.error || "")); } finally { setBusy(""); load(); } };
   const saveOrgs = async (orgs: string[]) => { setBusy("orgs"); try { const r = await epost("/settings", { github_orgs: orgs }); setMsg(r.ok ? (orgs.length ? `Watching ${orgs.join(", ")}: the newest run on main of every repo, every three minutes.` : "Watching no GitHub org or user.") : r.error || "not saved"); } finally { setBusy(""); load(); } };
@@ -50,6 +55,19 @@ export function Routines() {
         <div className="px-4 py-2 text-sm font-semibold">Reminders</div>
         {(d.reminders || []).length === 0 && <div className="px-4 py-3 text-sm text-muted-foreground">None set. Say &quot;remind me in 20 minutes to…&quot;.</div>}
         {(d.reminders || []).map((r: any) => <div key={r.at} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm"><span className="w-full text-xs text-muted-foreground md:w-40 md:text-sm">{new Date(r.at * 1000).toLocaleString()}</span><span className="min-w-0 flex-1">{r.text}</span><Button size="sm" variant="ghost" onClick={() => post({ id: "reminder", cancel: r.at })}><X className="h-3.5 w-3.5" />Cancel</Button></div>)}
+      </div>
+      <div className="hairline divide-y divide-border">
+        <div className="flex items-center gap-3 px-4 py-2"><span className="text-sm font-semibold">Watches</span><span className="text-xs text-muted-foreground">watch this, and when it happens, do that</span></div>
+        {watches === null && <div className="px-4 py-3 text-sm text-muted-foreground">The board server is not answering, so the watches cannot be read.</div>}
+        {watches && watches.length === 0 && <div className="px-4 py-3 text-sm text-muted-foreground">None yet. Say &quot;watch my Downloads for PDFs and file the invoices&quot;, or &quot;every Monday at eight, prepare my weekly briefing&quot;.</div>}
+        {(watches || []).map((w: any) => (
+          <div key={w.id} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_auto] md:items-center md:gap-4">
+            <div className="grid min-w-0 gap-0.5">
+              <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{w.note || w.kind}</span><Badge tone={w.on === false ? "warn" : "ok"}>{w.on === false ? "off" : "on"}</Badge><span className="text-xs text-muted-foreground">{KIND_WORDS[w.kind] || w.kind}{w.mode === "tell" ? " · a heads-up only" : ""}</span></div>
+              <div className="text-xs text-muted-foreground">{w.do ? `then: ${w.do}` : "then: tell me"}{w.fires ? ` · fired ${w.fires}` : ""}{w.last ? ` · last ${new Date(w.last * 1000).toLocaleString()}` : ""}</div>
+            </div>
+            <div className="flex flex-wrap gap-2"><Button size="sm" variant="ghost" disabled={busy === w.id} onClick={() => switchWatch(w.id, w.on === false)}>{w.on === false ? "Switch on" : "Switch off"}</Button></div>
+          </div>))}
       </div>
       {msg && <div className="text-xs text-muted-foreground">{msg}</div>}
     </div>
