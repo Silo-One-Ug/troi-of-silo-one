@@ -31,6 +31,7 @@ import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
 type Step = { id: string; tool: string; label: string; detail?: string };
+const TOOL_MARK = "\u0000tool";                                   // in a typed turn's rows: where a tool ran, so the record rebuilds the reply in the same stretches
 type Msg = { id: string; role: "user" | "assistant" | "note" | "ignored" | "headlines" | "pictures" | "ui" | "steps"; text: string; t?: string; live?: boolean; data?: any; steps?: Step[]; open?: boolean };
 type Found = { name: string; path: string; kind: "dir" | "file"; ext: string };
 type Attached = { id: string; name: string; path: string; kind: "image" | "file"; url?: string; size?: number; uploading?: boolean };
@@ -185,7 +186,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   // so lines of it that the log delivers late still land in the same bubble instead of a second one; `typed` remembers the last typed replies, which come
   // through the voice log again as spoken chunks and must not show twice
   const live = useRef<{ id: string; final: string[]; t?: string } | null>(null), settled = useRef<{ id: string; final: string[]; at: number; typed?: string } | null>(null), typed = useRef<string[]>([]);
-  const runRows = useRef<string[]>([]), runIds = useRef<string[]>([]);   // a typed turn: the record's rows that arrive while it runs, and the bubbles it streamed; at its end the reply is rebuilt from the rows
+  const runRows = useRef<string[]>([]), runIds = useRef<string[]>([]);   // a typed turn: the record's rows that arrive while it runs (TOOL_MARK where a tool ran), and the bubbles it streamed; at its end the reply is rebuilt from the rows
   const liveStep = useRef<{ id: string; name: string; detail: string } | null>(null), args = useRef<Record<string, string>>({});   // the step under way in a spoken turn; a typed turn's tool inputs as they stream
   const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0), menuRef = useRef<HTMLDivElement>(null);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
@@ -384,13 +385,20 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     setBusy(true); busyRef.current = true; setText(""); setFiles(fs => fs.filter(f => f.uploading)); setPick(null); setMenu(false); setMsgs(ms => [...settle(ms), { id: nid(), role: "user", text: full, t: stamp() }]); skip.current.add("you|" + full.slice(0, 60));
     agent.messages = [{ id: nid(), role: "user", content: full }];
     const said: string[] = []; const free = setTimeout(() => setBusy(false), 6000);          // the field is free once the run has started, or after six seconds whatever happens
+    // a message that follows the last one within a breath, with no tool between, is the same reply torn in two upstream (a half-read
+    // partial, Paul, 2026-09-27 23:2x: "check | its CI status"): it continues in the same bubble instead of opening another
+    const alias: Record<string, string> = {}; let lastText: { id: string; endedAt: number } | null = null; let toolSince = false;
+    const bid = (id: string) => alias[id] || id;
     try {
       await agent.runAgent({}, {
         onRunStartedEvent: () => { clearTimeout(free); setBusy(false); },
-        onTextMessageStartEvent: ({ event }) => { runIds.current.push(event.messageId); setMsgs(ms => [...settle(ms), { id: event.messageId, role: "assistant", text: "", live: true }]); },
-        onTextMessageContentEvent: ({ event }) => upsert(event.messageId, m => ({ ...m, text: m.text + event.delta })),
-        onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.flatMap(m => { if (m.id !== event.messageId) return [m]; const txt = clean(m.text); if (!txt) return []; said.push(m.text); return [{ ...m, live: false, t: stamp(), text: txt }]; })),
-        onToolCallStartEvent: ({ event }) => { const { label } = kind(event.toolCallName); if (label) setMsgs(ms => addStep(ms, { id: event.toolCallId, tool: event.toolCallName, label })); },
+        onTextMessageStartEvent: ({ event }) => {
+          if (lastText && !toolSince && Date.now() - lastText.endedAt < 2000) { alias[event.messageId] = lastText.id; upsert(lastText.id, m => ({ ...m, live: true })); return; }
+          runIds.current.push(event.messageId); setMsgs(ms => [...settle(ms), { id: event.messageId, role: "assistant", text: "", live: true }]); },
+        onTextMessageContentEvent: ({ event }) => upsert(bid(event.messageId), m => ({ ...m, text: m.text + event.delta })),
+        onTextMessageEndEvent: ({ event }) => { const id = bid(event.messageId); lastText = { id, endedAt: Date.now() }; toolSince = false;
+          setMsgs(ms => ms.flatMap(m => { if (m.id !== id) return [m]; const txt = clean(m.text); if (!txt) return []; said.push(m.text); return [{ ...m, live: false, t: m.t || stamp(), text: txt }]; })); },
+        onToolCallStartEvent: ({ event }) => { toolSince = true; runRows.current.push(TOOL_MARK); const { label } = kind(event.toolCallName); if (label) setMsgs(ms => addStep(ms, { id: event.toolCallId, tool: event.toolCallName, label })); },
         onToolCallArgsEvent: ({ event }) => { const buf = (args.current[event.toolCallId] = (args.current[event.toolCallId] || "") + event.delta); try { const d = JSON.parse(buf); if (d && typeof d.detail === "string" && d.detail) setMsgs(ms => withDetail(ms, event.toolCallId, d.detail)); } catch {} },   // what the tool is on, once the brain has said
         onToolCallEndEvent: ({ event }) => { delete args.current[event.toolCallId]; },
         onCustomEvent: ({ event }) => { if (event.name === "silo.state") setState(String(event.value)); const m = fromCard({ name: event.name, value: event.value }); if (m) setMsgs(ms => [...ms, m]);
@@ -401,14 +409,18 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     for (const s of said) { for (const sent of s.replace(/([.!?])\s+/g, "$1\n").split("\n")) skip.current.add("agent|" + sent.slice(0, 60)); typed.current.push(norm(clean(s))); }   // the same words come back through the voice log as spoken chunks: known by their sentences and by the whole text
     typed.current.splice(0, Math.max(0, typed.current.length - 6));
     // the record is the truth for a reply's text (Paul, 2026-09-27 18:1x: the same reply twice on the page, once streamed and cut at a tool
-    // call, once from the record): the bubbles this run streamed become one, and the record's rows, those that came during the run and
-    // those still coming, rebuild it in place; the streamed words stay until the rows say at least as much
+    // call, once from the record; 23:2x: a reply cut mid-word around a tool): the record's rows that came during the run, split where a
+    // tool ran, rebuild the run's bubbles in place, one stretch of text each; rows beyond the bubbles join the last one, and rows still
+    // coming land there too. The streamed words stay until the rows say at least as much
     const ids = runIds.current.splice(0), rows = runRows.current.splice(0);
     if (ids.length) setMsgs(ms => {
       const mine = ms.filter(m => m.role === "assistant" && ids.includes(m.id)); if (!mine.length) return ms;
-      const first = mine[0], gone = new Set(mine.slice(1).map(m => m.id)); const s = { id: first.id, final: rows, at: Date.now(), typed: joinAll(mine.map(m => clean(m.text)).filter(Boolean)) };
-      settled.current = s;
-      return ms.filter(m => !gone.has(m.id)).map(m => m.id === first.id ? { ...m, live: false, t: m.t || stamp(), text: settledText(s) } : m);
+      const segs: string[][] = [[]]; for (const r of rows) { if (r === TOOL_MARK) { if (segs[segs.length - 1].length) segs.push([]); } else segs[segs.length - 1].push(r); }
+      while (segs.length > mine.length) { const extra = segs.pop()!; segs[segs.length - 1].push(...extra); }
+      const gone = new Set<string>(), texts = new Map<string, string>();
+      mine.forEach((m, i) => { const t = settledText({ final: segs[i] || [], typed: clean(m.text) }); if (t) texts.set(m.id, t); else gone.add(m.id); });
+      const last = mine[mine.length - 1]; settled.current = { id: last.id, final: segs[mine.length - 1] || [], at: Date.now(), typed: clean(last.text) };
+      return ms.filter(m => !gone.has(m.id)).map(m => texts.has(m.id) ? { ...m, live: false, t: m.t || stamp(), text: texts.get(m.id)! } : m);
     });
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
