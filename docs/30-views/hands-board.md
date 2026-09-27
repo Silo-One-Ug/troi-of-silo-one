@@ -63,24 +63,34 @@ ocean, sky, navy, forest, moss, lime, sand, sun, gold, berry, rose, coral, viole
 steel, teal, mint) go on stats, badges, cards, callouts, steps, list items and chart series, a
 colour a thing; a bar chart of one series gives each bar its own. The tones for meaning (ok, warn,
 bad) say state and nothing else, and gold marks the one thing to look at. A hero without a picture
-is a band in the theme's hues with a quiet pattern; big numbers can sit in boxed, tinted wells.
+is a band in the theme's hues or in hues of the agent's own; a stat is plain, a tile, a pill or a
+big figure, as the panel wants.
 
 Charts answer the mouse: hover a column for a guide line, the lit bar and a small card naming every
 series' value there; slices and dots answer on their own. Every colour is a token, so the light and
 the dark board both read. Each board has a colour of its own too, on its chip in the strip and its
-card in the hall. A link on a panel (an https address) opens in a new tab; the board stays put.
+card in the hall. A link on a panel (an https address) opens in## Designed by the agent, panel by panel
 
-## Designed like a page
+A panel is designed, not dumped, and the design is the agent's to decide each time (Paul, 27
+September 2026: "let the LLM decide the design; all you need to do is inform it to be creative").
+The stylesheet is a palette, not a template: nine themes, four surfaces, twenty colours, four
+faces, and on every component a `style` of its own (a card plain, filled, outlined, barred, glass
+or raised; a stat plain, a tile, a pill or a big figure; a callout soft, outlined or solid; a
+divider dashed, dotted or a breath of space; a quote big) plus a free `look` (background, gradient,
+text colour, border, radius, padding, gap, alignment, face, size, weight, opacity, shadow, width)
+in plain words the renderer checks. Nothing wears a bar or a pattern unless the agent asks for it,
+so two panels look alike only when the agent chose the same look twice, which the craft says not
+to do.
 
-A panel is designed, not dumped. Before the first command the agent settles three things: the
-subject and the panel's one job; the one bold thing the eye should land on (a picture, a number,
-a chart, a quote); and the pieces in reading order, the summary before the detail. Then the craft
-a designer would bring to a page: real content with the subject's own detail, structure that
-encodes something true (steps only for a sequence, a card only for what must stand apart),
-repeated things shaped exactly alike, charts to scale with named units, a title that is a name
+The craft still holds, as craft and not as a look: before the first command the agent settles the
+subject and the panel's one job, the one bold thing the eye should land on, and the pieces in
+reading order with the summary before the detail. Real content with the subject's own detail,
+structure that encodes something true (steps only for a sequence, a card only for what must stand
+apart), repeated things shaped alike, charts to scale with named units, a title that is a name
 rather than a category, running text kept short and tables behind tabs. One look at the result,
-one pass of fixes, and the panel is left alone; further polish is yours to ask for. The board's
-own stylesheet is the design system, so typography and theme never change from panel to panel.
+one pass of fixes, and the panel is left alone; further polish is yours to ask for.
+
+ever change from panel to panel.
 
 ## Organised by itself
 

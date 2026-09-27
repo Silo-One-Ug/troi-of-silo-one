@@ -388,8 +388,9 @@ def fix_tree(node, depth=0):
     elif isinstance(node, dict):
         for k in list(node.keys()):
             v = node[k]
-            if not isinstance(k, str) or k.startswith("on") or k in ("html", "innerHTML", "script", "style", "srcdoc"):
-                node.pop(k)
+            if not isinstance(k, str) or k.startswith("on") or k in ("html", "innerHTML", "script", "srcdoc") \
+               or (k == "style" and not (isinstance(v, str) and re.fullmatch(r"[a-z][a-z-]{0,15}", v))):
+                node.pop(k)   # a `style` stays only as one plain word (a component's variant); CSS never reaches the page
                 continue
             if k in ADDR and isinstance(v, str):
                 s = v.strip()

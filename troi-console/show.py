@@ -22,16 +22,18 @@ scrolls; --scroll asks for that), --aspect fixes its shape. Without --x and --y 
 reading order; `show.py board tidy` lines everything up. A tile's body scrolls by itself when the tree is taller than the screen.
 
 Components (both surfaces unless marked):
+  (every component also takes a `look` of its own; see Design below)
   layout    stack (children, gap sm|lg) · row (children, align, justify, wrap) · grid (cols 1-6, children) · columns (weights [2,1], children)
-            card (title, subtitle, footer, tone, children) · group (title, children) · tabs (items [{label, child}], active)
+            card (title, subtitle, footer, tone, style plain|filled|outline|top|left|glass|raised, children) · group (title, children) · tabs (items [{label, child}], active)
             accordion (items [{label, child|text, note, open}], single) · slideshow (items [{url, caption}|component], interval s, autoplay, aspect, fit, title)
             steps (items [{title, body, status done|current|todo, tone}], current) · timeline (items [{time, title, body, tone}])
-            divider (label) · spacer (h px) · aspect (ratio, child) · hero (src, title, subtitle, kicker, aspect; without src a band in the
-            theme's two hues: pattern dots|grid|rays|waves|none, tone a named colour)
-  text      heading (text, level 1-4, align) · text (text with **bold** *italic* `code` [link](https://…); size sm|md|lg|xl, muted, align, mono)
-            md (text: block markdown with headings, lists, checklists, quotes, fences, pipe tables) · quote (text, cite) · code (text, lang, title)
-            kbd (keys) · badge (text, tone ok|note|warn|bad|muted) · tags (items, tone) · callout (title, text, tone) · link (text, href: an https link opens in a new tab; so does [text](https://…) in any text)
-  data      stat (label, value, unit, delta, tone, note, spark [numbers], boxed) · progress (label, value, max, tone, text) · gauge (value, min, max, unit, label, tone)
+            divider (label, style line|dashed|dots|space|thick, tone) · spacer (h px) · aspect (ratio, child) · hero (src, title, subtitle, kicker,
+            aspect, align left|center|right|top, overlay 0..1, font; without src a band in the theme's two hues: pattern none|dots|grid|rays|waves,
+            tone a named colour, or look.gradient for hues of your own)
+  text      heading (text, level 1-4, align, font, tone) · text (text with **bold** *italic* `code` [link](https://…); size sm|md|lg|xl, muted, align, mono, font, tone)
+            md (text: block markdown with headings, lists, checklists, quotes, fences, pipe tables) · quote (text, cite, style bar|big|plain, font, tone) · code (text, lang, title)
+            kbd (keys) · badge (text, tone, style soft|solid|outline) · tags (items, tone) · callout (title, text, tone, style bar|soft|outline|solid|plain) · link (text, href: an https link opens in a new tab; so does [text](https://…) in any text)
+  data      stat (label, value, unit, delta, tone, note, spark [numbers], style plain|tile|pill|big, font) · progress (label, value, max, tone, text) · gauge (value, min, max, unit, label, tone)
             kv (items [{k, v}] or {k: v}) · list (items [text | {text, done, note, tone}], ordered, check) · table (columns [name | {label, key, align}], rows, caption, highlight [row indexes], footer, zebra, compact)
             chart (kind line|bar|area|pie|donut|scatter, data [{...}], x, series [keys], stacked, colors [hex or named colours], mono, title, unit, height, ymin, ymax, legend, center;
             a bar chart of one series gives each bar its own colour unless mono)
@@ -44,31 +46,26 @@ Components (both surfaces unless marked):
   answer    button (label, action, tone, primary) · choice (label, options [label | {label, value}], value, action)   — a click reaches the agent as a "(board: …)" line
 Pictures, video and audio on the board come from https or from files on this Mac (copied into the board's airlock); http links are refused.
 
-Design (the vault's "Board Design" note has the whole of it; read it before composing a panel):
-  plan      three lines before the first command: the subject and the panel's one job; the one bold thing the eye lands on
-            (a hero, one number, one chart, one quote; gold for that and nothing else); the pieces in reading order, the
-            summary before the detail. A panel is scanned, not read.
-  content   real content with the subject's own detail (its units, its terms, its numbers); never a skeleton where a number belongs;
-            complete at rest, nothing waiting for a click to make the point.
-  structure structure encodes something true: steps only for a sequence, timeline only for real times, a labelled divider only
-            where the subject changes; a card or callout for the one thing that must stand apart (if everything is a card, nothing is);
-            repeated things shaped exactly alike, a column count the items fill, never a lone tile.
-  charts    to scale, labels that name values the chart reaches, a title with the unit; area for a trend, bar for a comparison,
-            donut for a share; one series where one tells the story.
-  colour    by the content, generously (Paul, 2026-09-27: "be open-minded on colours, as many as the content calls for"): a theme by
-            the subject (--theme rust|ocean|forest|sand|berry|slate|gold|night; paper is the default: teal and gold on a serif), and
-            a colour a thing when the content has things: a tone a server, a step, an outlet, a person (tone takes rust, clay, ocean,
-            sky, navy, forest, moss, lime, sand, sun, gold, berry, rose, coral, violet, lavender, slate, steel, teal, mint on any
-            component, and a bar chart of one series colours each bar by itself). ok/warn/bad still say state and nothing else;
-            gold stays for the one thing to look at. A surface for the panel: card (the default, lifted and filled), tint (the
-            theme's wash), dark (a night surface), paper (flat). A hero without a picture is a band in the theme's hues: open
-            a panel with one (kicker, title, subtitle) more often than not.
-  words     the title is a name, a short noun phrase specific to the subject, never a category and never a name plus an explainer;
-            labels name what the owner recognises; short active sentences; a md block over four lines goes behind a tab.
-  width     --w 0.3 for a column of stats, 0.34 to 0.4 for a billboard, 0.5 and over only for a wide chart; a panel that needs
-            scrolling to reach its point has failed.
-  then      one look (board-state.sh, look-screen.sh when it matters), one pass of fixes, and leave it. Never an artifact, never an
-            HTML page: the board's stylesheet is the design system.
+Design: yours to decide, panel by panel (Paul, 2026-09-27: "let the LLM decide the design; be creative"). The board is a
+palette, not a template. Decide the look from the subject and vary it: a panel is not the last panel again. Use what the
+system offers freely, and nothing of it by habit:
+  themes    --theme paper|rust|ocean|forest|sand|berry|slate|gold|night (a pair of hues, a face, a chart palette); --surface card|tint|dark|paper
+  colours   twenty named colours as `tone` on any component: rust, clay, ocean, sky, navy, forest, moss, lime, sand, sun, gold,
+            berry, rose, coral, violet, lavender, slate, steel, teal, mint; a colour a thing when the content has things;
+            ok/warn/bad for state; gold for the one thing to look at
+  styles    card style plain|filled|outline|top|left|glass|raised (filled is the default: no bar unless you ask) · stat style
+            plain|tile|pill|big · badge style soft|solid|outline · callout style bar|soft|outline|solid|plain · divider style
+            line|dashed|dots|space|thick (tone for its colour) · quote style bar|big|plain · hero align left|center|right|top,
+            pattern none|dots|grid|rays|waves (none unless asked), overlay 0..1 · font display|serif|sans|mono on heading,
+            text, quote, stat, hero · a bar chart of one series colours each bar (mono for one colour)
+  look      on ANY component, plain words the renderer checks: {"bg": "sand", "fg": "ink", "gradient": ["rust", "sun", 160],
+            "border": "rust", "radius": 18, "pad": "16 20", "gap": 10, "align": "center", "font": "serif", "size": 22,
+            "weight": 700, "italic": 1, "upper": 1, "opacity": .9, "shadow": 2, "width": "60%", "minh": 120, "height": 4}
+            (colours are the named ones, ok/warn/bad/note, paper/ink/muted/accent/gold, white/black or a hex)
+  craft     the artifact design fundamentals still hold, as craft and not as a look: ground it in the subject, structure that
+            encodes something true, repeated things shaped alike, charts to scale, the title a name, complete at rest, one bold
+            moment with everything else quiet; then one look and one pass of fixes.
+
 """
 import json
 import subprocess

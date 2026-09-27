@@ -94,7 +94,7 @@ body { background: radial-gradient(circle, color-mix(in srgb, var(--ink) 7%, tra
 .uihero.band { background: var(--band); }
 .uihero.band.tone-ok, .uihero.band[class*="tone-"] { background: linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone) 55%, var(--hue-2))); }
 /* the band's overlay: a quiet pattern, and a shade under the words so they read on the light end of the gradient */
-.uihero.band { --shade: linear-gradient(100deg, rgba(8,10,20,.28), rgba(8,10,20,.06) 55%, rgba(8,10,20,0) 75%); --pat: none; }
+.uihero.band { --shade-a: .28; --shade: linear-gradient(100deg, rgba(8,10,20,var(--shade-a)), rgba(8,10,20,calc(var(--shade-a) * .2)) 55%, rgba(8,10,20,0) 75%); --pat: none; }   /* overlay 0..1 sets --shade-a */
 .uihero.band::before { background: var(--pat), var(--shade); }
 .uihero.band.pattern-dots { --pat: radial-gradient(rgba(255,255,255,.22) 1.3px, transparent 1.5px) 0 0 / 14px 14px; }
 .uihero.band.pattern-grid { --pat: linear-gradient(rgba(255,255,255,.14) 1px, transparent 1px) 0 0 / 22px 22px, linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px) 0 0 / 22px 22px; }
@@ -104,12 +104,40 @@ body { background: radial-gradient(circle, color-mix(in srgb, var(--ink) 7%, tra
 .uihero.band .uiherotext { padding: 20px 22px; }
 .uihero.band .uilabel { color: rgba(255,255,255,.85); }
 .uihero.band .uiherosub { color: rgba(255,255,255,.9); }
-.uicard { border-top: 3px solid var(--tone, var(--accent)); border-radius: 12px; padding: 12px 14px 14px; background: color-mix(in srgb, var(--tone, var(--accent)) 5%, var(--paper-2)); }
-.uicard.tone-ok, .uicard.tone-warn, .uicard.tone-bad, .uicard.tone-note, .uicard.tone-muted { border-top-width: 3px; }
+/* ---- the composer's choices: a style a component, and a look on anything (board-render's applyLook). No forced bars:
+   a card is a soft surface unless asked for a bar, an outline, glass or a shadow; the words are the composer's. */
+.uicard { border: 0; border-top: 0; padding: 0; background: transparent; border-radius: 12px; }
+.uicard-filled { padding: 12px 14px 14px; background: color-mix(in srgb, var(--tone, var(--accent)) 6%, var(--paper-2)); }
+.uicard-outline { padding: 12px 14px 14px; border: 1px solid color-mix(in srgb, var(--tone, var(--accent)) 35%, var(--line)); }
+.uicard-top { padding: 12px 14px 14px; border-top: 3px solid var(--tone, var(--accent)); background: color-mix(in srgb, var(--tone, var(--accent)) 5%, var(--paper-2)); border-radius: 0 0 12px 12px; }
+.uicard-left { padding: 10px 14px 12px 16px; border-left: 3px solid var(--tone, var(--accent)); background: color-mix(in srgb, var(--tone, var(--accent)) 5%, var(--paper-2)); border-radius: 0 12px 12px 0; }
+.uicard-glass { padding: 14px 16px; background: color-mix(in srgb, var(--paper-2) 55%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); backdrop-filter: blur(14px) saturate(1.2); border-radius: 16px; }
+.uicard-raised { padding: 14px 16px; background: var(--paper-2); border-radius: 14px; box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 12%, transparent); }
 .uicallout { padding: 10px 14px; border-radius: 10px; border-left-width: 4px; background: color-mix(in srgb, var(--tone, var(--note)) 10%, var(--paper-2)); }
+.uicallout-soft { border-left: 0; padding-left: 14px; }
+.uicallout-outline { border-left: 0; background: transparent; border: 1px solid color-mix(in srgb, var(--tone, var(--note)) 45%, transparent); }
+.uicallout-solid { border-left: 0; background: var(--tone, var(--note)); color: var(--paper-2); }
+.uicallout-solid > b { color: var(--paper-2); }
+.uicallout-plain { border-left: 0; background: transparent; padding: 0; }
 .uicallout > b { font-size: 16px; }
 .uibadge { background: color-mix(in srgb, var(--tone, var(--note)) 12%, transparent); border-color: color-mix(in srgb, var(--tone, var(--note)) 35%, transparent); }
-.uistat.boxed { padding: 12px 14px 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--tone, var(--accent)) 8%, var(--paper-2)); border-left: 3px solid var(--tone, var(--accent)); }
+.uibadge-solid { background: var(--tone, var(--note)); color: var(--paper-2); border-color: transparent; }
+.uibadge-outline { background: transparent; }
+.uistat-tile { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--tone, var(--accent)) 8%, var(--paper-2)); }
+.uistat-pill .uistatvalue { display: inline-block; padding: 2px 14px; border-radius: 999px; background: color-mix(in srgb, var(--tone, var(--accent)) 12%, var(--paper-2)); font-size: 24px; }
+.uistat-big .uistatvalue { font-size: 48px; line-height: 1; }
+.uidiv-dashed { background: none; border-top: 1px dashed color-mix(in srgb, var(--tone, var(--ink)) 35%, transparent); }
+.uidiv-dots { background: radial-gradient(circle, color-mix(in srgb, var(--tone, var(--ink)) 40%, transparent) 1.2px, transparent 1.4px) 0 50% / 10px 3px repeat-x; height: 3px; }
+.uidiv-space { background: none; height: 14px; }
+.uidiv-thick { height: 3px; background: var(--tone, var(--accent)); border-radius: 2px; }
+.uidivider.labelled[class*="tone-"] { color: var(--tone); } .uidivider.labelled[class*="tone-"]::before, .uidivider.labelled[class*="tone-"]::after { background: color-mix(in srgb, var(--tone) 40%, transparent); }
+.uiquote-big { border: 0; padding: 6px 0; font-size: 26px; line-height: 1.3; text-align: center; }
+.uiquote-plain { border: 0; padding: 0; font-style: normal; }
+.uif-display { font-family: var(--display) !important; } .uif-serif { font-family: var(--display-serif) !important; } .uif-sans { font-family: var(--sans) !important; } .uif-mono { font-family: var(--mono) !important; }
+.uitoned { color: var(--tone); }
+.uihero-center .uiherotext { justify-items: center; text-align: center; margin: auto; }
+.uihero-right .uiherotext { justify-items: end; text-align: right; margin-left: auto; }
+.uihero-top { align-items: flex-start; }
 .uistat .uilabel { color: color-mix(in srgb, var(--tone, var(--muted)) 75%, var(--muted)); }
 .uiprog { height: 6px; background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent); }
 .uistepmark { font-family: var(--display); font-weight: 700; color: var(--tone, var(--accent)); border-color: color-mix(in srgb, var(--tone, var(--accent)) 45%, transparent); background: color-mix(in srgb, var(--tone, var(--accent)) 10%, var(--paper-2)); }
