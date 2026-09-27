@@ -13,6 +13,9 @@
 (function () {
   const PALETTE = ["#8ff0e4", "#f4ae45", "#7cc7ff", "#b39cff", "#7be3a5", "#ff8fa3", "#ffd166", "#5ad1c9"];
   const TONES = ["ok", "note", "warn", "bad", "muted"];
+  // the named colours of board-theme.css: any component wears one as its tone, and a chart series can be one by name
+  const COLS = ["rust", "clay", "ocean", "sky", "navy", "forest", "moss", "lime", "sand", "sun", "gold", "berry", "rose", "coral", "violet", "lavender", "slate", "steel", "teal", "mint"];
+  const PATTERNS = ["dots", "grid", "rays", "waves", "none"];
   const MAX_DEPTH = 10, MAX_KIDS = 200, MAX_ROWS = 600;
 
   // ---- small helpers: elements as text, never markup
@@ -20,7 +23,7 @@
   const svgEl = (tag, attrs) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); return e; };
   const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const str = v => v == null ? "" : String(v);
-  const tone = t => TONES.includes(t) ? t : "note";
+  const tone = t => TONES.includes(t) || COLS.includes(t) ? t : "note";
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const safeUrl = u => { u = str(u).trim(); return /^https:\/\/\S+$/i.test(u) || (u.startsWith("/media/") && !u.includes("..")) ? u : ""; };
   const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return ""; } };
@@ -231,7 +234,7 @@
     const root = el("ol", "uisteps");
     items.forEach((it, i) => {
       const st = it.status || (cur >= 0 ? (i < cur ? "done" : i === cur ? "current" : "todo") : "todo");
-      const li = el("li", "uistep " + (["done", "current", "todo"].includes(st) ? st : "todo"));
+      const li = el("li", "uistep " + (["done", "current", "todo"].includes(st) ? st : "todo") + (it.tone ? " tone-" + tone(it.tone) : ""));
       const mark = el("span", "uistepmark", st === "done" ? "" : String(i + 1)); li.appendChild(mark);
       const body = el("div", "uistepbody"); body.appendChild(el("div", "uisteptitle", it.title || it.text || "")); if (it.body || it.note) { const p = el("div", "uimuted"); p.appendChild(inline(it.body || it.note)); body.appendChild(p); }
       li.appendChild(body); root.appendChild(li);
@@ -261,6 +264,10 @@
   function hero(n) {
     const d = el("div", "uihero"); d.style.aspectRatio = aspect(n.aspect) || "16 / 7";
     const u = safeUrl(n.src || n.url); if (u) d.style.backgroundImage = `url("${u.replace(/"/g, "%22")}")`;
+    else {   // no picture: a band in the theme's two hues (or the tone named), with a quiet pattern over it
+      d.classList.add("band", "pattern-" + (PATTERNS.includes(n.pattern) ? n.pattern : "dots")); if (n.tone) d.classList.add("tone-" + tone(n.tone));
+      if (!aspect(n.aspect)) d.style.aspectRatio = "16 / 5";
+    }
     const t = el("div", "uiherotext"); if (n.kicker) t.appendChild(el("div", "uilabel", n.kicker)); if (n.title) t.appendChild(el("div", "uiherotitle", n.title)); if (n.subtitle) { const s = el("div", "uiherosub"); s.appendChild(inline(n.subtitle)); t.appendChild(s); }
     d.appendChild(t); return d;
   }
@@ -278,7 +285,7 @@
   function callout(n) { const d = el("div", "uicallout tone-" + tone(n.tone)); if (n.title) d.appendChild(el("b", null, n.title)); const p = el("div"); p.appendChild(inline(n.text)); d.appendChild(p); return d; }
   function link(n) { const s = el("span", "uilink", n.text || n.href); const h = safeUrl(n.href); if (h) { s.title = h; const hs = host(h); if (hs && n.text) s.appendChild(el("span", "uimuted uihost", " " + hs)); } return s; }
   function stat(n) {
-    const d = el("div", "uistat" + (n.tone ? " tone-" + tone(n.tone) : ""));
+    const d = el("div", "uistat" + (n.tone ? " tone-" + tone(n.tone) : "") + (n.boxed ? " boxed" : "")); d.title = [n.label, fmt(n.value) + str(n.unit || ""), n.delta != null && n.delta !== "" ? str(n.delta) : "", n.note].filter(Boolean).join(" · ");
     if (n.label) d.appendChild(el("div", "uilabel", n.label));
     const v = el("div", "uistatrow"); v.appendChild(el("span", "uistatvalue", fmt(n.value))); if (n.unit) v.appendChild(el("span", "uistatunit", n.unit));
     if (n.delta != null && n.delta !== "") v.appendChild(el("span", "uibadge tone-" + tone(n.tone || (String(n.delta).trim().startsWith("-") ? "bad" : "ok")), n.delta));
@@ -297,7 +304,7 @@
   function gauge(n) {
     const min = num(n.min, 0), max = num(n.max, 100), v = clamp(num(n.value, 0), Math.min(min, max), Math.max(min, max));
     const p = max === min ? 0 : (v - min) / (max - min);
-    const d = el("div", "uigauge" + (n.tone ? " tone-" + tone(n.tone) : ""));
+    const d = el("div", "uigauge" + (n.tone ? " tone-" + tone(n.tone) : "")); d.title = (n.label ? n.label + ": " : "") + fmt(v) + str(n.unit || "") + (min !== 0 || max !== 100 ? " of " + fmt(max) : "");
     const svg = svgEl("svg", { viewBox: "0 0 200 116", class: "uigaugesvg" });
     const arc = (from, to, cls) => { const a0 = Math.PI * (1 - from), a1 = Math.PI * (1 - to); const x0 = 100 + 80 * Math.cos(a0), y0 = 100 - 80 * Math.sin(a0), x1 = 100 + 80 * Math.cos(a1), y1 = 100 - 80 * Math.sin(a1); return svgEl("path", { d: `M ${x0} ${y0} A 80 80 0 0 1 ${x1} ${y1}`, class: cls, fill: "none", "stroke-width": 14, "stroke-linecap": "round" }); };
     svg.appendChild(arc(0, 1, "uigaugetrack")); if (p > 0.001) svg.appendChild(arc(0, Math.max(0.02, p), "uigaugefill"));
@@ -319,6 +326,7 @@
     if (checks) { L.dataset.key = key; L.dataset.kind = "checks"; L.dataset.action = str(n.action || key); }
     items.forEach((it, i) => {
       const li = el("li"); const o = typeof it === "object" && it ? it : { text: it };
+      if (o.tone) li.classList.add("tone-" + tone(o.tone));
       if (checks) { li.classList.add("uicheck", o.done ? "done" : "todo"); li.dataset.act = `chk:${key}:${i}`; }
       li.appendChild(inline(o.text ?? "")); if (o.note) li.appendChild(el("div", "uimuted", o.note));
       L.appendChild(li);
@@ -371,9 +379,21 @@
     const series = (Array.isArray(n.series) && n.series.length ? n.series : Object.keys(first).filter(k => k !== x && typeof first[k] === "number")).map(String).slice(0, 8);
     const wrap = el("div", "uichartwrap"); if (n.title) wrap.appendChild(el("div", "uilabel", n.title));
     if (!data.length || !series.length) { wrap.appendChild(el("div", "uimuted", "no data")); return wrap; }
-    const colors = i => (Array.isArray(n.colors) && n.colors[i] && /^#[0-9a-f]{3,8}$/i.test(n.colors[i])) ? n.colors[i] : PALETTE[i % PALETTE.length];
+    // a mark's colour: a hex the tree names stays inline; otherwise a class, and the theme's palette (board-theme.css) paints it:
+    // the theme's own series colours, or a named colour ("rust", "sky", …) when the tree names one. PALETTE is the fallback attribute.
+    const named = i => Array.isArray(n.colors) && typeof n.colors[i] === "string" ? n.colors[i].trim() : "";
+    const hexOf = i => /^#[0-9a-f]{3,8}$/i.test(named(i)) ? named(i) : "";
+    const colors = i => hexOf(i) || PALETTE[i % PALETTE.length];
+    const paint = (e, i, kind) => { if (hexOf(i)) { if (kind === "b") e.style.background = hexOf(i); return e; } const nm = named(i); if (COLS.includes(nm)) e.classList.add("tone-" + nm, "uic" + kind + "-" + nm); else e.classList.add("uic" + kind + (i % 8 + 1)); return e; };
+    const perCategory = kind === "bar" && series.length === 1 && !n.mono && data.length <= 12;   // one series of categories: a colour a bar, unless mono asks for one
     const W = 480, H = clamp(num(n.height, 220), 120, 600);
     const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "uichart", role: "img" });
+    // the tip: a small dark card that follows the mouse over a mark, naming the x and every series' value (Paul, 2026-09-27: "graphs should have tooltips, hovers")
+    const unit = str(n.unit || ""), tip = el("div", "uitip"); wrap.classList.add("hastip"); wrap.appendChild(tip);
+    const moveTip = evt => { const b = wrap.getBoundingClientRect(); tip.style.left = clamp(evt.clientX - b.left, 48, Math.max(48, b.width - 48)) + "px"; tip.style.top = Math.max(0, evt.clientY - b.top) + "px"; };
+    const showTip = (evt, title, rows) => { tip.replaceChildren(); if (title) tip.appendChild(el("b", null, title)); rows.forEach(r => { const line = el("div", "uitiprow"); line.appendChild(paint(el("i"), r.i, "b")); if (r.label) line.appendChild(el("span", null, r.label)); line.appendChild(el("span", "uitipval", r.value)); tip.appendChild(line); }); moveTip(evt); tip.classList.add("on"); };
+    const hideTip = () => tip.classList.remove("on");
+    const bars = [];   // the bars of each column, lit together under the mouse
     if (kind === "pie" || kind === "donut") {
       const vals = data.map(d => Math.max(0, num(d[series[0]], 0))); const total = vals.reduce((a, b) => a + b, 0) || 1;
       const cx0 = H / 2, cy0 = H / 2, R = H / 2 - 8, r0 = kind === "donut" ? R * 0.58 : 0;
@@ -385,12 +405,14 @@
         if (v / total > 0.9999) d = `M ${cx0 + R} ${cy0} A ${R} ${R} 0 1 1 ${cx0 - R} ${cy0} A ${R} ${R} 0 1 1 ${cx0 + R} ${cy0}` + (r0 ? ` M ${cx0 + r0} ${cy0} A ${r0} ${r0} 0 1 0 ${cx0 - r0} ${cy0} A ${r0} ${r0} 0 1 0 ${cx0 + r0} ${cy0}` : "");
         else if (r0) { const q0 = [cx0 + r0 * Math.cos(a1), cy0 + r0 * Math.sin(a1)], q1 = [cx0 + r0 * Math.cos(a), cy0 + r0 * Math.sin(a)]; d = `M ${p0.join(" ")} A ${R} ${R} 0 ${big} 1 ${p1.join(" ")} L ${q0.join(" ")} A ${r0} ${r0} 0 ${big} 0 ${q1.join(" ")} Z`; }
         else d = `M ${cx0} ${cy0} L ${p0.join(" ")} A ${R} ${R} 0 ${big} 1 ${p1.join(" ")} Z`;
-        if (v > 0) svg.appendChild(svgEl("path", { d, fill: colors(i), "fill-rule": "evenodd", class: "uislice", stroke: "rgba(3,14,20,0.55)", "stroke-width": 1.5 }));
+        if (v > 0) { const sl = paint(svgEl("path", { d, fill: colors(i), "fill-rule": "evenodd", class: "uislice", stroke: "rgba(3,14,20,0.55)", "stroke-width": 1.5 }), i, "f");
+          sl.addEventListener("mouseenter", evt => showTip(evt, str(data[i][x]), [{ i, label: fmt(v) + unit, value: Math.round(v / total * 100) + "%" }])); sl.addEventListener("mousemove", moveTip); sl.addEventListener("mouseleave", hideTip);
+          svg.appendChild(sl); }
         a = a1;
       });
       if (r0 && n.center != null) { const t = svgEl("text", { x: cx0, y: cy0 + 6, "text-anchor": "middle", class: "uichartcenter" }); t.textContent = str(n.center); svg.appendChild(t); }
       const legend = el("div", "uilegend col");
-      data.forEach((d, i) => { const li = el("div", "uilegenditem"); const sw = el("i"); sw.style.background = colors(i); li.appendChild(sw); li.appendChild(el("span", null, str(d[x]))); li.appendChild(el("span", "uimuted", fmt(vals[i]) + (n.unit || "") + " · " + Math.round(vals[i] / total * 100) + "%")); legend.appendChild(li); });
+      data.forEach((d, i) => { const li = el("div", "uilegenditem"); const sw = paint(el("i"), i, "b"); li.appendChild(sw); li.appendChild(el("span", null, str(d[x]))); li.appendChild(el("span", "uimuted", fmt(vals[i]) + (n.unit || "") + " · " + Math.round(vals[i] / total * 100) + "%")); legend.appendChild(li); });
       const rowEl = el("div", "uipierow"); svg.style.width = H + "px"; svg.style.flex = "none"; rowEl.appendChild(svg); rowEl.appendChild(legend); wrap.appendChild(rowEl);
       return wrap;
     }
@@ -418,14 +440,15 @@
       data.forEach((_, i) => {
         if (stacked) {
           let up = 0, down = 0;
-          series.forEach((k, s) => { const v = ys[i][s]; if (!Number.isFinite(v) || v === 0) return; const y0 = v > 0 ? up : down, y1 = y0 + v; if (v > 0) up = y1; else down = y1; svg.appendChild(svgEl("rect", { x: sx(i) - inner / 2, y: Math.min(sy(y0), sy(y1)), width: inner, height: Math.max(1, Math.abs(sy(y0) - sy(y1))), fill: colors(s), rx: 2 })); });
+          series.forEach((k, s) => { const v = ys[i][s]; if (!Number.isFinite(v) || v === 0) return; const y0 = v > 0 ? up : down, y1 = y0 + v; if (v > 0) up = y1; else down = y1; const rc = paint(svgEl("rect", { x: sx(i) - inner / 2, y: Math.min(sy(y0), sy(y1)), width: inner, height: Math.max(1, Math.abs(sy(y0) - sy(y1))), fill: colors(s), rx: 3, class: "uibar" }), s, "f"); (bars[i] = bars[i] || []).push(rc); svg.appendChild(rc); });
         } else {
           const bw = inner / series.length;
-          series.forEach((k, s) => { const v = ys[i][s]; if (!Number.isFinite(v)) return; const y0 = sy(Math.max(0, Math.min(v, 0))), y1 = sy(v); svg.appendChild(svgEl("rect", { x: sx(i) - inner / 2 + s * bw, y: Math.min(y0, y1), width: Math.max(1, bw - 2), height: Math.max(1, Math.abs(y1 - y0)), fill: colors(s), rx: 2 })); });
+          series.forEach((k, s) => { const v = ys[i][s]; if (!Number.isFinite(v)) return; const y0 = sy(Math.max(0, Math.min(v, 0))), y1 = sy(v); const ci = perCategory ? i : s; const rc = paint(svgEl("rect", { x: sx(i) - inner / 2 + s * bw, y: Math.min(y0, y1), width: Math.max(1, bw - 2), height: Math.max(1, Math.abs(y1 - y0)), fill: colors(ci), rx: 3, class: "uibar" }), ci, "f"); (bars[i] = bars[i] || []).push(rc); svg.appendChild(rc); });
         }
       });
     } else if (isScatter) {
-      series.forEach((k, s) => data.forEach((_, i) => { const v = ys[i][s]; if (!Number.isFinite(v) || !Number.isFinite(xnum[i])) return; svg.appendChild(svgEl("circle", { cx: sx(i), cy: sy(v), r: 4.5, fill: colors(s), class: "uidot2" })); }));
+      series.forEach((k, s) => data.forEach((_, i) => { const v = ys[i][s]; if (!Number.isFinite(v) || !Number.isFinite(xnum[i])) return; const c = paint(svgEl("circle", { cx: sx(i), cy: sy(v), r: 4.5, fill: colors(s), class: "uidot2" }), s, "f");
+        c.addEventListener("mouseenter", evt => showTip(evt, k, [{ i: s, label: str(data[i][x]), value: fmt(v) + unit }])); c.addEventListener("mousemove", moveTip); c.addEventListener("mouseleave", hideTip); svg.appendChild(c); }));
     } else {
       const base = series.map(() => data.map(() => 0));
       series.forEach((k, s) => {
@@ -433,13 +456,29 @@
         data.forEach((_, i) => { let v = ys[i][s]; if (!Number.isFinite(v)) return; let b = 0; if (stacked) { b = base[s][i]; v = b + v; if (s + 1 < series.length) base[s + 1][i] = v; } pts.push([sx(i), sy(v), sy(b)]); });
         if (pts.length < 1) return;
         const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-        if (kind === "area") { const back = pts.slice().reverse().map(p => "L" + p[0].toFixed(1) + " " + (stacked ? p[2] : sy(Math.max(lo, 0))).toFixed(1)).join(" "); svg.appendChild(svgEl("path", { d: line + " " + back + " Z", fill: colors(s), "fill-opacity": stacked ? 0.55 : 0.18, stroke: "none" })); }
-        svg.appendChild(svgEl("path", { d: line, fill: "none", stroke: colors(s), "stroke-width": 2.2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
-        if (n.dots !== 0 && pts.length <= 40) pts.forEach(p => svg.appendChild(svgEl("circle", { cx: p[0], cy: p[1], r: 3, fill: colors(s) })));
+        if (kind === "area") { const back = pts.slice().reverse().map(p => "L" + p[0].toFixed(1) + " " + (stacked ? p[2] : sy(Math.max(lo, 0))).toFixed(1)).join(" "); svg.appendChild(paint(svgEl("path", { d: line + " " + back + " Z", fill: colors(s), "fill-opacity": stacked ? 0.55 : 0.18, stroke: "none" }), s, "f")); }
+        svg.appendChild(paint(svgEl("path", { d: line, fill: "none", stroke: colors(s), "stroke-width": 2.2, "stroke-linejoin": "round", "stroke-linecap": "round" }), s, "s"));
+        if (n.dots !== 0 && pts.length <= 40) pts.forEach(p => svg.appendChild(paint(svgEl("circle", { cx: p[0], cy: p[1], r: 3, fill: colors(s) }), s, "f")));
+      });
+    }
+    if (!isScatter) {   // a hit band a column: a dashed guide, the column's bars lit, and the tip with the x and every series' value
+      const guide = svgEl("line", { x1: 0, x2: 0, y1: padT, y2: padT + ph, class: "uiguide" }); svg.appendChild(guide);
+      const cool = () => { guide.classList.remove("on"); svg.querySelectorAll(".uibar.hot").forEach(b => b.classList.remove("hot")); hideTip(); };
+      data.forEach((d, i) => {
+        const x0 = i === 0 ? padL : (sx(i - 1) + sx(i)) / 2, x1 = i === data.length - 1 ? W - padR : (sx(i) + sx(i + 1)) / 2;
+        const hit = svgEl("rect", { x: x0, y: padT, width: Math.max(1, x1 - x0), height: ph, fill: "transparent", class: "uihit" });
+        hit.addEventListener("mouseenter", evt => {
+          guide.setAttribute("x1", sx(i)); guide.setAttribute("x2", sx(i)); guide.classList.add("on");
+          svg.querySelectorAll(".uibar.hot").forEach(b => b.classList.remove("hot")); (bars[i] || []).forEach(b => b.classList.add("hot"));
+          const rows = series.map((k, s) => [k, s]).filter(([, s]) => Number.isFinite(ys[i][s])).map(([k, s]) => ({ i: perCategory ? i : s, label: series.length > 1 ? k : "", value: fmt(ys[i][s]) + unit }));
+          showTip(evt, str(d[x]), rows);
+        });
+        hit.addEventListener("mousemove", moveTip); hit.addEventListener("mouseleave", cool);
+        svg.appendChild(hit);
       });
     }
     wrap.appendChild(svg);
-    if (series.length > 1 || n.legend) { const legend = el("div", "uilegend"); series.forEach((k, s) => { const li = el("div", "uilegenditem"); const sw = el("i"); sw.style.background = colors(s); li.appendChild(sw); li.appendChild(el("span", null, k)); legend.appendChild(li); }); wrap.appendChild(legend); }
+    if (series.length > 1 || n.legend) { const legend = el("div", "uilegend"); series.forEach((k, s) => { const li = el("div", "uilegenditem"); const sw = paint(el("i"), s, "b"); li.appendChild(sw); li.appendChild(el("span", null, k)); legend.appendChild(li); }); wrap.appendChild(legend); }
     return wrap;
   }
   function sparkSvg(arr, tn) {
@@ -679,5 +718,5 @@
     return false;
   }
 
-  window.__boardRender = { render, applyState, act, step, media, count, inline, markdown, PALETTE, TYPES: Object.keys(RENDER) };
+  window.__boardRender = { render, applyState, act, step, media, count, inline, markdown, PALETTE, COLS, TYPES: Object.keys(RENDER) };
 })();

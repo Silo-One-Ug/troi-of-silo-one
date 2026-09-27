@@ -51,12 +51,23 @@ callout), data (stat, progress, gauge, key-values, list, table, chart, sparkline
 clock, calendar), media (image, gallery, video, YouTube, Vimeo, audio, an https page, a map, avatars)
 and answers (button, choice).
 
-## Colour
+## Colour and themes
 
-The board colours its structure by itself, from the theme's tokens: section dividers and table headers
-in the accent, zebra rows, accent list markers and checkboxes, a fine accent line on cards, numbers
-right-aligned in tabular figures. The agent adds the tones for meaning (ok, warn, bad, note), gold for
-the one thing to look at, and keeps to one accent and no more than three hues on a panel.
+Every panel wears a theme chosen for its subject: a pair of hues, a display face and a chart palette
+of its own. Paper (teal and gold on a serif) is the default; rust, ocean, forest, sand, berry, slate,
+gold and night are the others, night being a dark surface whatever the board's own theme. A panel
+also has a surface: a lifted card by default, the theme's wash, a dark surface, or the flat paper.
+
+Inside a panel the agent colours by the content, generously: twenty named colours (rust, clay,
+ocean, sky, navy, forest, moss, lime, sand, sun, gold, berry, rose, coral, violet, lavender, slate,
+steel, teal, mint) go on stats, badges, cards, callouts, steps, list items and chart series, a
+colour a thing; a bar chart of one series gives each bar its own. The tones for meaning (ok, warn,
+bad) say state and nothing else, and gold marks the one thing to look at. A hero without a picture
+is a band in the theme's hues with a quiet pattern; big numbers can sit in boxed, tinted wells.
+
+Charts answer the mouse: hover a column for a guide line, the lit bar and a small card naming every
+series' value there; slices and dots answer on their own. Every colour is a token, so the light and
+the dark board both read.
 
 ## Designed like a page
 

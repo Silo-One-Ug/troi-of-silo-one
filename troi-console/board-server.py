@@ -3,7 +3,7 @@
 full-width page of tiles (cards, pictures, notes from the vault, UI panels) that the owner moves with the mouse. It is
 served on the Mac only (127.0.0.1), at the address the console embeds.
 
-  GET  /stage.html, /board.html  the page (board.html, beside board-app.js, board-render.js, board.css, board-ui.css in troi-console/barehands/)
+  GET  /stage.html, /board.html  the page (board.html, beside board-app.js, board-render.js, board.css, board-ui.css, board-theme.css in troi-console/barehands/)
   GET  /media/*                  the airlock: the only folder pictures and videos ever come from (barehands/media/, or the media orb's path)
   GET  /note?f=<orb>/<rel>       one vault note's text, jailed to the notes folder in barehands.json
   GET  /config                   the board's name (the console's board_label) and its folders
@@ -44,7 +44,7 @@ import paths as P  # noqa: E402
 PAGES = HERE / "barehands"                        # the page and its scripts
 HOME = P.BAREHANDS                                # barehands.json (written by setup.py), media/ (the airlock), state/
 STATIC = {"/board-app.js": "application/javascript", "/board-render.js": "application/javascript",
-          "/board.css": "text/css", "/board-ui.css": "text/css"}
+          "/board.css": "text/css", "/board-ui.css": "text/css", "/board-theme.css": "text/css"}
 PAGE_PATHS = ("/", "/stage.html", "/board.html", "/index.html")
 
 ARGS = None
@@ -67,7 +67,7 @@ _seq = [0]
 ALLOWED = {"add_img", "add_card", "clear", "reset", "hand", "give", "yank", "hover", "scroll_note", "widget", "explode",
            "assemble", "present", "add_ui", "ui", "layout", "tidy"}
 KEEP = {"card", "img", "model", "panel", "ui"}
-KEYS = ("type", "title", "body", "src", "file", "x", "y", "tw", "th", "iw", "ih", "ui", "uid", "uv", "us", "ua", "ub", "sy", "pres", "mm")
+KEYS = ("type", "title", "body", "src", "file", "x", "y", "tw", "th", "iw", "ih", "ui", "uid", "uv", "us", "ua", "ub", "ut", "usf", "sy", "pres", "mm")   # ut, usf: a panel's theme and surface (board-theme.css)
 
 
 # ---- config and folders (barehands.json: the name the console gave the board, the notes and media folders)

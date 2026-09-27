@@ -5,7 +5,7 @@ One vocabulary, two surfaces: the conversation (the console's own components) an
 tiles the owner moves with the mouse; a tile can be dragged, resized, spotlit and clicked).
 
   show.py '<json tree>' [--title "..."]                          in the conversation
-  show.py '<json tree>' --board [--title "..."] [--x 0.5 --y 0.45] [--w 0.3] [--h 0.6] [--aspect 16:9] [--scroll] [--present] [--hand] [--clear] [--hidebar]
+  show.py '<json tree>' --board [--title "..."] [--theme rust] [--surface tint] [--x 0.5 --y 0.45] [--w 0.3] [--h 0.6] [--aspect 16:9] [--scroll] [--present] [--hand] [--clear] [--hidebar]
   show.py '<json tree>' --both [...]                              both at once
   show.py --file tree.json [...]                                  the tree from a file
   show.py chart line|bar|area|pie|donut "<title>" "<x key>" "<series keys, comma>" '<data json>' [--board]     a chart in one line
@@ -14,7 +14,7 @@ tiles the owner moves with the mouse; a tile can be dragged, resized, spotlit an
   show.py board tidy | clear                                      line every tile up | put everything away
   show.py board "<title>" set '<json tree>'                       a new tree in the same panel (a live dashboard)
   show.py board "<title>" state '<json>'                          set tabs, slides or choices by key
-  show.py board "<title>" move --x 0.7 --y 0.4  |  size --w 0.4  |  rename "<new title>"
+  show.py board "<title>" move --x 0.7 --y 0.4  |  size --w 0.4  |  rename "<new title>"  |  theme <name>  |  surface <name>
   show.py vocabulary                                              the components and their fields
 
 Board sizes are fractions of the screen: --w is the tile's width (default 0.3; 1 = the full width), --h its height (its body
@@ -25,14 +25,16 @@ Components (both surfaces unless marked):
   layout    stack (children, gap sm|lg) · row (children, align, justify, wrap) · grid (cols 1-6, children) · columns (weights [2,1], children)
             card (title, subtitle, footer, tone, children) · group (title, children) · tabs (items [{label, child}], active)
             accordion (items [{label, child|text, note, open}], single) · slideshow (items [{url, caption}|component], interval s, autoplay, aspect, fit, title)
-            steps (items [{title, body, status done|current|todo}], current) · timeline (items [{time, title, body, tone}])
-            divider (label) · spacer (h px) · aspect (ratio, child) · hero (src, title, subtitle, kicker, aspect)
+            steps (items [{title, body, status done|current|todo, tone}], current) · timeline (items [{time, title, body, tone}])
+            divider (label) · spacer (h px) · aspect (ratio, child) · hero (src, title, subtitle, kicker, aspect; without src a band in the
+            theme's two hues: pattern dots|grid|rays|waves|none, tone a named colour)
   text      heading (text, level 1-4, align) · text (text with **bold** *italic* `code` [link](https://…); size sm|md|lg|xl, muted, align, mono)
             md (text: block markdown with headings, lists, checklists, quotes, fences, pipe tables) · quote (text, cite) · code (text, lang, title)
             kbd (keys) · badge (text, tone ok|note|warn|bad|muted) · tags (items, tone) · callout (title, text, tone) · link (text, href)
-  data      stat (label, value, unit, delta, tone, note, spark [numbers]) · progress (label, value, max, tone, text) · gauge (value, min, max, unit, label, tone)
-            kv (items [{k, v}] or {k: v}) · list (items [text | {text, done, note}], ordered, check) · table (columns [name | {label, key, align}], rows, caption, highlight [row indexes], footer, zebra, compact)
-            chart (kind line|bar|area|pie|donut|scatter, data [{...}], x, series [keys], stacked, colors, title, unit, height, ymin, ymax, legend, center)
+  data      stat (label, value, unit, delta, tone, note, spark [numbers], boxed) · progress (label, value, max, tone, text) · gauge (value, min, max, unit, label, tone)
+            kv (items [{k, v}] or {k: v}) · list (items [text | {text, done, note, tone}], ordered, check) · table (columns [name | {label, key, align}], rows, caption, highlight [row indexes], footer, zebra, compact)
+            chart (kind line|bar|area|pie|donut|scatter, data [{...}], x, series [keys], stacked, colors [hex or named colours], mono, title, unit, height, ymin, ymax, legend, center;
+            a bar chart of one series gives each bar its own colour unless mono)
             sparkline (data, label, tone) · rating (value, max, label) · countdown (to ISO time, label, done) · clock (tz, label, seconds, h12)
             calendar (month YYYY-MM, marks [{date, label, tone}], title)
   media     image (url|src, fit cover|contain, aspect, radius, caption, credit) · gallery (items [{url, title, credit}], cols, aspect, fit, numbered)
@@ -53,7 +55,14 @@ Design (the vault's "Board Design" note has the whole of it; read it before comp
             repeated things shaped exactly alike, a column count the items fill, never a lone tile.
   charts    to scale, labels that name values the chart reaches, a title with the unit; area for a trend, bar for a comparison,
             donut for a share; one series where one tells the story.
-  colour    ok/warn/bad say state and nothing else, note is the one accent, muted is quiet; never a tone for taste; three hues at most.
+  colour    by the content, generously (Paul, 2026-09-27: "be open-minded on colours, as many as the content calls for"): a theme by
+            the subject (--theme rust|ocean|forest|sand|berry|slate|gold|night; paper is the default: teal and gold on a serif), and
+            a colour a thing when the content has things: a tone a server, a step, an outlet, a person (tone takes rust, clay, ocean,
+            sky, navy, forest, moss, lime, sand, sun, gold, berry, rose, coral, violet, lavender, slate, steel, teal, mint on any
+            component, and a bar chart of one series colours each bar by itself). ok/warn/bad still say state and nothing else;
+            gold stays for the one thing to look at. A surface for the panel: card (the default, lifted and filled), tint (the
+            theme's wash), dark (a night surface), paper (flat). A hero without a picture is a band in the theme's hues: open
+            a panel with one (kicker, title, subtitle) more often than not.
   words     the title is a name, a short noun phrase specific to the subject, never a category and never a name plus an explainer;
             labels name what the owner recognises; short active sentences; a md block over four lines goes behind a tab.
   width     --w 0.3 for a column of stats, 0.34 to 0.4 for a billboard, 0.5 and over only for a wide chart; a panel that needs
@@ -209,10 +218,13 @@ def to_board(tree, title, opt):
     for k in ("scroll", "present", "hand", "hidebar"):
         if opt.get(k):
             cmd[k] = 1
+    for k in ("theme", "surface"):
+        if opt.get(k):
+            cmd[k] = str(opt[k]).strip().lower()
     ok, err = board_send(cmd)
     if not ok:
         print(f"the board refused it: {err}"); return 1
-    print(f"on the board: \"{cmd['title']}\" ({count(spec)} components{', spotlit' if opt.get('present') else ''}). Say a line about it; console.sh view hands shows the board.")
+    print(f"on the board: \"{cmd['title']}\" ({count(spec)} components{', spotlit' if opt.get('present') else ''}{', the ' + cmd['theme'] + ' theme' if cmd.get('theme') else ''}). Say a line about it; console.sh view hands shows the board.")
     return 0
 
 
@@ -235,6 +247,8 @@ def board_op(title, op, arg, opt):
         cmd["state"] = json.loads(arg)
     elif op == "rename":
         cmd["name"] = arg or ""
+    elif op in ("theme", "surface"):
+        cmd[op] = (arg or "").strip().lower()
     elif op in ("move", "size"):
         pass
     else:
@@ -252,7 +266,7 @@ def board_op(title, op, arg, opt):
 def parse(argv):
     """Flags out, positionals left: {--title T, --x N, ...}, [positionals]."""
     opt, pos, i = {}, [], 0
-    valued = {"--title", "--x", "--y", "--w", "--h", "--aspect", "--id", "--file"}
+    valued = {"--title", "--x", "--y", "--w", "--h", "--aspect", "--id", "--file", "--theme", "--surface"}
     flags = {"--board", "--both", "--scroll", "--present", "--hand", "--clear", "--hidebar"}
     while i < len(argv):
         a = argv[i]
