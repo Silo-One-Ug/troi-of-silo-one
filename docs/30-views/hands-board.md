@@ -58,6 +58,18 @@ in the accent, zebra rows, accent list markers and checkboxes, a fine accent lin
 right-aligned in tabular figures. The agent adds the tones for meaning (ok, warn, bad, note), gold for
 the one thing to look at, and keeps to one accent and no more than three hues on a panel.
 
+## Designed like a page
+
+A panel is designed, not dumped. Before the first command the agent settles three things: the
+subject and the panel's one job; the one bold thing the eye should land on (a picture, a number,
+a chart, a quote); and the pieces in reading order, the summary before the detail. Then the craft
+a designer would bring to a page: real content with the subject's own detail, structure that
+encodes something true (steps only for a sequence, a card only for what must stand apart),
+repeated things shaped exactly alike, charts to scale with named units, a title that is a name
+rather than a category, running text kept short and tables behind tabs. One look at the result,
+one pass of fixes, and the panel is left alone; further polish is yours to ask for. The board's
+own stylesheet is the design system, so typography and theme never change from panel to panel.
+
 ## Organised by itself
 
 A new tile flows into the first free space, in reading order, and scrolls into view. `layout` places
