@@ -492,7 +492,10 @@ def check(state, tell, log, busy):
             if not w:
                 continue
             line, phone = line_for(w, p["details"])
-            tell(line, phone=phone)
+            try:
+                tell(line, phone=phone, level=w.get("level") or ("action"))      # the pulse's channel sorts it (triage.py); --fyi keeps it for the digest
+            except TypeError:
+                tell(line, phone=phone)
         state["watch_pending"] = keep
 
 
@@ -520,7 +523,7 @@ def _every(s):
 
 def cmd_add(a):
     a = list(a)
-    tell_only = _flag(a, "--tell")
+    tell_only = _flag(a, "--tell"); fyi = _flag(a, "--fyi"); urgent = _flag(a, "--urgent")
     gap = _opt(a, "--gap"); cap = _opt(a, "--cap")
     if not a or a[0] not in KINDS:
         print("usage: watches.py add <" + "|".join(KINDS) + "> … \"<what to do>\"   (watches.py --help for the shapes)"); return 2
@@ -585,6 +588,10 @@ def cmd_add(a):
         w["gap"] = int(_every(gap)) if not str(gap).isdigit() else int(gap)
     if cap:
         w["cap"] = int(cap)
+    if fyi:
+        w["level"] = "fyi"                                          # kept for the digest, never spoken
+    elif urgent:
+        w["level"] = "urgent"                                       # spoken at once and phoned, quiet hours or not
     items.append(w); save(items)
     print(f"watch {wid}: {note} -> {'tell the owner' if tell_only else do.strip()}   (watches.py off {wid} turns it off)")
     return 0
