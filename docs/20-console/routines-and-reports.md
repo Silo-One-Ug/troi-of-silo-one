@@ -38,6 +38,20 @@ The Routines page lists them with a switch; a watch is switched off, never remov
 cooldown and a daily cap, a burst of new files comes as one line, and a one-off ("in twenty
 minutes", "at nine tomorrow") turns itself off after firing. Under the hood: `watches.py`.
 
+### Triage and quiet hours
+
+What the pulse has to say is sorted before it is said. **Urgent** (a server down or unreachable, a
+critical alert) is spoken as soon as the agent is free and always sent to your phone, quiet hours or
+not. **Action** (a failed build, a new server issue, a reminder, a calendar heads-up, a watch) is
+spoken when the agent is free, and goes to the phone when the voice line is down. **FYI** (a build
+green again, an issue resolved) is never spoken: it waits in the digest. **Ignore** is only logged.
+"What did I miss" reads the digest, by level, newest first.
+
+Quiet hours hold the action items for the digest and let only the urgent through: your word ("don't
+disturb me for two hours unless it's urgent"), a meeting being recorded, movie mode, an event in
+progress on your calendar, and the night (23:00 to 07:00; `quiet_night: false` in the settings turns
+that off). A watch can be made fyi or urgent when it is set.
+
 The pulse (`troi-console/pulse.py`) runs the clock. It is a background service, so the reminders,
 the watches and the nightly jobs run whether or not Troi is started; what it has to say goes to the
 agent when the voice line is up and to Telegram when it is down.

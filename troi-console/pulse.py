@@ -32,6 +32,7 @@ from pathlib import Path
 import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent)); import paths as P  # noqa: E402
 import db as _DB  # noqa: E402  (small documents live in troi.db)
 import watches as _W  # noqa: E402  (the owner's watches: "watch this, and when it happens, do that")
+import triage as _T  # noqa: E402  (what the pulse says is sorted first: urgent, action, fyi, ignore; quiet hours hold the middle)
 
 import sys as _sp, os as _osp; _sp.path.insert(0, _osp.path.dirname(_osp.path.abspath(__file__))); import paths as _Pa  # noqa: E402
 
@@ -121,6 +122,12 @@ def tell(text, phone=None):
     return ok
 
 
+def say(kind, line, phone=None, level=None):
+    """Every line to the owner goes through the triage: urgent is spoken and phoned, action spoken when free (held in quiet
+    hours), fyi kept for the digest, ignore dropped. `tell` remains the raw channel for the nightly compaction's command."""
+    return _T.deliver(None, kind, line, phone=phone, level=level)
+
+
 def gh(args):
     try:
         out = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=40,
@@ -140,8 +147,8 @@ def check_reminders():
         return                       # try again next tick, after the agent finishes
     for r in due:
         log(f"[pulse]  reminder due: {r.get('text')}")
-        tell(f"(reminder, set by the owner earlier: \"{r.get('text')}\". Say it to them now in one short sentence, as a reminder.)",
-             phone=f"Reminder: {r.get('text')}")
+        say("reminder", f"(reminder, set by the owner earlier: \"{r.get('text')}\". Say it to them now in one short sentence, as a reminder.)",
+            phone=f"Reminder: {r.get('text')}")
     keep = [r for r in items if r not in due]
     REMINDERS.write_text(json.dumps(keep, indent=2))
 
@@ -173,10 +180,10 @@ def check_github(state):
             if r["conclusion"] == "failure" or (prev.get("conclusion") == "failure" and r["conclusion"] == "success"):
                 what = "FAILED" if r["conclusion"] == "failure" else "is green again"
                 log(f"[pulse]  github: {full} {r['name']} {what}")
-                tell(f"(github watch: on {full}, the workflow \"{r['name']}\" on main {what}: \"{r.get('displayTitle','')}\". "
+                say("github", f"(github watch: on {full}, the workflow \"{r['name']}\" on main {what}: \"{r.get('displayTitle','')}\". "
                      f"Tell the owner in one sentence. If it FAILED, run your CI Failure Response job from the vault: read the failing log, diagnose, "
-                     f"and if the fix is small open a PR for it, then report on Telegram; never merge without green CI and the owner's word.)",
-                     phone=f"GitHub: {full} \u2014 {r['name']} on main {what}: {r.get('displayTitle','')}")
+                    f"and if the fix is small open a PR for it, then report on Telegram; never merge without green CI and the owner's word.)",
+                    phone=f"GitHub: {full} \u2014 {r['name']} on main {what}: {r.get('displayTitle','')}")
 
 
 SERVER_EVERY = 900          # the server watch: every 15 minutes, read-only over SSH (servers.py)
@@ -200,10 +207,10 @@ def check_grafana(state):
     state.pop("grafana_err", None)
     for line in lines:
         log(f"[pulse]  grafana: {line}")
-        tell(f"(grafana watch: {line}. Tell the owner in one sentence. For something FIRING run your Server Maintenance job: look first, read-only "
-             f"(servers.py check on the node named, grafana.py query for the metric behind it), then propose the fix; nothing changes on a server without the owner's go. "
-             f"Keep the board's production panel current if one is up.)",
-             phone=f"Grafana: {line}")
+        say("grafana", f"(grafana watch: {line}. Tell the owner in one sentence. For something FIRING run your Server Maintenance job: look first, read-only "
+            f"(servers.py check on the node named, grafana.py query for the metric behind it), then propose the fix; nothing changes on a server without the owner's go. "
+            f"Keep the board's production panel current if one is up.)",
+            phone=f"Grafana: {line}")
 
 
 def check_servers(state):
@@ -223,9 +230,9 @@ def check_servers(state):
     if not new and not fixed:
         return
     log(f"[pulse]  servers: new {new} fixed {fixed}")
-    tell(f"(server watch: NEW: {'; '.join(new) or 'none'}. RESOLVED: {'; '.join(fixed) or 'none'}. Tell the owner in one or two sentences. "
-         f"For a new issue run your Server Maintenance job: look first, read-only, then propose the fix; nothing changes on a server without the owner's go.)",
-         phone="Servers: " + ("NEW: " + "; ".join(new) if new else "") + (" RESOLVED: " + "; ".join(fixed) if fixed else ""))
+    say("servers", f"(server watch: NEW: {'; '.join(new) or 'none'}. RESOLVED: {'; '.join(fixed) or 'none'}. Tell the owner in one or two sentences. "
+        f"For a new issue run your Server Maintenance job: look first, read-only, then propose the fix; nothing changes on a server without the owner's go.)",
+        phone="Servers: " + ("NEW: " + "; ".join(new) if new else "") + (" RESOLVED: " + "; ".join(fixed) if fixed else ""))
 
 
 def check_calendar(state):
@@ -243,10 +250,10 @@ def check_calendar(state):
         told.append(key); del told[:-60]
         start = e["start"][11:16]
         log(f"[pulse]  calendar: {e['title']} at {start}")
-        tell(f"(calendar: \"{e['title']}\" starts at {start}" + (f" on the {e['calendar']} calendar" if e.get('calendar') else "")
-             + (f", call link {e['link']}" if e.get('link') else "") + ". Tell the owner in one sentence, offer to prep them (your Meeting Prep & Notes job), "
-             "and to record it when it starts: meeting.py start with no name takes the event's title.)",
-             phone=f"Calendar: {e['title']} at {start}" + (f" \u2014 {e['link']}" if e.get('link') else ""))
+        say("calendar", f"(calendar: \"{e['title']}\" starts at {start}" + (f" on the {e['calendar']} calendar" if e.get('calendar') else "")
+            + (f", call link {e['link']}" if e.get('link') else "") + ". Tell the owner in one sentence, offer to prep them (your Meeting Prep & Notes job), "
+            "and to record it when it starts: meeting.py start with no name takes the event's title.)",
+            phone=f"Calendar: {e['title']} at {start}" + (f" \u2014 {e['link']}" if e.get('link') else ""))
 
 
 
@@ -295,18 +302,19 @@ def check_brief(state):
     if now >= t and now <= "11:00" and not busy():
         state["brief_done"] = today
         log("[pulse]  morning brief")
-        tell("(scheduled morning brief: it is time. Run your Morning Brief job now and speak it.)")
+        say("brief", "(scheduled morning brief: it is time. Run your Morning Brief job now and speak it.)", level="action")
 
 
 def main():
     state = jload(STATE, {})
+    _T.bind(tell, log)
     last_gh = 0.0
     last_srv = last_cal = last_gf = 0.0
     while True:
         try:
             if True:
                 check_reminders()
-                _W.check(state, tell, log, busy)          # the owner's watches (watches.py): the pulse notices, the agent acts
+                _W.check(state, lambda line, phone=None, level=None: say("watch", line, phone=phone, level=level), log, busy)   # the owner's watches, through the triage
                 if time.time() - last_gh > GH_EVERY:
                     last_gh = time.time()
                     check_github(state)
