@@ -41,6 +41,25 @@ Components (both surfaces unless marked):
             avatar (url|name, initials, size, sub, tone) · avatars (items, max, size, label) · skeleton (lines)
   answer    button (label, action, tone, primary) · choice (label, options [label | {label, value}], value, action)   — a click reaches the agent as a "(board: …)" line
 Pictures, video and audio on the board come from https or from files on this Mac (copied into the board's airlock); http links are refused.
+
+Design (the vault's "Board Design" note has the whole of it; read it before composing a panel):
+  plan      three lines before the first command: the subject and the panel's one job; the one bold thing the eye lands on
+            (a hero, one number, one chart, one quote; gold for that and nothing else); the pieces in reading order, the
+            summary before the detail. A panel is scanned, not read.
+  content   real content with the subject's own detail (its units, its terms, its numbers); never a skeleton where a number belongs;
+            complete at rest, nothing waiting for a click to make the point.
+  structure structure encodes something true: steps only for a sequence, timeline only for real times, a labelled divider only
+            where the subject changes; a card or callout for the one thing that must stand apart (if everything is a card, nothing is);
+            repeated things shaped exactly alike, a column count the items fill, never a lone tile.
+  charts    to scale, labels that name values the chart reaches, a title with the unit; area for a trend, bar for a comparison,
+            donut for a share; one series where one tells the story.
+  colour    ok/warn/bad say state and nothing else, note is the one accent, muted is quiet; never a tone for taste; three hues at most.
+  words     the title is a name, a short noun phrase specific to the subject, never a category and never a name plus an explainer;
+            labels name what the owner recognises; short active sentences; a md block over four lines goes behind a tab.
+  width     --w 0.3 for a column of stats, 0.34 to 0.4 for a billboard, 0.5 and over only for a wide chart; a panel that needs
+            scrolling to reach its point has failed.
+  then      one look (board-state.sh, look-screen.sh when it matters), one pass of fixes, and leave it. Never an artifact, never an
+            HTML page: the board's stylesheet is the design system.
 """
 import json
 import subprocess
