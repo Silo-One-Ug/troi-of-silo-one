@@ -17,6 +17,7 @@ whenever a mode is active, which is the honest signal that the agent is looking.
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -96,12 +97,34 @@ def prune():
                 pass
 
 
+_GRAY = {"how": None}        # how frames are read, chosen once: "pil" when the interpreter has Pillow, else "ffmpeg"
+_SAID = set()                # error lines already logged: a watch says a thing once, it never floods the conversation
+
+
+def once(line):
+    if line not in _SAID:
+        _SAID.add(line); log(line)
+
+
 def gray(path):
-    from PIL import Image
+    """The frame as 64x36 grey values in 0..1. Pillow when this interpreter has it; otherwise ffmpeg (on install.sh's
+    list), which is why the eyes work from backtalk's venv, where Pillow is not installed."""
     import numpy as np
-    with Image.open(path) as im:
-        im = im.convert("L").resize((64, 36))
-        return np.asarray(im, dtype="float32") / 255.0
+    if _GRAY["how"] != "ffmpeg":
+        try:
+            from PIL import Image
+            with Image.open(path) as im:
+                im = im.convert("L").resize((64, 36))
+                _GRAY["how"] = "pil"
+                return np.asarray(im, dtype="float32") / 255.0
+        except ImportError:
+            _GRAY["how"] = "ffmpeg"
+    ff = shutil.which("ffmpeg", path=PATH) or "/opt/homebrew/bin/ffmpeg"
+    r = subprocess.run([ff, "-v", "error", "-i", str(path), "-vf", "scale=64:36", "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+                       capture_output=True, timeout=20)
+    if r.returncode != 0 or len(r.stdout) != 64 * 36:
+        raise RuntimeError("ffmpeg could not read the frame: " + r.stderr.decode(errors="replace").strip()[:80])
+    return np.frombuffer(r.stdout, dtype="uint8").reshape(36, 64).astype("float32") / 255.0
 
 
 def speaking():
@@ -181,7 +204,7 @@ def main():
                                                f"something worth a word to the owner, say ONE short sentence about it. "
                                                f"If it is nothing, reply with exactly: Noted.)")
                     except Exception as e:
-                        log(f"[eyes]   watch error: {e!r}")
+                        once(f"[eyes]   watch error: {e!r}")
                 prune()
             # the owner's share (share.sh): watched whatever the camera mode, since picking a window in the Mac's own picker is the consent
             try:
@@ -206,7 +229,7 @@ def main():
                 elif not live:
                     share_base = None; share_run = 0
             except Exception as e:
-                log(f"[eyes]   share watch error: {e!r}")
+                once(f"[eyes]   share watch error: {e!r}")
             time.sleep(1.0)
     finally:
         if cam is not None:
