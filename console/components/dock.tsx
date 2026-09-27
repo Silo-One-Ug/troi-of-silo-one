@@ -7,10 +7,10 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, Clock, Eye, FileText, FolderOpen, Globe, Hand, History, Image as ImageIcon, LayoutGrid, MessageSquare, Network, Orbit, ShieldCheck, SlidersHorizontal, Smile } from "lucide-react";
 import { UnlockBox } from "./approvals";
-import { notifyOn, setNotify } from "./alerts";
+import { notifyOn, notifyWanted, setNotify } from "./alerts";
 import { LockButton } from "./mobile/bars";
 import { ThemeToggle } from "./theme-toggle";
-import { subscribeState, type State } from "@/lib/edge";
+import { epost, subscribeState, type State } from "@/lib/edge";
 import { agentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
@@ -26,13 +26,20 @@ function Wave({ samples, state }: { samples: number[]; state: string }) {
 
 export function Dock({ name }: { name: string }) {
   const path = usePathname(); const mobile = useMobile(); const [st, setSt] = useState<State | null>(null); const [pending, setPending] = useState(0); const [bell, setBell] = useState(false);
-  useEffect(() => { setBell(notifyOn()); }, []);
+  const [wanted, setWanted] = useState(false);                        // wanted here, but this browser has not allowed them (yet): the bell says so
+  const refreshBell = () => { const on = notifyOn(); setBell(on); setWanted(!on && notifyWanted()); };
+  useEffect(() => {                                                  // the browser can allow or block them without a reload (the icon in the address bar): keep looking
+    refreshBell(); const t = setInterval(refreshBell, 3000); window.addEventListener("focus", refreshBell);
+    return () => { clearInterval(t); window.removeEventListener("focus", refreshBell); };
+  }, []);
+  const say = (hint: string) => { epost("/ui", { hint }).catch(() => {}); };
   const toggleBell = async () => {                                   // on: approvals and reminders always; replies and Telegram while you are elsewhere
-    if (!("Notification" in window)) return;
-    if (bell) { setNotify(false); setBell(false); return; }
+    if (!("Notification" in window)) { say("This window cannot show notifications; turn them on in the console in your browser."); return; }
+    if (bell || wanted) { setNotify(false); refreshBell(); return; }
+    setNotify(true);                                                 // the wish is kept even when the browser says no now: the bell shows amber until it is allowed
     const p = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-    if (p !== "granted") return;
-    setNotify(true); setBell(true);
+    refreshBell();
+    if (p !== "granted") { say(p === "denied" ? "Your browser has blocked notifications for the console: allow them from the icon in the address bar, and the bell turns green." : "Your browser did not show the permission prompt: click the bell or the lock icon in the address bar and allow notifications."); return; }
     try { new Notification(name || agentName(), { body: "Notifications are on.", tag: "troi-hello", silent: true }); } catch {}
   };
   useEffect(() => { if (mobile) return; return subscribeState(d => { setSt(d); setPending(((d && d.pending) || []).length); }); }, [mobile]);   // a phone has its own bars, and their own poll
@@ -48,7 +55,7 @@ export function Dock({ name }: { name: string }) {
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-1">{PANES.map(([h, l, I]) => item(h, l, I, h === "/approvals" ? pending : h === "/agents" ? (st?.agents || 0) : 0))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />
-      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><span className="relative inline-flex"><Bell className={cn("h-4 w-4", bell && "fill-primary/20")} />{bell && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-background" />}</span></button>
+      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : wanted ? "Notifications wanted, but this browser has not allowed them: allow them from the icon in the address bar" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : wanted ? "text-amber-500" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><span className="relative inline-flex"><Bell className={cn("h-4 w-4", bell && "fill-primary/20")} />{(bell || wanted) && <span aria-hidden className={cn("absolute -right-1 -top-1 h-2 w-2 rounded-full ring-2 ring-background", bell ? "bg-emerald-500" : "bg-amber-500")} />}</span></button>
         <div className="hidden lg:block"><UnlockBox /></div><LockButton className="h-9 w-9 lg:hidden" />{/* a tablet has no room for the PIN box in the bar: the lock opens it in a sheet */}
         <ThemeToggle /></div>
     </motion.nav>

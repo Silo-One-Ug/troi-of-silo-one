@@ -16,6 +16,7 @@
 #   console.sh panel hide|show          hide or show the floating conversation (in the column shape, show opens it)
 #   console.sh tidy                     put the floating conversation back in its place and show it
 #   console.sh hint "<text>"            a short note above the bar, for nine seconds
+#   console.sh notify "<text>" ["<title>"]   ring the bell: a system notification (when they are on), the cue, and the words above the bar; for work the owner asked to be told about
 #   console.sh gestures on|off          hand tracking in the galaxies
 #   console.sh speak on|off|toggle|status   speech: on = every answer is spoken; off = text only (no voice, no ElevenLabs credits); status prints which
 #   console.sh hands <pinch_close|pinch_open|ext|dwell_ms|magnet> <value>   * tune the hand tracking
@@ -77,6 +78,7 @@ case "$1" in
   go)       post /ui "{\"go\":\"$2\"}";;
   hands)    post /settings "$(python3 -c 'import json,sys; print(json.dumps({"hands": {sys.argv[1]: float(sys.argv[2])}}))' "$2" "$3")";;
   hint)     post /ui "$(python3 -c 'import json,sys; print(json.dumps({"hint": sys.argv[1]}))' "$2")";;
+  notify)   post /ui "$(python3 -c 'import json,sys; print(json.dumps({"notify": {"body": sys.argv[1], "title": sys.argv[2] if len(sys.argv) > 2 else ""}}))' "$2" "$3")";;
   eyes)     post /settings "{\"eyes\":\"$2\"}";;
   wake)     post /settings "{\"wake_word\":$([ "$2" = on ] && echo true || echo false)}";;
   face-gate) post /settings "{\"face_gate\":$([ "$2" = on ] && echo true || echo false)}";;
