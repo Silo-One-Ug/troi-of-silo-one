@@ -25,7 +25,8 @@ from AppKit import (NSView, NSApplication, NSApplicationActivationPolicyAccessor
                     NSWindowCollectionBehaviorFullScreenAuxiliary, NSWindowCollectionBehaviorStationary, NSWindowStyleMaskBorderless,
                     NSWindowStyleMaskNonactivatingPanel, NSStatusWindowLevel, NSWorkspace,
                     NSWindowStyleMaskResizable, NSFloatingWindowLevel, NSVisualEffectView, NSVisualEffectMaterialHUDWindow,
-                    NSVisualEffectBlendingModeBehindWindow, NSVisualEffectStateActive, NSViewWidthSizable, NSViewHeightSizable, NSViewMinYMargin)
+                    NSVisualEffectBlendingModeBehindWindow, NSVisualEffectStateActive, NSViewWidthSizable, NSViewHeightSizable, NSViewMinYMargin,
+                    NSViewMinXMargin, NSViewMaxYMargin, NSButton, NSImage, NSImageView, NSImageOnly, NSOpenPanel)
 from Foundation import NSObject, NSTimer, NSURL
 from WebKit import WKWebView, WKWebViewConfiguration, WKUserContentController
 
@@ -191,17 +192,52 @@ class FloatDrag(NSView):
         return True
 
 
+class FloatPanel(NSPanel):
+    """A borderless panel says no to becoming the key window, which is why nothing typed reached the conversation; this one
+    says yes (and only when needed, so the app the owner is in keeps the front until they click into the pane)."""
+    def canBecomeKeyWindow(self):
+        return True
+
+    def canBecomeMainWindow(self):
+        return False
+
+
+class WebUI(NSObject, protocols=[objc.protocolNamed("WKUIDelegate")]):
+    """What the web view asks the host for: a file picker for the paperclip (a plain web view has none and the click does
+    nothing), and the microphone for the recorder (granted here; the Mac still asks once for Python's own permission)."""
+    def webView_runOpenPanelWithParameters_initiatedByFrame_completionHandler_(self, web, params, frame, handler):
+        panel = NSOpenPanel.openPanel()
+        panel.setCanChooseFiles_(True); panel.setCanChooseDirectories_(False)
+        try:
+            panel.setAllowsMultipleSelection_(bool(params.allowsMultipleSelection()))
+        except Exception:
+            panel.setAllowsMultipleSelection_(True)
+        panel.setTitle_("A file or a photo for the conversation")
+        NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        res = panel.runModal()
+        handler(panel.URLs() if res == 1 else None)
+
+    def webView_requestMediaCapturePermissionForOrigin_initiatedByFrame_type_decisionHandler_(self, web, origin, frame, kind, handler):
+        handler(1)                                                     # WKPermissionDecisionGrant: the console asked for the microphone
+
+
+def _symbol(name, tip):
+    img = NSImage.imageWithSystemSymbolName_accessibilityDescription_(name, tip)
+    return img
+
+
 class Floater:
     """The conversation as a panel of its own: translucent, resizable, above every app and on every space, showing the
     console's /float route. Shown and hidden through the state file (console.sh float, the console's pane button through
-    the board server, the ring's menu); its frame is remembered in the same file."""
-    W, H, MIN_W, MIN_H, STRIP = 440, 560, 360, 260, 22
+    the board server, the ring's menu); its frame is remembered in the same file. A header carries three buttons: back to
+    the console, larger or smaller, put away; a grip glyph marks the corner that resizes (every edge does)."""
+    W, H, MIN_W, MIN_H, STRIP, BIG_W, BIG_H = 440, 560, 360, 260, 30, 760, 880
 
     def __init__(self):
         scr = NSScreen.mainScreen().visibleFrame(); st = float_state()
         x = st.get("x", scr.origin.x + scr.size.width - self.W - 24); y = st.get("y", scr.origin.y + 24)
         w = max(self.MIN_W, st.get("w", self.W)); h = max(self.MIN_H, st.get("h", self.H))
-        self.win = NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
+        self.win = FloatPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             NSMakeRect(x, y, w, h), NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel | NSWindowStyleMaskResizable, NSBackingStoreBuffered, False)
         p = self.win
         p.setLevel_(NSFloatingWindowLevel)
@@ -217,12 +253,36 @@ class Floater:
         self.web = WKWebView.alloc().initWithFrame_configuration_(NSMakeRect(0, 0, w, h - self.STRIP), cfg)
         self.web.setValue_forKey_(False, "drawsBackground")
         self.web.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        self.ui = WebUI.alloc().init(); self.web.setUIDelegate_(self.ui)
         glass.addSubview_(self.web)
         self.strip = FloatDrag.alloc().initWithFrame_(NSMakeRect(0, h - self.STRIP, w, self.STRIP))
         self.strip.setAutoresizingMask_(NSViewWidthSizable | NSViewMinYMargin)
         glass.addSubview_(self.strip)
+        # the header's three buttons, right-aligned, following the right edge: back to the console, larger or smaller, put away
+        app = NSApplication.sharedApplication().delegate()
+        for i, (sym, tip, action) in enumerate((("macwindow", "Back to the console", "floatconsole:"),
+                                                 ("arrow.up.left.and.arrow.down.right", "Larger, or back to the small pane", "floatsize:"),
+                                                 ("xmark", "Put the conversation away", "floatclose:"))):
+            b = NSButton.alloc().initWithFrame_(NSMakeRect(w - 28 * (3 - i) - 4, 4, 24, 22))
+            b.setBordered_(False); b.setImage_(_symbol(sym, tip)); b.setImagePosition_(NSImageOnly); b.setToolTip_(tip)
+            b.setContentTintColor_(NSColor.secondaryLabelColor()); b.setTarget_(app); b.setAction_(action)
+            b.setAutoresizingMask_(NSViewMinXMargin)
+            self.strip.addSubview_(b)
+        grip = NSImageView.alloc().initWithFrame_(NSMakeRect(w - 18, 3, 14, 14))
+        grip.setImage_(_symbol("arrow.up.left.and.arrow.down.right", "resize")); grip.setContentTintColor_(NSColor.tertiaryLabelColor())
+        grip.setToolTip_("Drag an edge or this corner to resize"); grip.setAutoresizingMask_(NSViewMinXMargin | NSViewMaxYMargin)
+        glass.addSubview_(grip)
         p.setContentView_(glass)
         self.loaded_at = 0.0; self.lastframe = None; self.moved_at = 0.0; self.shown = False
+
+    def toggle_size(self):
+        """The small pane or the large one, grown from its top-right corner and kept on the screen."""
+        f = self.win.frame(); scr = NSScreen.mainScreen().visibleFrame()
+        nw, nh = (self.BIG_W, self.BIG_H) if f.size.width < (self.W + self.BIG_W) / 2 else (self.W, self.H)
+        nx = min(max(scr.origin.x, f.origin.x + f.size.width - nw), scr.origin.x + scr.size.width - nw)
+        ny = min(max(scr.origin.y, f.origin.y + f.size.height - nh), scr.origin.y + scr.size.height - nh)
+        self.win.setFrame_display_animate_(NSMakeRect(nx, ny, nw, nh), True, True)
+        float_write(x=int(nx), y=int(ny), w=int(nw), h=int(nh))
 
     def load(self):
         self.web.loadRequest_(__import__("Foundation").NSURLRequest.requestWithURL_(NSURL.URLWithString_(FLOAT_URL)))
@@ -358,6 +418,29 @@ class App(NSObject):
 
     def float_remember(self):
         if self.floater is not None: self.floater.moved_at = time.time()
+
+    def floatclose_(self, sender):
+        float_write(shown=False)
+
+    def floatsize_(self, sender):
+        if self.floater is not None: self.floater.toggle_size()
+
+    def floatconsole_(self, sender):
+        """Back to the full console: the conversation returns to its column there, the pane goes, the console's window comes
+        forward (the Chrome app the owner made of it, else whichever app shows a console window, else the default browser)."""
+        import subprocess
+        subprocess.Popen([str(HERE / "console.sh"), "talk", "column"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        float_write(shown=False)
+        name = _agent_name()
+        for cand in (Path.home() / "Applications" / "Chrome Apps.localized" / f"{name}.app", Path.home() / "Applications" / f"{name}.app"):
+            if cand.exists():
+                subprocess.Popen(["open", "-a", str(cand)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); return
+        script = ('tell application "System Events" to repeat with p in (every application process whose background only is false)\n'
+                  '  try\n    if (name of window 1 of p) contains "Console" then\n      set frontmost of p to true\n      return name of p\n    end if\n  end try\n'
+                  'end repeat')
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=8)
+        if not r.stdout.strip():
+            NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL.rstrip("/") + "/conversation"))
 
     def open_(self, sender):
         NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(CONSOLE_URL))
