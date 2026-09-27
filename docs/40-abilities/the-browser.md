@@ -50,3 +50,9 @@ Something else holds port 9223, or the agent's Chrome did not start. `troi-conso
 status` says who answers on the port; `browser-mcp.sh open` starts the agent's Chrome, asking an Arc
 that still holds the port to quit first. In the extension mode there is no port: check that the
 extension is installed in the Chrome you use and that you approved the connection on its page.
+
+The agent's Chrome can also lose its debugging port while it keeps running (seen on 2026-09-27: the
+process alive, the port dead). `browser-mcp.sh open` sees that, asks the instance to quit through its
+own menu and starts a fresh one; the Browser page's mirror does the same by itself while you watch it.
+The agent runs `browser-mcp.sh open` and tries again whenever a browser tool says the browser is
+closed; it never sends you to another window for that.

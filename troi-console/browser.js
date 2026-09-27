@@ -25,10 +25,24 @@ fs.mkdirSync(CACHE, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fresh = (p, s) => { try { return Date.now() - fs.statSync(p).mtimeMs < s * 1000; } catch (e) { return false; } };
 
+// the agent's browser, brought back when it is wanted and gone: while the console's Browser page watches, or a click or an
+// address is waiting, browser-mcp.sh open starts it again (the agent's own Chrome; an Arc in the old mode); at most every 30 s.
+// Quit by the owner and wanted by nobody, it stays quit.
+let lastLaunch = 0;
+function wanted() { try { return fresh(WATCH, 6) || (fs.existsSync(CMDS) && fs.statSync(CMDS).size > 0); } catch (e) { return false; } }
+function relaunch() {
+  if (Date.now() - lastLaunch < 30000) return;
+  lastLaunch = Date.now();
+  try {
+    const { execFile } = require("child_process");
+    execFile(path.join(__dirname, "browser-mcp.sh"), ["open"], { timeout: 60000 }, (err, out) => { try { fs.appendFileSync(path.join(CACHE, "browser.log"), new Date().toISOString() + " relaunch: " + (err ? "failed: " + err.message : String(out || "").trim()) + "\n"); } catch (e) {} });
+  } catch (e) {}
+}
 async function connect() {
+  let failed = 0;
   for (;;) {
     try { const b = await chromium.connectOverCDP(CDP, { timeout: 5000 }); return b; }
-    catch (e) { await sleep(2000); }
+    catch (e) { failed++; if (failed >= 2 && wanted()) relaunch(); await sleep(2000); }
   }
 }
 
@@ -72,8 +86,17 @@ async function main() {
     } catch (e) { logline(cmd.op + " failed: " + (e.message || e)); }
   }
 
-  let busy = false, lastShot = 0;
+  let busy = false, lastShot = 0, lastInfo = 0;
   while (!gone) {
+    // the page's address and title every second, watched or not: the pane knows what the agent is on before it asks for frames
+    if (Date.now() - lastInfo > 1000) {
+      lastInfo = Date.now();
+      try {
+        const ps = ctx.pages().filter(p => !p.isClosed() && !ours(p.url()));
+        const p = current && !current.isClosed() ? current : ps[ps.length - 1];
+        fs.writeFileSync(INFO, JSON.stringify({ url: p ? p.url() : "", title: p ? await p.title().catch(() => "") : "", app: APP, t: Date.now() }));
+      } catch (e) {}
+    }
     // commands first: the pane's clicks and keys
     try {
       if (fs.existsSync(CMDS)) {

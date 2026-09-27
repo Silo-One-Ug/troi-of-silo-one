@@ -17,6 +17,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `look-screen.sh` | `[display]` | One screenshot, its path printed |
 | `read.py` | `<file> [--sheet NAME] [--rows N] [--max-chars N]` | A file the Read tool cannot open, as text: xlsx sheets as tables, csv, pptx slides, docx and rtf through textutil, pdf through pdftotext |
 | `apps.sh` | `list`, `running`, `open`, `focus`, `quit`, `kill` (asks you) | Applications |
+| `spaces.sh` | `front`, `to "<app>" [window words]`, `windows "<app>"`, `next`, `prev`, `back` | Windows and Spaces: what is in front, an app's window brought over across Spaces (the Mac follows to its Space), the keyboard's swipe; the agent never sends you to a window |
 | `fs.sh` | `move`, `rename`, `copy`, `mkdir`, `reveal`, `open [app]`, `undo`, `trash` (asks you), `pending` | Files, only inside the file roots (the vault is one) |
 | `console.sh` | see [console.sh](console-sh.md) | The console, driven |
 | `show-image.sh` | `<file> [title] [x] [y]` | A picture or a video on the board; without x and y it flows into free space |
