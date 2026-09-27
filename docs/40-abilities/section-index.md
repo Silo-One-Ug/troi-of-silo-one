@@ -14,7 +14,7 @@ instead of saying it cannot.
 | --- | --- |
 | [Files and apps](files-and-apps.md) | Moving, renaming and organising inside your file roots; opening, focusing and quitting apps; trash and force-quit requests |
 | [The native hands](native-hands.md) | Every app by name through the accessibility tree: press, set, menu, type, wait; the guards; the cursor for what has no name |
-| [The browser](the-browser.md) | Arc, or a Chrome of the agent's own; what it may do on a site; the Browser page |
+| [The browser](the-browser.md) | A Chrome of the agent's own, or your Chrome through the Playwright extension; what it may do on a site; the Browser page |
 | [Eyes and screen](eyes-and-screen.md) | A look through the camera or at the screen, the sight modes, watch mode |
 | [Pictures](pictures.md) | Research with credited pictures on the board; making pictures from words; showing a picture |
 | [News](news.md) | Headlines per outlet, Uganda first; reading an article; an outlet's videos and social pages |

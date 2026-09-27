@@ -19,7 +19,7 @@ tracked by git.
 | Logs | `data/logs/`, `backtalk/logs/backtalk.log` |
 | Throwaway files | `data/cache/` (safe to delete at any time) |
 | Speech models | `data/models/` |
-| The agent's browser profile | Arc's own profile when the browser is Arc; `data/browser/` when it is a Chrome of the agent's own |
+| The agent's browser profile | `data/browser/` for the agent's own Chrome; your own Chrome's profile when it works through the Playwright extension; `data/browser-choice` keeps the choice |
 | Files the agent made and no longer needs | `data/trash/<date>/` |
 | Secrets | the Keychain, account `troi-of-silo-one` (`troi-console/keychain.py list`) |
 | Boot file (identity, rules, abilities) | `CLAUDE.md`, rendered from `troi-console/templates/CLAUDE.md` |

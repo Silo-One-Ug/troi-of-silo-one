@@ -10,7 +10,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 
 | Tool | Usage | What it does |
 | --- | --- | --- |
-| browser | `mcp__playwright__*` (navigate, click, type, snapshot, screenshot, tabs) | The browser the agent drives: Arc when it is installed (your Arc, your logins included: money, deletions and messages need your go-ahead), else a Chrome of its own |
+| browser | `mcp__playwright__*` (navigate, click, type, snapshot, screenshot, tabs) | The browser the agent drives: a Chrome of its own on port 9223 (the Browser page mirrors it), or your own Chrome through the Playwright extension, your logins included (money, deletions and messages need your go-ahead) |
 | hands | `mcp__hands__*` (apps, launch, focus, windows, inspect, find, read, press, set, perform, menu, type, key, wait, click) | Every app by name through its accessibility tree, the result read back, no screenshot; risky labels are filed for approval. `hands.sh <command>` is the same from a terminal |
 | `cursor.sh` | `where`, `under`, `move`, `click`, `double`, `right`, `drag`, `type`, `key` | The pointer and keyboard fallback for what has no name (`look-screen.sh` first; risky buttons need your approval) |
 | `look.sh` | | One camera photo, its path printed |
@@ -37,7 +37,7 @@ run with no arguments (`backup-vault.sh`, `report.py`, `housekeeping.sh`, `look.
 | `grafana.py` | `check`, `alerts [--all]`, `rules`, `silences`, `query '<PromQL>' [--range 1h] [--show]`, `logs '<LogQL>' [--since 15m]`, `dashboards [words]`, `panel <uid> <id> [--show]`, `watch` | Grafana, read-only: the alerts firing, the metric behind one (as a chart on the board), a container's logs, a panel as a picture. The address lives in `data/grafana.json`, the token in the Keychain |
 | `agenda.py` | `today`, `next`, `week`, `soon [min]`, `current` | The Mac's Calendar app |
 | `face.py` | `verify`, `check` | Face ID (its own environment); learning your face is yours to do |
-| `browser-mcp.sh` | `open`, `which` | Open the browser with its port 9223 (Arc, or Chrome), or say which it is |
+| `browser-mcp.sh` | `open`, `which`, `status`, `use own\|yours\|arc\|auto` | The agent's browser: its own Chrome on port 9223, or your Chrome through the Playwright extension (arc is the old way); which it is, what is up, the choice |
 | `news.py` | `brief [uganda\|world\|all] [--n N] [--hours H] [--show]`, `topic "<words>"`, `read <url>`, `videos <outlet>`, `social <outlet>`, `sources` | The news, Uganda first |
 | `pictures.py` | `search "topic" [--n 6] [--show] [--add]`, `page <url> [--show]`, `shot <url> [--show]`, `board <title> <files…>`, `focus <n\|word>`, `unfocus`, `clear` | Research pictures, credited, on the board |
 | `imagine.py` | `"prompt" [--show] [--size 1536x1024] [--from img]`, `check` | A picture from words |

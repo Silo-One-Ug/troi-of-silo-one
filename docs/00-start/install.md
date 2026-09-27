@@ -14,11 +14,12 @@ Written for someone setting Troi up on a Mac for the first time.
 3. **Claude Code**, signed in: [claude.com/claude-code](https://claude.com/claude-code). Run `claude`
    once and log in.
 4. **Google Chrome** from [google.com/chrome](https://www.google.com/chrome/). The hands board and
-   the page tools that run without a window need it, and without Arc it is the agent's own browser.
-5. **Arc**, optionally, from [arc.net](https://arc.net). If Arc is installed, it becomes the browser
-   the agent drives, and yours at the same time (Arc runs one instance only): the agent starts it
-   with its debugging port, and asks it to quit and come back, tabs and spaces intact, if you opened
-   it from the Dock first. See [The browser](../40-abilities/the-browser.md).
+   the page tools that run without a window need it, and it is the agent's browser: a Chrome of its
+   own by default, with its own profile and window.
+5. **The Playwright extension** in your own Chrome, optionally, from the
+   [Chrome Web Store](https://chromewebstore.google.com/detail/playwright-extension/mmlmfjhmonkocbjadbfplnigmagldckm).
+   With it installed, the agent drives your Chrome instead, your logins included: the first time it
+   touches the web, Chrome asks you which tab it may use. See [The browser](../40-abilities/the-browser.md).
 
 The installer adds these command-line tools with Homebrew if they are missing:
 

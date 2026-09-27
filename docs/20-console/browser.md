@@ -4,9 +4,10 @@ description: The agent's browser, mirrored live on the console. Watch it work, o
 order: 8
 ---
 
-The Browser page mirrors the agent's browser live: Arc when it is installed (the same Arc you use),
-otherwise a Chrome of the agent's own. Watch it work, or take over: click, scroll, type, use the
-address bar, log in to a site for it. **Window** brings the real browser window forward.
+The Browser page mirrors the agent's own Chrome live (its own profile and window). Watch it work, or
+take over: click, scroll, type, use the address bar, log in to a site for it. **Window** brings the
+real browser window forward. When the agent drives your own Chrome through the Playwright extension
+there is no port to mirror, so the page has no live view and you watch the real window instead.
 
 When a site needs your account and it is not signed in, the agent opens the page, says "it needs
 your login; the Browser page is yours", and waits. Nothing the page shows is taken by the agent as an

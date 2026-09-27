@@ -20,7 +20,7 @@ Keychain), with the exact place to do it.
 | A file you asked it to trash is still there | That is the design: the request waits in Approvals, across restarts too. Unlock with your PIN and approve it, or send "approve" on Telegram. |
 | "Approving needs you" | Unlock the console: the PIN box at the lock, or **Check it's me** on the Eyes page. Or send "approve" on Telegram. |
 | The board shows only its placeholder | Nothing is up. Ask the agent to show you something, or click one of the requests written on the board. |
-| The agent's browser tools say the browser is not reachable | Arc was opened without its debugging port (from the Dock, before Troi). Quit Arc and start Troi again, or run `troi-console/browser-mcp.sh open`. |
+| The agent's browser tools say the browser is not reachable | Something else holds port 9223, or the agent's Chrome did not start: `troi-console/browser-mcp.sh status` says who answers, `browser-mcp.sh open` starts the agent's Chrome (an Arc still on the port is asked to quit first). In the extension mode, check the Playwright extension is installed in your Chrome and the connection approved. |
 | The native hands say `no: … did not answer in time` | The app's main thread is busy (a dialog, a hang); wait, or look with `windows`. More in [The native hands](../40-abilities/native-hands.md). |
 | The console did not build | See `data/logs/console-build.log`, then run `cd console && npm install && npm run build`. |
 | The globe or the cursor complains about pyobjc | `uv pip install --python troi-console/.venv-ring/bin/python pyobjc-framework-Cocoa pyobjc-framework-WebKit pyobjc-framework-Quartz pyobjc-framework-ApplicationServices` |
