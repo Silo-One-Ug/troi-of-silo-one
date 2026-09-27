@@ -24,7 +24,7 @@ import { Button } from "./ui/button";
 import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
 import { rise } from "@/lib/motion";
-import { edgeUrl, eget, epost, img, on, setTalkShape, talkShape, type Card, type Row, type State } from "@/lib/edge";
+import { edgeUrl, eget, epost, img, lastState, on, setTalkShape, statePace, subscribeState, talkShape, type Card, type Row, type State } from "@/lib/edge";
 import { agentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
@@ -230,7 +230,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     addEventListener("mousedown", h); return () => removeEventListener("mousedown", h);
   }, [menu]);
   useEffect(() => {
-    let stop = false;
+    let stop = false; const stopFns: (() => void)[] = [];
     (async () => {
       eget("/config").then(c => setOwner(c.owner || "")).catch(() => {});
       try { since.current = JSON.parse(localStorage.getItem("silo.chatSince") || "null"); } catch {}
@@ -261,12 +261,16 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
           }
           for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
         } catch {}
-        setTimeout(poll, 700);
+        // the record's pace follows the moment too: brisk while a reply is under way, a walk when idle, a stroll when the tab is hidden
+        const st = lastState(); const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+        const busy = live.current || busyRef.current || (!!st && st.voice && st.state !== "idle" && st.state !== "off");
+        setTimeout(poll, hidden ? 5000 : busy ? 700 : Math.max(1500, statePace(st)));
       };
-      const pollState = async () => {
+      const onState = (d: State | null) => {                       // fed by the page's one poll of /state (lib/edge), paced by what is happening
         if (stop) return;
+        if (!d) { setState("off"); return; }
         try {
-          const d: State = await eget("/state"); setState(d.voice ? d.state : "off");
+          setState(d.voice ? d.state : "off");
           const part = clean(d.partial || "");
           if (!busyRef.current) {                                    // a spoken turn (or one typed elsewhere): the tool in the brain's hands, from the state
             const tl = d.tool && d.tool.name ? d.tool : null, cur = liveStep.current;
@@ -285,12 +289,11 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
             const l = live.current; live.current = null; settled.current = { id: l.id, final: l.final, at: Date.now() };
             upsert(l.id, m => ({ ...m, live: false, t: m.t || l.t || stamp(), text: l.final.length ? joinAll(l.final) : clean(m.text) }));
           }
-        } catch { setState("off"); }
-        setTimeout(pollState, 500);
+        } catch {}
       };
-      poll(); pollState();
+      poll(); const unsub = subscribeState(onState); stopFns.push(unsub);
     })();
-    return () => { stop = true; };
+    return () => { stop = true; stopFns.forEach(f => f()); };
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- files: the @ picker over the file roots, and uploads (the clip, a drop, a paste, a screenshot) into data/blobs/uploads

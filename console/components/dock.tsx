@@ -10,7 +10,7 @@ import { UnlockBox } from "./approvals";
 import { notifyOn, setNotify } from "./alerts";
 import { LockButton } from "./mobile/bars";
 import { ThemeToggle } from "./theme-toggle";
-import { eget, type State } from "@/lib/edge";
+import { subscribeState, type State } from "@/lib/edge";
 import { agentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,7 @@ export function Dock({ name }: { name: string }) {
     setNotify(true); setBell(true);
     try { new Notification(name || agentName(), { body: "Notifications are on.", tag: "troi-hello", silent: true }); } catch {}
   };
-  useEffect(() => { if (mobile) return; let stop = false; const tick = async () => { if (stop) return; try { const d = await eget("/state"); setSt(d); setPending((d.pending || []).length); } catch { setSt(null); } setTimeout(tick, 500); }; tick(); return () => { stop = true; }; }, [mobile]);   // a phone has its own bars, and their own poll
+  useEffect(() => { if (mobile) return; return subscribeState(d => { setSt(d); setPending(((d && d.pending) || []).length); }); }, [mobile]);   // a phone has its own bars, and their own poll
   const state = st ? (st.voice ? st.state : "off") : "off";
   const item = (href: string, label: string, Icon: any, badge?: number) => { const on = path.startsWith(href); return (
     <Link key={href} href={href} title={label} aria-label={label} className={cn("relative grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors", on ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-surface hover:text-foreground")}><Icon className="h-[18px] w-[18px]" />{!!badge && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">{badge}</span>}</Link>); };

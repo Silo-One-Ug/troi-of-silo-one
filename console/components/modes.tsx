@@ -14,6 +14,7 @@ import { Input } from "./ui/input";
 import { setWorkSound, workSoundOn } from "./sounds";
 import { eget, epost, unlockToken, type Config } from "@/lib/edge";
 import { agentName, useAgentName } from "@/lib/name";
+import { setPowerMode, usePower, type PowerMode } from "@/lib/power";
 import { cn } from "@/lib/utils";
 
 type Tone = "ok" | "info" | "warn";
@@ -57,7 +58,7 @@ const KEYS: { name: string; label: string; hint: string; secret: boolean }[] = [
 ];
 
 export function Modes() {
-  const agent = useAgentName();
+  const agent = useAgentName(); const power = usePower();
   const [c, setC] = useState<Config | null>(null); const [down, setDown] = useState(""); const [note, setNote] = useState<{ tone: Tone; text: string } | null>(null);
   const [busy, setBusy] = useState<Record<string, string | null>>({}); const [confirmAuto, setConfirmAuto] = useState(false);
   const [credits, setCredits] = useState<any>(null); const [mood, setMood] = useState<any>(null); const [moodVol, setMoodVol] = useState<number | null>(null); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
@@ -153,6 +154,10 @@ export function Modes() {
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
           <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: `A soft pad while ${agent} works, a chime when it is done` }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
             hint={`A soft pad plays from this browser while ${agent} works, and a chime when it is done. This device only; the first stretch after a fresh page is silent until you touch the page.`} />
+          {/* the page's power: the planet's frames and the polls of the server follow it (lib/power); this device only */}
+          <Seg label="Power" value={power.mode} options={[{ v: "auto", l: "Auto", title: "Saver on battery, full when plugged in" }, { v: "full", l: "Full" }, { v: "saver", l: "Saver", title: "The planet at a few frames a second without the glow; the server asked less often" }]}
+            onPick={v => setPowerMode(v as PowerMode)}
+            hint={`This device only. Right now: ${power.effective === "saver" ? "saver" : "full"}${power.onBattery ? `, on battery${power.level != null ? ` at ${power.level}%` : ""}` : ", plugged in or unknown"}. Saver draws the planet at a few frames a second without the glow and asks ${agent}'s server less often when nothing is happening; Auto follows the battery.`} />
           <Seg label="Your phone" value={c.lan === "tailscale" ? "tailscale" : c.lan ? "on" : "off"} busy={busy.lan}
             hint={c.lan === "tailscale" ? `${agent} answers your own devices over Tailscale from its next start, and turns every other network away: open ${c.tailscale?.https ? `https://${c.tailscale.name}/` : `http://${c.tailscale?.ip || "100.x.y.z"}:3100`} on your phone, with Tailscale on${c.tailscale?.https ? "" : " (the Mac's Tailscale address, not its name: browsers insist on https for .ts.net names)"}.`
               : c.lan ? `${agent} answers on this network from its next start: open http://${typeof location !== "undefined" ? location.hostname : "this-mac.local"}:3100 on your phone. Only on a network you trust: anyone on it can talk to ${agent} and read its record.`
