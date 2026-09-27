@@ -5,6 +5,8 @@
 #   fs.sh trash  <path> ["why"]     -> only a REQUEST; the owner approves on the console or Telegram
 #   fs.sh undo                       fs.sh reveal <path>   (show in Finder)      fs.sh pending
 #   fs.sh open <path> [app]          open a file in its default app (or the named app)
+#   fs.sh zip <path> [dest.zip] | unzip <archive> [folder] | size <folder> | dupes <folder> [--min 100k] | recent <folder> [--days 7]
+#   fs.sh tag <path> <tag>… | tags <path> | plan <folder> [--by-month]        (files.py: deeper Finder hands, nothing removed)
 C="http://127.0.0.1:8796"; J="Content-Type: application/json"
 j() { python3 -c 'import json,sys; print(json.dumps(dict(zip(sys.argv[1::2], sys.argv[2::2]))))' "$@"; }
 case "$1" in
@@ -16,5 +18,6 @@ case "$1" in
   undo)      curl -s -m 30 -X POST -H "$J" -d '{"op":"undo"}' "$C/fs";;
   pending)   curl -s -m 10 "$C/pending";;
   open)      curl -s -m 30 -X POST -H "$J" -d "$(python3 -c 'import json,sys; d={"path":sys.argv[1]}; (len(sys.argv)>2) and d.update(app=sys.argv[2]); print(json.dumps(d))' "$2" ${3:+"$3"})" "$C/open";;
-  *) sed -n 2,7p "$0";;
+  zip|unzip|size|dupes|recent|tag|tags|plan) exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/files.py" "$@";;
+  *) sed -n 2,9p "$0";;
 esac; echo

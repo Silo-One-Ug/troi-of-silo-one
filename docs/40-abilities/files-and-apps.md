@@ -19,6 +19,21 @@ missing, and the agent says so.
 folder, the agent proposes the plan first (what moves where), then does the moves, and puts anything
 unwanted in a trash request rather than deleting it.
 
+The hands go deeper too: `zip` and `unzip` (an archive beside the thing, unpacked into a new folder
+beside it), `size` (a folder and its largest children), `dupes` (duplicates found by size and a hash,
+reported in groups with what the copies take; nothing removed), `recent` (what changed in the last
+days), `tag` and `tags` (Finder tags, the existing ones kept) and `plan` (what would go where, by kind
+or by month; nothing moves until you say so). All of it stays inside your file roots and never
+overwrites: a name that exists gets " 2".
+
+## The clipboard
+
+"What did I just copy", "turn what I copied into a table", "put this on the clipboard": the agent
+reads the clipboard on request (text, copied files as their paths, or a picture, saved under
+`data/blobs/clips/`) and writes text to it. Anything that looks like a secret (a key, a token, a
+password) is never shown: the agent says so and you paste it where it goes yourself. There is no
+clipboard history: only what is on it now, when asked.
+
 The same operations are on the [Files galaxy](../30-views/files-galaxy.md): drag a star onto a folder,
 right-click for rename or a new folder.
 
