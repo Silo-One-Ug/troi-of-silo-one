@@ -26,6 +26,8 @@ The window takes the console's full width; the words keep a reading column in th
   shimmers, and each new step takes the last one's place, so the conversation never fills with them.
   When the reply comes, the line settles into "N steps" with one small icon a kind; click it for the
   timeline, one short line a step, the exact command in small type and whole in its tooltip.
+  The steps stay in the record, so after a reload the line is back where it ran, between the words
+  said before the tool and those said after.
 - **Clear the chat.** The eraser in the header (in the top bar on a phone) empties the page and
   remembers where it stood, so a reload stays clear; "Show what came before" brings the lines back.
   The record and the agent's memory of the conversation are untouched: for a fresh start of those,
