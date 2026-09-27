@@ -25,6 +25,7 @@ import { HeadlinesCard, PicturesGrid } from "./cards";
 import { UiBlock } from "./render";
 import { rise } from "@/lib/motion";
 import { edgeUrl, eget, epost, img, on, setTalkShape, talkShape, type Card, type Row, type State } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -221,7 +222,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
           try { const d = await eget(`/transcript?pos=${sc.pos}&cpos=${sc.cpos}`); rows = (d.items as Row[]).filter(r => r.role !== "ctl").slice(-120); pos.current = d.pos; if (d.cpos !== undefined) cpos.current = d.cpos; setCleared(true); } catch {}
         } else if (sc) { since.current = null; try { localStorage.removeItem("silo.chatSince"); } catch {} }   // the record started over since then
         setMsgs(group(rows.map(fromRow).filter(Boolean) as Msg[]));
-      } catch { setHint("Troi's server is not answering: start Troi from the Desktop."); }
+      } catch { setHint(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); }
       const poll = async () => {
         if (stop) return;
         try {
@@ -322,7 +323,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
         const d = await r.json().catch(() => ({}));
         if (d.ok && d.path) { setFiles(fs => fs.map(x => x.id === id ? { ...x, path: d.path, uploading: false } : x)); setHint(""); }
         else { drop(id); setHint(d.error ? `${f.name}: ${d.error}.` : `${f.name} did not upload.`); }
-      } catch { drop(id); setHint(`${f.name} did not upload: Troi's server is not answering.`); }
+      } catch { drop(id); setHint(`${f.name} did not upload: ${agentName()}'s server is not answering.`); }
     }
   };
   const screenshot = async () => {                                 // the Mac's screen, captured by the agent's own eyes and attached
@@ -331,7 +332,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       const d = await epost("/look", { what: "screen" });
       if (d.ok && d.path) { setFiles(fs => [...fs, { id: nid(), name: base(d.path), path: d.path, kind: "image", url: img(d.path) }]); setHint(""); }
       else setHint(d.error ? `No screenshot: ${d.error}` : "No screenshot.");
-    } catch { setHint("No screenshot: Troi's server is not answering."); }
+    } catch { setHint(`No screenshot: ${agentName()}'s server is not answering.`); }
     finally { setShooting(false); }
   };
 
@@ -360,7 +361,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
       const r = await fetch(edgeUrl() + "/voice", { method: "POST", headers: { "X-Filename": `note.${ext}`, "Content-Type": blob.type || "application/octet-stream" }, body: blob });
       const d = await r.json().catch(() => ({}));
       if (d.ok && d.text) { setHint(""); await send(d.text); } else setHint(d.error ? String(d.error) : "I could not make out any words.");
-    } catch { setHint("Troi's server is not answering."); }
+    } catch { setHint(`${agentName()}'s server is not answering.`); }
     finally { setHearing(false); }
   };
 

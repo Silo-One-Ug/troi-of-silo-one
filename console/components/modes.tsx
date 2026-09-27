@@ -13,6 +13,7 @@ import { Combobox } from "./ui/combobox";
 import { Input } from "./ui/input";
 import { setWorkSound, workSoundOn } from "./sounds";
 import { eget, epost, unlockToken, type Config } from "@/lib/edge";
+import { agentName, useAgentName } from "@/lib/name";
 import { cn } from "@/lib/utils";
 
 type Tone = "ok" | "info" | "warn";
@@ -56,12 +57,13 @@ const KEYS: { name: string; label: string; hint: string; secret: boolean }[] = [
 ];
 
 export function Modes() {
+  const agent = useAgentName();
   const [c, setC] = useState<Config | null>(null); const [down, setDown] = useState(""); const [note, setNote] = useState<{ tone: Tone; text: string } | null>(null);
   const [busy, setBusy] = useState<Record<string, string | null>>({}); const [confirmAuto, setConfirmAuto] = useState(false);
   const [credits, setCredits] = useState<any>(null); const [mood, setMood] = useState<any>(null); const [moodVol, setMoodVol] = useState<number | null>(null); const [voices, setVoices] = useState<any[]>([]); const [voicesLoading, setVoicesLoading] = useState(false); const [strict, setStrict] = useState<number | null>(null);
   const noteTimer = useRef<any>(0); const cfg = useRef<Config | null>(null);
   const tell = useCallback((tone: Tone, text: string) => { setNote({ tone, text }); clearTimeout(noteTimer.current); noteTimer.current = setTimeout(() => setNote(null), tone === "warn" ? 12000 : 6000); }, []);
-  const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown("Troi's server is not answering: start Troi from the Desktop."); return null; } }, []);
+  const load = useCallback(async () => { try { const d = await eget<Config>("/config"); cfg.current = d; setC(d); setDown(""); return d; } catch { setDown(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); return null; } }, []);
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
   // the ElevenLabs allowance: the agent server holds the key and asks ElevenLabs at most every five minutes (/usage/elevenlabs); this page asks it once, then every minute while open
   useEffect(() => { if (!c?.elevenlabs_key) return; let stop = false; const tick = async () => { try { const d = await eget("/usage/elevenlabs"); if (!stop) setCredits(d); } catch { if (!stop) setCredits({ ok: false, error: "the agent server does not report them yet (it needs its restart)" }); } }; tick(); const t = setInterval(tick, 60000); return () => { stop = true; clearInterval(t); }; }, [c?.elevenlabs_key]);
@@ -149,14 +151,14 @@ export function Modes() {
             onPick={v => run("model", v, async () => { if (!(await say(`switch to ${v}`))) return; const id = brainsOf(c).find(b => b.v === v)?.id; const ok = await confirm(d => !!id && d.session_model === id, 20000); tell(ok ? "ok" : "info", ok ? `${v} for this session.` : `Switch to ${v} sent. It lands when the voice line is idle; the switch follows once the line reports it.`); })} />}
           <Seg label="Effort" value={c.effort || ""} busy={busy.effort} hint={c.effort ? undefined : "the model's default"} options={[{ v: "low", l: "Low" }, { v: "medium", l: "Medium" }, { v: "high", l: "High" }, { v: "max", l: "Max" }]}
             onPick={v => run("effort", v, async () => { if (!(await say(`set effort to ${v}`))) return; const ok = await confirm(d => d.effort === v); tell(ok ? "ok" : "info", ok ? `Effort ${v}, saved as the default.` : `Effort ${v} sent. The page shows it once the agent reports it.`); })} />
-          <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: "A soft pad while Troi works, a chime when it is done" }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
-            hint="A soft pad plays from this browser while Troi works, and a chime when it is done. This device only; the first stretch after a fresh page is silent until you touch the page." />
+          <Seg label="Sounds" value={sounds ? "on" : "off"} options={[{ v: "on", l: "While it works", title: `A soft pad while ${agent} works, a chime when it is done` }, { v: "off", l: "Off" }]} onPick={v => { const on = v === "on"; setSounds(on); setWorkSound(on); }}
+            hint={`A soft pad plays from this browser while ${agent} works, and a chime when it is done. This device only; the first stretch after a fresh page is silent until you touch the page.`} />
           <Seg label="Your phone" value={c.lan === "tailscale" ? "tailscale" : c.lan ? "on" : "off"} busy={busy.lan}
-            hint={c.lan === "tailscale" ? `Troi answers your own devices over Tailscale from its next start, and turns every other network away: open ${c.tailscale?.https ? `https://${c.tailscale.name}/` : `http://${c.tailscale?.ip || "100.x.y.z"}:3100`} on your phone, with Tailscale on${c.tailscale?.https ? "" : " (the Mac's Tailscale address, not its name: browsers insist on https for .ts.net names)"}.`
-              : c.lan ? `Troi answers on this network from its next start: open http://${typeof location !== "undefined" ? location.hostname : "this-mac.local"}:3100 on your phone. Only on a network you trust: anyone on it can talk to Troi and read its record.`
-              : `This Mac only. ${c.tailscale ? "Tailscale: your own devices, from anywhere, nothing else. " : ""}This network: any phone on this Wi-Fi. Either takes effect at Troi's next start.`}
-            options={[{ v: "off", l: "This Mac only" }, ...(c.tailscale ? [{ v: "tailscale", l: "Tailscale", title: "Only your own devices, over Tailscale", locked: locked() }] : []), { v: "on", l: "This network", title: "Anyone on the network can reach Troi", locked: locked() }]}
-            onPick={v => run("lan", v, async () => { if (v !== "off" && locked()) return needsPin(v === "tailscale" ? "Reaching Troi over Tailscale" : "Reaching Troi from the network"); await set({ lan: v === "tailscale" ? "tailscale" : v === "on" }, v === "tailscale" ? "Over Tailscale, from Troi's next start." : v === "on" ? "On this network, from Troi's next start." : "This Mac only, from Troi's next start."); })} />
+            hint={c.lan === "tailscale" ? `${agent} answers your own devices over Tailscale from its next start, and turns every other network away: open ${c.tailscale?.https ? `https://${c.tailscale.name}/` : `http://${c.tailscale?.ip || "100.x.y.z"}:3100`} on your phone, with Tailscale on${c.tailscale?.https ? "" : " (the Mac's Tailscale address, not its name: browsers insist on https for .ts.net names)"}.`
+              : c.lan ? `${agent} answers on this network from its next start: open http://${typeof location !== "undefined" ? location.hostname : "this-mac.local"}:3100 on your phone. Only on a network you trust: anyone on it can talk to ${agent} and read its record.`
+              : `This Mac only. ${c.tailscale ? "Tailscale: your own devices, from anywhere, nothing else. " : ""}This network: any phone on this Wi-Fi. Either takes effect at ${agent}'s next start.`}
+            options={[{ v: "off", l: "This Mac only" }, ...(c.tailscale ? [{ v: "tailscale", l: "Tailscale", title: "Only your own devices, over Tailscale", locked: locked() }] : []), { v: "on", l: "This network", title: `Anyone on the network can reach ${agent}`, locked: locked() }]}
+            onPick={v => run("lan", v, async () => { if (v !== "off" && locked()) return needsPin(v === "tailscale" ? `Reaching ${agentName()} over Tailscale` : `Reaching ${agentName()} from the network`); await set({ lan: v === "tailscale" ? "tailscale" : v === "on" }, v === "tailscale" ? `Over Tailscale, from ${agentName()}'s next start.` : v === "on" ? `On this network, from ${agentName()}'s next start.` : `This Mac only, from ${agentName()}'s next start.`); })} />
         </Panel>
 
         <Panel title="Senses and voice">

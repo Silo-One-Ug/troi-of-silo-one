@@ -6,11 +6,13 @@ import { Camera, Hand, Monitor, ScanFace } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { eget, emit, epost, img, rememberUnlock, type Config, type State } from "@/lib/edge";
+import { useAgentName } from "@/lib/name";
 import { cn } from "@/lib/utils";
 
 const MODES = [["off", "Off", "The camera stays off"], ["every", "Every reply", "A fresh frame with every reply"], ["watch", "Watch", "Looks when the view changes"], ["screen", "Screen", "A screenshot with every request"]] as const;
 
 export function Eyes() {
+  const fallback = useAgentName();
   const [c, setC] = useState<Config | null>(null); const [st, setSt] = useState<State | null>(null); const [shot, setShot] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(""); const [hands, setHands] = useState(false); const [tick, setTick] = useState(0);
   useEffect(() => { try { setHands(localStorage.getItem("silo.hands") === "1"); } catch {} eget("/config").then(setC).catch(() => setMsg("The agent is not answering.")); }, []);
   useEffect(() => { let stop = false; const t = async () => { if (stop) return; try { setSt(await eget("/state")); setTick(x => x + 1); } catch {} setTimeout(t, 900); }; t(); return () => { stop = true; }; }, []);
@@ -24,7 +26,7 @@ export function Eyes() {
   return (
     <div className="grid max-w-6xl gap-4 lg:grid-cols-[1fr_320px]">
       <div className="hairline overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm"><span className="font-medium">What {c?.name || "Troi"} sees</span>{live ? <Badge tone="ok">live</Badge> : shot ? <Badge tone="note">a look</Badge> : <Badge tone="warn">eyes closed</Badge>}</div>
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm"><span className="font-medium">What {c?.name || fallback} sees</span>{live ? <Badge tone="ok">live</Badge> : shot ? <Badge tone="note">a look</Badge> : <Badge tone="warn">eyes closed</Badge>}</div>
         <div className="grid aspect-video place-items-center bg-black">{frame ? <img src={frame} alt="" className="h-full w-full object-contain" /> : <div className="px-6 text-center text-sm text-muted-foreground">The camera is off. Take a look, or switch the eyes on.</div>}</div>
         <div className="flex flex-wrap gap-2 p-3"><Button size="sm" variant="outline" disabled={!!busy} onClick={() => look("camera")}><Camera className="h-4 w-4" />Look now</Button><Button size="sm" variant="outline" disabled={!!busy} onClick={() => look("screen")}><Monitor className="h-4 w-4" />Screen now</Button></div>
       </div>

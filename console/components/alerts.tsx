@@ -5,13 +5,14 @@
 // while the console is not the page you are looking at. "cues": false in the settings (movie mode sets it) silences the sounds.
 import { useEffect, useRef } from "react";
 import { edgeUrl, eget } from "@/lib/edge";
+import { DEFAULT_NAME, agentName, rememberName } from "@/lib/name";
 
 export const notifyOn = () => { try { return localStorage.getItem("silo.notify") === "1" && "Notification" in window && Notification.permission === "granted"; } catch { return false; } };
 export const setNotify = (on: boolean) => { try { localStorage.setItem("silo.notify", on ? "1" : "0"); } catch {} };
 const LABEL: Record<string, string> = { trash: "wants to move something to the Trash", kill: "wants to force-quit an app", click: "wants to make a risky click", setting: "wants a protected setting changed" };
 
 export function Alerts() {
-  const seen = useRef<Set<string> | null>(null); const pos = useRef<number | null>(null); const cues = useRef(true); const name = useRef("Troi"); const cued = useRef(new Set<string>());
+  const seen = useRef<Set<string> | null>(null); const pos = useRef<number | null>(null); const cues = useRef(true); const name = useRef(DEFAULT_NAME); const cued = useRef(new Set<string>());
   useEffect(() => {
     let stop = false;
     const cue = (kind: string, tag: string) => {
@@ -45,7 +46,7 @@ export function Alerts() {
       } catch {}
       setTimeout(tick, 2000);
     };
-    eget("/config").then(c => { name.current = c.name || "Troi"; }).catch(() => {});
+    eget("/config").then(c => { rememberName(c.name); name.current = c.name || agentName(); }).catch(() => {});
     tick();
     return () => { stop = true; };
   }, []);

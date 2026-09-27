@@ -14,6 +14,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { join } from "./chat";
 import { eget, epost } from "@/lib/edge";
+import { agentName, useAgentName } from "@/lib/name";
 import { useMobile } from "@/lib/mobile";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +28,13 @@ const ago = (t: number) => { const s = Math.max(0, Date.now() / 1000 - t); retur
 const title = (s: Session) => clean(s.title || "").replace(/^\(session start:.*$/s, "") || "A session";
 
 export function Sessions() {
+  const agent = useAgentName();
   const [list, setList] = useState<Session[]>([]); const [gone, setGone] = useState<Session[]>([]); const [current, setCurrent] = useState(""); const [live, setLive] = useState(true); const [err, setErr] = useState("");
   const [open, setOpen] = useState<string | null>(null); const [lines, setLines] = useState<Line[] | null>(null); const [asking, setAsking] = useState(false); const [note, setNote] = useState("");
   const [showGone, setShowGone] = useState(false); const [confirmDel, setConfirmDel] = useState<string | null>(null); const [renaming, setRenaming] = useState(false); const [draft, setDraft] = useState("");
   const mobile = useMobile();
   const load = async () => {
-    try { const d = await eget("/sessions?deleted=1"); setList(d.sessions || []); setGone(d.deleted || []); setCurrent(d.current || ""); setErr(""); } catch { setErr("Troi's server is not answering: start Troi from the Desktop."); }
+    try { const d = await eget("/sessions?deleted=1"); setList(d.sessions || []); setGone(d.deleted || []); setCurrent(d.current || ""); setErr(""); } catch { setErr(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`); }
     try { const s = await eget("/session"); setLive(!!s.live); } catch {}
   };
   useEffect(() => { let stop = false; const tick = async () => { if (stop) return; await load(); setTimeout(tick, 5000); }; tick(); return () => { stop = true; }; }, []);
@@ -49,17 +51,17 @@ export function Sessions() {
   const say = (s: string, ms = 12000) => { setNote(s); setTimeout(() => setNote(n => (n === s ? "" : n)), ms); };
   const fresh = async () => {                                        // the owner's word, and only theirs: the same phrase the voice line takes
     setAsking(false);
-    try { const r = await epost("/say", { text: "clear the session" }); say(r.ok === false ? (r.error || "Troi did not take the line.") : "Asked. Troi says \"Cleared. Fresh slate.\" when it is done; the new session appears here with its first line."); }
-    catch { say("Troi's server is not answering."); }
+    try { const r = await epost("/say", { text: "clear the session" }); say(r.ok === false ? (r.error || `${agentName()} did not take the line.`) : `Asked. ${agentName()} says "Cleared. Fresh slate." when it is done; the new session appears here with its first line.`); }
+    catch { say(`${agentName()}'s server is not answering.`); }
   };
   const act = async (body: any, done: string) => {                   // delete, restore, rename: the owner's own hand
     try {
       const r = await epost("/sessions", body);
       if (r.needs_unlock) say("That needs you: unlock with your PIN (the lock in the bar) and try again.");
-      else if (!r.ok) say(r.error || "Troi's server said no.");
+      else if (!r.ok) say(r.error || `${agentName()}'s server said no.`);
       else { say(done, 5000); await load(); }
       return !!r.ok;
-    } catch { say("Troi's server is not answering."); return false; }
+    } catch { say(`${agentName()}'s server is not answering.`); return false; }
   };
   const remove = async (id: string) => { setConfirmDel(null); if (await act({ delete: id }, "Off the list; its lines stay in the record, and Restore brings it back.") && open === id) setOpen(null); };
   const restore = (id: string) => act({ restore: id }, "Back on the list.");
@@ -85,11 +87,11 @@ export function Sessions() {
   const List = (
     <div className="hairline flex min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm"><History className="h-4 w-4 text-muted-foreground" /><span className="font-semibold">Sessions</span><span className="text-xs text-muted-foreground">{list.length ? `· ${list.length}` : ""}</span>
-        <Button size="sm" className="ml-auto" onClick={() => setAsking(v => !v)} disabled={!live} title={live ? "A fresh conversation for Troi; the record and the vault stay" : "Troi is not running"}><Plus className="h-3.5 w-3.5" />New session</Button></div>
+        <Button size="sm" className="ml-auto" onClick={() => setAsking(v => !v)} disabled={!live} title={live ? `A fresh conversation for ${agent}; the record and the vault stay` : `${agent} is not running`}><Plus className="h-3.5 w-3.5" />New session</Button></div>
       {asking && (
         <div className="border-b border-border bg-accent/30 px-4 py-3 text-sm">
           <div className="font-medium">Start a new session?</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">Troi forgets the thread of this conversation and starts clean; the record below and the vault keep everything. This is your call alone: Troi never starts one by itself.</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{agent} forgets the thread of this conversation and starts clean; the record below and the vault keep everything. This is your call alone: {agent} never starts one by itself.</div>
           <div className="mt-2.5 flex gap-2"><Button size="sm" onClick={fresh}>Start a new session</Button><Button size="sm" variant="ghost" onClick={() => setAsking(false)}>Keep this one</Button></div>
         </div>)}
       {note && <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">{note}</div>}
@@ -99,7 +101,7 @@ export function Sessions() {
         {gone.length > 0 && <button type="button" onClick={() => setShowGone(v => !v)} className="w-full px-4 py-2.5 text-left text-xs text-muted-foreground hover:text-foreground">{showGone ? "Hide the deleted" : `Show the deleted (${gone.length})`}</button>}
         {showGone && gone.map(s => Row(s, true))}
       </div>
-      <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Titles are written for a session once it has a few lines; the pencil renames one. Troi can ask for a session to be deleted; that lands on Approvals for your yes.</div>
+      <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Titles are written for a session once it has a few lines; the pencil renames one. {agent} can ask for a session to be deleted; that lands on Approvals for your yes.</div>
     </div>);
   const Detail = sel && (
     <div className="hairline flex min-h-0 flex-col">
@@ -112,7 +114,7 @@ export function Sessions() {
             <button type="button" onClick={() => setRenaming(false)} aria-label="Keep the title" className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
           </form>
         ) : (<>
-          <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{title(sel)}</span><span className="block text-xs text-muted-foreground">{day(sel.started)} {clock(sel.started)} · {sel.n} lines{sel.id === current ? " · the session Troi is in now" : sel.deleted ? " · deleted" : ""}</span></span>
+          <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{title(sel)}</span><span className="block text-xs text-muted-foreground">{day(sel.started)} {clock(sel.started)} · {sel.n} lines{sel.id === current ? ` · the session ${agent} is in now` : sel.deleted ? " · deleted" : ""}</span></span>
           <button type="button" onClick={() => { setDraft(title(sel)); setRenaming(true); }} title="Rename" aria-label="Rename the session" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-accent/60 hover:text-foreground"><Pencil className="h-4 w-4" /></button>
         </>)}
       </div>

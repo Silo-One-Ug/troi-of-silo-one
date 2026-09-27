@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import { edgeUrl, eget, epost } from "@/lib/edge";
+import { agentName } from "@/lib/name";
 
 export function Reports() {
   const [rows, setRows] = useState<any[]>([]); const [open, setOpen] = useState<string>(""); const [msg, setMsg] = useState("");
-  const load = () => eget("/reports").then(d => setRows(d.reports || [])).catch(() => setMsg("Troi's server is not answering: start Troi from the Desktop."));
+  const load = () => eget("/reports").then(d => setRows(d.reports || [])).catch(() => setMsg(`${agentName()}'s server is not answering: start ${agentName()} from the Desktop.`));
   useEffect(() => { load(); }, []);
   return (
     <div className="grid gap-4 md:grid-cols-[260px_1fr] md:gap-6">{/* one column on a phone: the days, then the report under them */}

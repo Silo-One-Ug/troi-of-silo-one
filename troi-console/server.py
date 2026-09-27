@@ -1665,7 +1665,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/config":
             bt = _read_json(HOME / "backtalk" / "backtalk.json")          # fresh: the voice line rewrites it (effort, mic, permissions)
             self._json({
-                "name": NAME,
+                "name": bt.get("name") or NAME,               # the settings' `agent`, as setup.py renders it
                 "key": BT.get("ptt_key", "home"),
                 "mic_mode": bt.get("mic_mode", "ptt"),
                 "permission_mode": bt.get("permission_mode", "ask"),
@@ -2147,7 +2147,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "error": NEEDS_PIN}, 403)
             import setup as SETUP
             cfg = SETUP.load()
-            for k in ("owner", "owner_full", "address", "call", "github_org", "board_label"):
+            for k in ("agent", "owner", "owner_full", "address", "call", "github_org", "board_label"):
                 if isinstance(body.get(k), str):
                     cfg[k] = body[k].strip()[:80]
             if isinstance(body.get("file_roots"), list):                # folders the agent may organise: real folders in the home or on a drive
