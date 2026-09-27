@@ -4,6 +4,9 @@ com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's ty
 
   reminders     the reminders document in data/troi.db, written by remind.sh; each fires once at its
                 time as "(reminder: ...)" and the agent says it out loud (to Telegram when the voice line is down)
+  watches       the owner's watches (watches.py; the "watches" document): a schedule in plain words, a folder, a file,
+                a process, a page, the disk, the power, the battery, an app, the Wi-Fi; when one fires, the owner's own
+                instruction reaches the agent as a line of context and the agent acts under its rules (or only tells)
   CI watch      every 3 minutes, the newest run on main of each repo of the GitHub orgs and users (github_orgs in the
                 settings); a run that finished since the last check is reported (failures always,
                 successes only when the previous run failed)
@@ -28,6 +31,7 @@ from datetime import datetime, date
 from pathlib import Path
 import sys as _sys; _sys.path.insert(0, str(Path(__file__).resolve().parent)); import paths as P  # noqa: E402
 import db as _DB  # noqa: E402  (small documents live in troi.db)
+import watches as _W  # noqa: E402  (the owner's watches: "watch this, and when it happens, do that")
 
 import sys as _sp, os as _osp; _sp.path.insert(0, _osp.path.dirname(_osp.path.abspath(__file__))); import paths as _Pa  # noqa: E402
 
@@ -302,6 +306,7 @@ def main():
         try:
             if True:
                 check_reminders()
+                _W.check(state, tell, log, busy)          # the owner's watches (watches.py): the pulse notices, the agent acts
                 if time.time() - last_gh > GH_EVERY:
                     last_gh = time.time()
                     check_github(state)
