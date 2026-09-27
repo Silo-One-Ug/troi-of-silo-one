@@ -341,10 +341,68 @@ def transcribe(pcm: np.ndarray) -> str:
     return _NONSPEECH.sub("", text).strip()
 
 
+FLOOR_ALPHA = 0.02     # how fast the room's level is followed (a frame is 30 ms: about 1.5 s to settle)
+
+
+def _db(mono: np.ndarray) -> float:
+    """A frame's level in dBFS (0 is full scale; a quiet room sits around -55, a voice near the mic around -25)."""
+    rms = float(np.sqrt(np.mean(mono.astype(np.float32) ** 2)))
+    return max(-90.0, 20.0 * np.log10(rms / 32768.0 + 1e-9))   # digital silence (a muted input) is -90, not minus infinity
+
+
+def _cfg(key: str, default):
+    try:
+        return type(default)(CFG.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def judge(speech_frames: int, speech_db: list[float], floor: float | None,
+          min_frames: int, snr_db: float) -> str:
+    """Why an utterance is not a sentence, or "" when it is. Three gates on the open microphone,
+    all before the transcriber runs: enough speech frames (a blip of a keyboard or a door is not a
+    word), and a voice that rises `snr_db` above the room's own level (a fan, a television across
+    the room, typing under the VAD's threshold are all "speech" to webrtcvad and all dropped here)."""
+    if speech_frames < min_frames:
+        return "blip"
+    if floor is not None and speech_db:
+        if float(np.median(speech_db)) - floor < snr_db:
+            return "noise"
+    return ""
+
+
 class Ears:
-    def __init__(self, aggressiveness: int = 2, silence_ms: int = 480):
-        self.vad = webrtcvad.Vad(aggressiveness)
-        self.silence_frames = silence_ms // FRAME_MS
+    """The open microphone. The four numbers below are `backtalk.json` keys (config.py has them):
+    `vad_aggressiveness` (webrtcvad's 0..3; 3 lets the least non-speech through), `vad_silence_ms`
+    (the quiet that ends a sentence), `vad_min_speech_ms` (the speech that makes one) and
+    `vad_snr_db` (how far a voice must rise above the room)."""
+
+    def __init__(self, aggressiveness: int | None = None, silence_ms: int | None = None,
+                 min_speech_ms: int | None = None, snr_db: float | None = None):
+        aggressiveness = _cfg("vad_aggressiveness", 3) if aggressiveness is None else aggressiveness
+        silence_ms = _cfg("vad_silence_ms", 640) if silence_ms is None else silence_ms
+        min_speech_ms = _cfg("vad_min_speech_ms", 300) if min_speech_ms is None else min_speech_ms
+        self.snr_db = _cfg("vad_snr_db", 9.0) if snr_db is None else float(snr_db)
+        self.vad = webrtcvad.Vad(max(0, min(3, int(aggressiveness))))
+        self.silence_frames = max(1, int(silence_ms) // FRAME_MS)
+        self.min_speech_frames = max(1, int(min_speech_ms) // FRAME_MS)
+        self._floor: float | None = None                    # the room's level, carried from one sentence to the next
+        self._drops = {"blip": 0, "noise": 0, "at": 0.0}    # what the gates dropped, told once a minute
+        log(f"[ears] open mic: vad {aggressiveness}, {silence_ms} ms of quiet ends a sentence, "
+            f"{min_speech_ms} ms of speech makes one, a voice rises {self.snr_db:g} dB above the room")
+
+    def _dropped(self, why: str, speech_db: list[float], floor: float | None):
+        """Count a drop; say so in the log at most once a minute (the console never shows [ears] lines)."""
+        import time
+        self._drops[why] += 1
+        now = time.time()
+        if now - self._drops["at"] < 60:
+            return
+        self._drops["at"] = now
+        lvl = f"{float(np.median(speech_db)):.0f}" if speech_db else "?"
+        room = f"{floor:.0f}" if floor is not None else "?"
+        log(f"[ears] open mic: dropped {self._drops['blip']} blips and {self._drops['noise']} noise clips "
+            f"so far (the last at {lvl} dB, the room at {room} dB)")
 
     def listen_once(self, gate=None, timeout_s: float | None = None,
                     abort=None) -> str | None:
@@ -358,16 +416,20 @@ class Ears:
         speech_run = 0
         silence_run = 0
         speech_total = 0
+        speech_db: list[float] = []   # the level of each speech frame of the utterance
         in_utterance = False
         elapsed = 0.0
+        floor = self._floor
 
         with _open_mic() as stream:
             while True:
                 block, _ = stream.read(FRAME_LEN)
                 elapsed += FRAME_MS / 1000
                 if abort and abort():
+                    self._floor = floor
                     return None
                 if timeout_s and elapsed > timeout_s and not in_utterance:
+                    self._floor = floor
                     return None
                 mono = block[:, 0].copy()
                 if gate and gate():
@@ -375,7 +437,11 @@ class Ears:
                     ring.clear()
                     continue
                 is_speech = self.vad.is_speech(mono.tobytes(), RATE)
+                level = _db(mono)
                 if not in_utterance:
+                    if not is_speech:
+                        # the room's own level, followed slowly: what a voice must rise above
+                        floor = level if floor is None else floor + FLOOR_ALPHA * (level - floor)
                     ring.append(mono)
                     if len(ring) > 8:
                         ring.pop(0)
@@ -383,23 +449,30 @@ class Ears:
                     if speech_run >= OPEN_FRAMES:
                         in_utterance = True
                         frames = ring[:]
+                        speech_db = []
                         silence_run = 0
                 else:
                     frames.append(mono)
                     if is_speech:
                         speech_total += 1
+                        speech_db.append(level)
                         silence_run = 0
                     else:
                         silence_run += 1
                     if silence_run >= self.silence_frames or \
                        len(frames) * FRAME_MS / 1000 > MAX_UTTER_S:
-                        if speech_total < 8:
-                            # <240ms of actual speech: a noise blip, not
-                            # a sentence — keep listening
+                        why = judge(speech_total, speech_db, floor,
+                                    self.min_speech_frames, self.snr_db)
+                        if why:
+                            # a blip, or the room's own noise: not a
+                            # sentence — keep listening
+                            self._dropped(why, speech_db, floor)
                             in_utterance = False
                             frames, ring = [], []
                             speech_run = speech_total = 0
+                            speech_db = []
                             continue
+                        self._floor = floor
                         return transcribe(np.concatenate(frames))
 
 
