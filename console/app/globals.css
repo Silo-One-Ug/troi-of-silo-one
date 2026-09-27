@@ -128,3 +128,13 @@ html.dark body { background: #02040a; }
   animation: shimmer 1.8s linear infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
 @media (prefers-reduced-motion: reduce) { .shimmer { animation: none; background: none; color: hsl(var(--muted-foreground)); -webkit-text-fill-color: currentColor; } }
+
+/* the composer while the agent works: a slow turning light around the card, and a soft halo behind it (the owner's ask, 2026-09-27) */
+@property --glow-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.composer-glow { position: relative; border-color: transparent !important; }
+.composer-glow::before, .composer-glow::after { content: ""; position: absolute; border-radius: inherit; pointer-events: none; }
+.composer-glow::before { inset: -1px; padding: 1px; background: conic-gradient(from var(--glow-angle), hsl(233 84% 71%), hsl(174 62% 56%), hsl(38 90% 68%), hsl(233 84% 71%));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: glow-turn 3.6s linear infinite; }
+.composer-glow::after { inset: -18px; z-index: -1; background: conic-gradient(from var(--glow-angle), hsl(233 84% 71% / .55), hsl(174 62% 56% / .55), hsl(38 90% 68% / .5), hsl(233 84% 71% / .55)); filter: blur(22px); opacity: .45; animation: glow-turn 3.6s linear infinite; }
+@keyframes glow-turn { to { --glow-angle: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .composer-glow::before, .composer-glow::after { animation: none; } }
