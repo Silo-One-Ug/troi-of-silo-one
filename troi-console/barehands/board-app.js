@@ -15,7 +15,7 @@
   const str = v => v == null ? "" : String(v);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
   const W = () => innerWidth, H = () => innerHeight;
-  const MARGIN = 24, GAP = 18, TOP = 52, BOTTOM = 24;   // TOP leaves the strip of boards its band
+  const MARGIN = 24, GAP = 18, BOTTOM = 24; let TOP = 52;   // TOP leaves the strip of boards its band, and the shelf its hall on the main board
   // a phone: one column in reading order (the model's y, then x), laid out by the page; the model keeps the glass's geometry
   const NARROW_MQ = matchMedia("(max-width: 767px)"), narrow = () => NARROW_MQ.matches;
   const rank = t => Math.round(clamp(num(t.y, 0.45), 0, 12) * 8) * 1000 + Math.round(clamp(num(t.x, 0.5), 0, 1) * 100);
@@ -33,7 +33,8 @@
   let tiles = [], UID = 1, presented = null, CFG = { name: "Assistant" }, seq = 1;
   // the boards, plural: the one this page shows, the list for the strip (its version, so a stale strip redraws), and a switch under way
   let BOARD = { id: "main", name: "Main" }, BOARDS = { v: 0, list: [] }, switching = false;
-  const boardsEl = $("#boards");
+  const boardsEl = $("#boards"), shelfEl = $("#shelf");
+  let shelfFocus = -1;                                          // which card the hall turns towards; -1 picks the board that changed last
   const isModel = s => /\.(glb|gltf)(\?|$)/i.test(str(s));
   const isVideo = s => /\.(webm|mp4|mov|m4v)(\?|$)/i.test(str(s));
   const newUid = () => "u" + Date.now().toString(36) + (seq++).toString(36);
@@ -287,7 +288,7 @@
   addEventListener("keydown", e => { if (e.key === "Escape" && presented) unpresent(); });
   addEventListener("resize", () => { if (narrow()) return; tiles.forEach(t => layoutTile(t)); if (presented) { recenter(presented); layoutTile(presented); } });
   NARROW_MQ.addEventListener("change", () => {  // across the breakpoint (a window resized, a phone turned): the other layout, from the same model
-    if (presented) unpresent(); tiles.forEach(t => layoutTile(t)); if (!narrow()) settle(); buildEmpty(); dirty();
+    if (presented) unpresent(); tiles.forEach(t => layoutTile(t)); if (!narrow()) settle(); buildEmpty(); drawShelf(); dirty();
   });
   $("#tidy").addEventListener("click", () => tidy());
   const clearBtn = $("#clear");
@@ -401,19 +402,24 @@
   // ---- the boards, plural: a strip of names at the top left, the one up lit; + makes one, a double-click renames, × puts one
   //      away (kept on disk, restorable). Switching is the server's: every page showing the board follows the one chosen.
   function takeBoards(d) {
+    // the list and its version; and the server's choice of board, which this page follows AT ONCE, tiles and all. (It used to
+    // take the name and keep the tiles, so a click moved the lit chip and nothing else, and the next heartbeat reported the
+    // old tiles as the new board's: that is how boards were emptied or given each other's contents.)
     BOARDS = { v: num(d.v, 0), list: Array.isArray(d.boards) ? d.boards : [] };
-    const cur = BOARDS.list.find(b => b.id === d.current); if (cur) BOARD = { id: cur.id, name: str(cur.name || cur.id) };
-    drawBoards(); buildEmpty();
+    const cur = BOARDS.list.find(b => b.id === d.current);
+    if (cur && cur.id !== BOARD.id && !switching) switchBoard(cur);
+    else { drawBoards(); buildEmpty(); drawShelf(); }
   }
   async function switchBoard(c) {
-    switching = true;
+    if (switching) return;
+    switching = true;                                                // no heartbeat carries this page's tiles until the new board is in
     if (presented) unpresent();
     tiles.slice().forEach(t => t.el.remove()); tiles = [];         // the old board's tiles go at once: another board is coming
     BOARD = { id: str(c.id), name: str(c.name || c.id) };
-    drawBoards(); buildEmpty();
+    drawBoards(); buildEmpty(); drawShelf();
     const n = await restore(true);
-    switching = false; dirty();
-    toast(`${BOARD.name}${n ? `: ${n} item${n > 1 ? "s" : ""}` : ", empty"}`);
+    switching = false; dirty(); fitStage();
+    toast(`${BOARD.name}${n ? `: ${n} item${n > 1 ? "s" : ""}` : BOARD.id === "main" ? "" : ", empty"}`);
   }
   async function boardsPost(body) {
     try {
@@ -438,6 +444,70 @@
     const plus = el("button", "chip plus", "+"); plus.type = "button"; plus.title = "a new board";
     plus.addEventListener("click", () => newBoard(plus)); boardsEl.appendChild(plus);
   }
+  // ---- the hall of boards: on the main board, every board stands as a card in a curved row in depth, the one the hall turns to
+  //      in front and upright, the others receding left and right; a hover turns the hall, a click opens the board, the wheel and
+  //      the arrow keys turn it too, the last card makes a new board. On a phone the same cards are a row to scroll.
+  const ago = t => { const s = Math.max(0, Date.now() / 1000 - t); return !t ? "" : s < 90 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
+  const shelfShown = () => BOARD.id === "main" && !!shelfEl && !shelfEl.hidden;
+  function drawShelf() {
+    if (!shelfEl) return;
+    const on = BOARD.id === "main";
+    shelfEl.hidden = !on; shelfEl.classList.toggle("narrow", narrow());
+    if (!on) { TOP = 52; return; }
+    const list = BOARDS.list.filter(b => !b.archived);
+    if (shelfFocus < 0 || shelfFocus >= list.length) { let best = -1, t = -1; list.forEach((b, i) => { if (b.id !== "main" && num(b.updated, 0) > t) { t = num(b.updated, 0); best = i; } }); shelfFocus = best >= 0 ? best : Math.min(1, list.length - 1); }
+    shelfEl.replaceChildren();
+    const head = el("div", "shelf-head");
+    head.appendChild(el("div", "kicker", `${str(CFG.name || "the agent")} · your boards · ${list.length}`));
+    head.appendChild(el("div", "shelf-hint", narrow() ? "Tap a board to open it; the last card makes a new one." : "Hover to turn the hall, click a board to open it, the last card makes a new one. Whatever lands here without a board's name stays on Main, below."));
+    shelfEl.appendChild(head);
+    const scene = el("div", "shelf-scene"), ring = el("div", "shelf-ring"); scene.appendChild(ring); shelfEl.appendChild(scene);
+    const cards = list.map((b, i) => {
+      const c = el("div", "bcard" + (b.id === BOARD.id ? " here" : "")); c.tabIndex = 0; c.dataset.i = String(i);
+      c.appendChild(el("div", "bname", b.name));
+      const mini = el("div", "bmini"); const pv = Array.isArray(b.preview) ? b.preview.slice(0, 6) : [];
+      for (let k = 0; k < 6; k++) { const it = pv[k]; const m = el("div", "mini" + (it ? " " + str(it.type || "card") : " none")); if (it && it.title) m.title = it.title; if (it && it.title) m.appendChild(el("span", null, str(it.title).slice(0, 14))); mini.appendChild(m); }
+      c.appendChild(mini);
+      const n = num(b.items, 0);
+      c.appendChild(el("div", "bmeta", (n ? `${n} item${n > 1 ? "s" : ""}` : "empty") + (b.updated ? ` · ${ago(num(b.updated, 0))}` : "")));
+      c.appendChild(el("div", "bopen", b.id === BOARD.id ? "you are here" : "open →"));
+      c.addEventListener("mouseenter", () => { if (!narrow()) { shelfFocus = i; placeCards(); } });
+      c.addEventListener("click", () => { if (b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
+      c.addEventListener("keydown", e => { if (e.key === "Enter" && b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
+      ring.appendChild(c); return c;
+    });
+    const plus = el("div", "bcard new"); plus.tabIndex = 0; plus.dataset.i = String(list.length);
+    plus.appendChild(el("div", "bplus", "+")); plus.appendChild(el("div", "bname", "New board")); plus.appendChild(el("div", "bmeta", "a name, then Enter"));
+    const makeNew = () => { if (plus.querySelector("input")) return; const f = nameInput("", async v => { if (f.isConnected) f.remove(); if (v) await boardsPost({ a: "create", name: v }); }); plus.appendChild(f); f.focus(); };
+    plus.addEventListener("click", makeNew); plus.addEventListener("keydown", e => { if (e.key === "Enter") makeNew(); });
+    plus.addEventListener("mouseenter", () => { if (!narrow()) { shelfFocus = list.length; placeCards(); } });
+    ring.appendChild(plus); cards.push(plus);
+    function placeCards() {
+      if (narrow()) { cards.forEach(c => { c.style.transform = ""; c.style.opacity = ""; c.style.zIndex = ""; c.classList.remove("front"); }); return; }
+      cards.forEach((c, i) => {
+        const d = i - shelfFocus, a = Math.abs(d);
+        c.style.transform = `translateX(${d * 236}px) translateZ(${-a * 150}px) rotateY(${d > 0 ? -32 : d < 0 ? 32 : 0}deg) scale(${d === 0 ? 1.04 : 0.94})`;
+        c.style.opacity = String(d === 0 ? 1 : Math.max(0.28, 0.82 - a * 0.16)); c.style.zIndex = String(100 - a);
+        c.classList.toggle("front", d === 0); c.style.pointerEvents = a > 3 ? "none" : "";
+      });
+    }
+    placeCards();
+    let wheelAt = 0;
+    scene.addEventListener("wheel", e => { if (narrow()) return; const now = Date.now(); if (now - wheelAt < 260) { e.preventDefault(); return; } const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (Math.abs(dx) < 4) return; e.preventDefault(); wheelAt = now; shelfFocus = clamp(shelfFocus + (dx > 0 ? 1 : -1), 0, cards.length - 1); placeCards(); }, { passive: false });
+    shelfEl.addEventListener("keydown", e => { if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); shelfFocus = clamp(shelfFocus + (e.key === "ArrowRight" ? 1 : -1), 0, cards.length - 1); placeCards(); cards[shelfFocus].focus(); } });
+    shelfEl.appendChild(el("div", "shelf-floor"));
+    const prompts = el("div", "prompts shelf-prompts");
+    ["Show me today's headlines", "Put my active priorities on a board", "Draw this week's deploys as a chart", "Show me pictures of Kampala at night"].forEach(p => {
+      const b = el("button", null, p); b.type = "button";
+      b.addEventListener("click", () => { sendEvent(null, { kind: "prompt", action: "prompt", label: p, value: "" }); b.classList.add("sent"); b.textContent = "sent: " + p; setTimeout(() => { b.classList.remove("sent"); b.textContent = p; }, 4000); });
+      prompts.appendChild(b);
+    });
+    shelfEl.appendChild(prompts);
+    TOP = narrow() ? 52 : 52 + shelfEl.offsetHeight + 16;
+    if (!narrow() && tiles.some(t => t.el.isConnected && rectOf(t).t < TOP - 8)) tidy(true);   // Main's own tiles keep below the hall
+    fitStage();
+  }
+
   function nameInput(initial, done) {                              // an inline field in the strip: Enter keeps, Esc or a click elsewhere leaves
     const f = el("input", "chipin"); f.value = initial || ""; f.placeholder = "board name"; f.maxLength = 40; f.spellcheck = false;
     f.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); done(f.value.trim()); } else if (e.key === "Escape") done(null); });
@@ -461,7 +531,7 @@
       sy, pres: presented === t ? 1 : undefined, g: 0, op: 1 };
   }
   let dirtyFlag = true;
-  function dirty() { dirtyFlag = true; emptyEl.hidden = tiles.some(t => t.el.isConnected && !t.el.classList.contains("leave")); fitStage(); }
+  function dirty() { dirtyFlag = true; emptyEl.hidden = shelfShown() || tiles.some(t => t.el.isConnected && !t.el.classList.contains("leave")); fitStage(); }
   async function beat() {
     if (switching) return;                                          // between two boards nothing of this page is anyone's scene
     const items = tiles.filter(t => t.el.isConnected && !t.el.classList.contains("leave")).map(snapshotOf);
@@ -483,7 +553,7 @@
   async function restore(quiet) {
     let sc = null;
     try { const r = await fetch("/scene", { cache: "no-store" }); if (r.ok) sc = await r.json(); } catch (e) {}
-    if (sc && sc.board && sc.board.id) { BOARD = { id: str(sc.board.id), name: str(sc.board.name || sc.board.id) }; drawBoards(); }
+    if (sc && sc.board && sc.board.id) { BOARD = { id: str(sc.board.id), name: str(sc.board.name || sc.board.id) }; drawBoards(); drawShelf(); }
     const list = sc && Array.isArray(sc.items) ? sc.items : []; const specs = (sc && sc.ui) || {}; let pres = null, n = 0;
     for (const s of list) {
       try {
