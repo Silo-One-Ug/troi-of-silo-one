@@ -30,7 +30,7 @@ Components (both surfaces unless marked):
             theme's two hues: pattern dots|grid|rays|waves|none, tone a named colour)
   text      heading (text, level 1-4, align) · text (text with **bold** *italic* `code` [link](https://…); size sm|md|lg|xl, muted, align, mono)
             md (text: block markdown with headings, lists, checklists, quotes, fences, pipe tables) · quote (text, cite) · code (text, lang, title)
-            kbd (keys) · badge (text, tone ok|note|warn|bad|muted) · tags (items, tone) · callout (title, text, tone) · link (text, href)
+            kbd (keys) · badge (text, tone ok|note|warn|bad|muted) · tags (items, tone) · callout (title, text, tone) · link (text, href: an https link opens in a new tab; so does [text](https://…) in any text)
   data      stat (label, value, unit, delta, tone, note, spark [numbers], boxed) · progress (label, value, max, tone, text) · gauge (value, min, max, unit, label, tone)
             kv (items [{k, v}] or {k: v}) · list (items [text | {text, done, note, tone}], ordered, check) · table (columns [name | {label, key, align}], rows, caption, highlight [row indexes], footer, zebra, compact)
             chart (kind line|bar|area|pie|donut|scatter, data [{...}], x, series [keys], stacked, colors [hex or named colours], mono, title, unit, height, ymin, ymax, legend, center;

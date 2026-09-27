@@ -67,7 +67,8 @@ is a band in the theme's hues with a quiet pattern; big numbers can sit in boxed
 
 Charts answer the mouse: hover a column for a guide line, the lit bar and a small card naming every
 series' value there; slices and dots answer on their own. Every colour is a token, so the light and
-the dark board both read.
+the dark board both read. Each board has a colour of its own too, on its chip in the strip and its
+card in the hall. A link on a panel (an https address) opens in a new tab; the board stays put.
 
 ## Designed like a page
 

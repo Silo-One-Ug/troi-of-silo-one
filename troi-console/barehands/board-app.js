@@ -437,11 +437,15 @@
       return d;
     } catch (e) { toast("the board server is not answering"); return {}; }
   }
+  // every board has a colour of its own (Paul, 2026-09-27: "why is it teal? let the board tags have different colours"): the palette
+  // of board-theme.css by the board's place in the list, Main first; a board that carries a colour of its own keeps it
+  const BOARD_COLS = ["teal", "rust", "ocean", "forest", "sand", "berry", "gold", "coral", "violet", "slate", "sky", "moss", "rose", "navy"];
+  const boardColor = (b, i) => `var(--col-${BOARD_COLS.includes(str(b.color)) ? b.color : BOARD_COLS[i % BOARD_COLS.length]})`;
   function drawBoards() {
     if (!boardsEl) return;
     boardsEl.replaceChildren();
-    BOARDS.list.filter(b => !b.archived).forEach(b => {
-      const chip = el("button", "chip" + (b.id === BOARD.id ? " on" : ""), b.name); chip.type = "button";
+    BOARDS.list.filter(b => !b.archived).forEach((b, i) => {
+      const chip = el("button", "chip" + (b.id === BOARD.id ? " on" : ""), b.name); chip.type = "button"; chip.style.setProperty("--chipcol", boardColor(b, i));
       chip.title = b.id === BOARD.id ? "this board · double-click to rename" : `switch to ${b.name}${b.items ? ` (${b.items} item${b.items > 1 ? "s" : ""})` : ""}`;
       chip.addEventListener("click", () => { if (b.id !== BOARD.id) boardsPost({ a: "switch", id: b.id }); });
       chip.addEventListener("dblclick", () => rename(b, chip));
@@ -470,7 +474,7 @@
     shelfEl.appendChild(head);
     const scene = el("div", "shelf-scene"), ring = el("div", "shelf-ring"); scene.appendChild(ring); shelfEl.appendChild(scene);
     const cards = list.map((b, i) => {
-      const c = el("div", "bcard" + (b.id === BOARD.id ? " here" : "")); c.tabIndex = 0; c.dataset.i = String(i);
+      const c = el("div", "bcard" + (b.id === BOARD.id ? " here" : "")); c.tabIndex = 0; c.dataset.i = String(i); c.style.setProperty("--chipcol", boardColor(b, i));
       c.appendChild(el("div", "bname", b.name));
       const mini = el("div", "bmini"); const pv = Array.isArray(b.preview) ? b.preview.slice(0, 6) : [];
       for (let k = 0; k < 6; k++) { const it = pv[k]; const m = el("div", "mini" + (it ? " " + str(it.type || "card") : " none")); if (it && it.title) m.title = it.title; if (it && it.title) m.appendChild(el("span", null, str(it.title).slice(0, 14))); mini.appendChild(m); }
