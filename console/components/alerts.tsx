@@ -4,11 +4,22 @@
 // /sounds/). With the bell on, approvals and reminders raise a notification, and replies and Telegram messages do too
 // while the console is not the page you are looking at. "cues": false in the settings (movie mode sets it) silences the sounds.
 import { useEffect, useRef } from "react";
-import { edgeUrl, eget } from "@/lib/edge";
+import { edgeUrl, eget, lastState } from "@/lib/edge";
 import { DEFAULT_NAME, agentName, rememberName } from "@/lib/name";
 
 export const notifyOn = () => { try { return localStorage.getItem("silo.notify") === "1" && "Notification" in window && Notification.permission === "granted"; } catch { return false; } };
+/** Wanted here, whether or not the browser has granted them yet (the bell shows the difference). */
+export const notifyWanted = () => { try { return localStorage.getItem("silo.notify") === "1"; } catch { return false; } };
 export const setNotify = (on: boolean) => { try { localStorage.setItem("silo.notify", on ? "1" : "0"); } catch {} };
+/** One of the interface cues (approval, reminder, telegram), unless the settings say cues are off. */
+export const cueSound = (kind: string) => { try { if (lastState()?.settings?.cues === false) return; const a = new Audio(edgeUrl() + "/sounds/cue-" + kind + ".wav"); a.volume = 0.6; a.play().catch(() => {}); } catch {} };
+/** The agent ringing the bell itself (console.sh notify, for work you asked to be told about): a system notification when
+ *  they are on, the reminder cue always; the words above the bar are the directive's own doing. */
+export const ringBell = (title: string, body: string, tag = "troi-notify") => {
+  cueSound("reminder");
+  if (!notifyOn()) return false;
+  try { const n = new Notification(title, { body: body.slice(0, 180), tag }); n.onclick = () => { window.focus(); n.close(); }; return true; } catch { return false; }
+};
 const LABEL: Record<string, string> = { trash: "wants to move something to the Trash", kill: "wants to force-quit an app", click: "wants to make a risky click", setting: "wants a protected setting changed" };
 
 export function Alerts() {

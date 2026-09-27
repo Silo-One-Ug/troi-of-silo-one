@@ -8,6 +8,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { eget, emit, setTalkShape } from "@/lib/edge";
 import { isMobile } from "@/lib/mobile";
+import { agentName } from "@/lib/name";
+import { ringBell } from "./alerts";
 
 const PLACES = ["conversation", "library", "modes", "routines", "reports", "approvals", "eyes", "browser", "agents", "sessions", "face", "hands", "files", "apps", "vault"];
 type D = Record<string, any> & { seq: number };
@@ -40,6 +42,10 @@ export function Directives() {
       if (d.panel === "hide") emit("panel", false); if (d.panel === "show") { emit("panel", true); }
       if (d.tidy) { emit("tidy", true); emit("panel", true); }
       if (d.hint) { setHint(String(d.hint)); clearTimeout(t); t = setTimeout(() => setHint(""), 9000); }
+      if (d.notify) {                                              // the agent ringing the bell (console.sh notify): work you asked to be told about
+        const n = typeof d.notify === "string" ? { body: d.notify, title: "" } : d.notify; const body = String(n?.body || "");
+        if (body) { ringBell(String(n?.title || "") || agentName(), body); setHint(body); clearTimeout(t); t = setTimeout(() => setHint(""), 15000); }
+      }
       if (d.dim !== undefined) setDim(!!d.dim);
     };
     const poll = async () => {
