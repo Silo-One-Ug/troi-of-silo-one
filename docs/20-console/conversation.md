@@ -16,8 +16,9 @@ The window takes the console's full width; the words keep a reading column in th
   into a count of the steps, opened with a click.
 - A reply grows word by word, then settles into the finished text as the record has it, whole and
   in order, so what you see live is what a reload shows; a line the log delivers late joins the
-  same reply instead of opening another, and a reply typed here is not shown twice when the voice
-  reads it out.
+  same reply instead of opening another. A reply to something typed here is rebuilt the same way
+  once its stream ends: the record's lines replace the streamed words in place (never a second
+  bubble), and the streamed words stay until the lines say at least as much.
 - **What it is doing.** While the agent works, one line under your message shows the tool in its
   hands and what it is on: the plain words with their own icon (a server for `ssh`, a container for
   `docker`, a branch for `git`, a globe for a request, a folder for a look through files, the board,

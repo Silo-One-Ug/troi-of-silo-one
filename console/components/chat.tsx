@@ -97,6 +97,9 @@ export function join(a: string, b: string): string {
   return a + (gap ? "\n\n" : "\n") + b;
 }
 const joinAll = (lines: string[]) => lines.slice(1).reduce((a, b) => join(a, b), lines[0] || "");   // a reply from its lines, as the record gives them
+/** A settled reply's words: the record's rows once they say at least as much as what was streamed, the streamed text until then
+ *  (a stream cut short by a tool call, or a row still on its way, never shortens what the owner already read). */
+const settledText = (s: { final: string[]; typed?: string }) => { const j = joinAll(s.final); return s.typed && j.length < s.typed.length ? s.typed : j; };
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 /** An ignored line's words: the reason, how many sounds it stands for, the score of the last, and what was heard, if anything. */
 const whyBase = (why: string) => why.replace(/\s*\(.*\)\s*$/, "");
@@ -211,7 +214,8 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
   // a spoken reply on the page: `live` while the brain writes it (the words from the partial; the record's lines kept aside), `settled` for a minute after,
   // so lines of it that the log delivers late still land in the same bubble instead of a second one; `typed` remembers the last typed replies, which come
   // through the voice log again as spoken chunks and must not show twice
-  const live = useRef<{ id: string; final: string[]; t?: string } | null>(null), settled = useRef<{ id: string; final: string[]; at: number } | null>(null), typed = useRef<string[]>([]);
+  const live = useRef<{ id: string; final: string[]; t?: string } | null>(null), settled = useRef<{ id: string; final: string[]; at: number; typed?: string } | null>(null), typed = useRef<string[]>([]);
+  const runRows = useRef<string[]>([]), runIds = useRef<string[]>([]);   // a typed turn: the record's rows that arrive while it runs, and the bubbles it streamed; at its end the reply is rebuilt from the rows
   const liveStep = useRef<{ id: string; name: string; detail: string } | null>(null), args = useRef<Record<string, string>>({});   // the step under way in a spoken turn; a typed turn's tool inputs as they stream
   const input = useRef<HTMLTextAreaElement>(null), fileIn = useRef<HTMLInputElement>(null), findT = useRef<any>(0), findN = useRef(0), menuRef = useRef<HTMLDivElement>(null);
   const upsert = (id: string, f: (m: Msg) => Msg) => setMsgs(ms => ms.map(m => m.id === id ? f(m) : m));
@@ -261,15 +265,15 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
           const d = await eget(`/transcript?pos=${pos.current}&cpos=${cpos.current}`); pos.current = d.pos; if (d.cpos !== undefined) cpos.current = d.cpos;
           for (const it of d.items as Row[]) {
             if (it.role === "ctl") { if (it.key === "mic_mode" && it.val) setMic(it.val === "open" ? "open" : "ptt"); continue; }   // a live switch flip: the composer follows the microphone
-            const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             if (it.role === "agent") {
-              const n = norm(it.text);
-              if (n.length >= 8 && typed.current.some(s => s.includes(n))) continue;      // a typed turn's reply, already on the page from its own stream
               if (live.current) { const l = live.current; l.final.push(it.text); l.t = l.t || it.t; continue; }   // the reply under way: the record's lines wait for its end
-              if (busyRef.current) continue;                                             // the same reply is streaming into its own place
+              if (busyRef.current) { runRows.current.push(it.text); continue; }           // a typed turn under way: its rows wait too, and rebuild the reply at the end
               const s = settled.current;
-              if (s && Date.now() - s.at < 60000) { s.final.push(it.text); upsert(s.id, m => ({ ...m, text: joinAll(s.final), t: m.t || it.t })); continue; }   // a late line of the reply just settled: the whole reply again, as the record has it
+              if (s && Date.now() - s.at < 60000) { s.final.push(it.text); upsert(s.id, m => ({ ...m, text: settledText(s), t: m.t || it.t })); continue; }   // a line of the reply just settled: the whole reply again, as the record has it, never a second bubble
+              const n = norm(it.text);
+              if (n.length >= 8 && typed.current.some(x => x.includes(n))) continue;      // a typed reply's words coming back late: already on the page
             } else settled.current = null;                                                 // the turn moved on: the next reply is a new one
+            const key = it.role + "|" + it.text.slice(0, 60); if (skip.current.has(key)) { skip.current.delete(key); continue; }
             const m = fromRow(it); if (m) setMsgs(ms => append(m.role === "assistant" ? settle(ms) : ms, m));
           }
           for (const c of (d.cards || []) as Card[]) { const m = fromCard(c); if (m) setMsgs(ms => [...ms, m]); }
@@ -413,7 +417,7 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     try {
       await agent.runAgent({}, {
         onRunStartedEvent: () => { clearTimeout(free); setBusy(false); },
-        onTextMessageStartEvent: ({ event }) => setMsgs(ms => [...settle(ms), { id: event.messageId, role: "assistant", text: "", live: true }]),
+        onTextMessageStartEvent: ({ event }) => { runIds.current.push(event.messageId); setMsgs(ms => [...settle(ms), { id: event.messageId, role: "assistant", text: "", live: true }]); },
         onTextMessageContentEvent: ({ event }) => upsert(event.messageId, m => ({ ...m, text: m.text + event.delta })),
         onTextMessageEndEvent: ({ event }) => setMsgs(ms => ms.flatMap(m => { if (m.id !== event.messageId) return [m]; const txt = clean(m.text); if (!txt) return []; said.push(m.text); return [{ ...m, live: false, t: stamp(), text: txt }]; })),
         onToolCallStartEvent: ({ event }) => { const { label } = kind(event.toolCallName); if (label) setMsgs(ms => addStep(ms, { id: event.toolCallId, tool: event.toolCallName, label })); },
@@ -426,6 +430,16 @@ export function Chat({ name, embedded = false, onState }: { name: string; embedd
     } catch (e: any) { if (!/abort/i.test(String(e?.name || e?.message || e))) setMsgs(ms => [...ms, { id: nid(), role: "note", text: "The line did not answer: " + (e?.message || e) }]); }
     for (const s of said) { for (const sent of s.replace(/([.!?])\s+/g, "$1\n").split("\n")) skip.current.add("agent|" + sent.slice(0, 60)); typed.current.push(norm(clean(s))); }   // the same words come back through the voice log as spoken chunks: known by their sentences and by the whole text
     typed.current.splice(0, Math.max(0, typed.current.length - 6));
+    // the record is the truth for a reply's text (Paul, 2026-09-27 18:1x: the same reply twice on the page, once streamed and cut at a tool
+    // call, once from the record): the bubbles this run streamed become one, and the record's rows, those that came during the run and
+    // those still coming, rebuild it in place; the streamed words stay until the rows say at least as much
+    const ids = runIds.current.splice(0), rows = runRows.current.splice(0);
+    if (ids.length) setMsgs(ms => {
+      const mine = ms.filter(m => m.role === "assistant" && ids.includes(m.id)); if (!mine.length) return ms;
+      const first = mine[0], gone = new Set(mine.slice(1).map(m => m.id)); const s = { id: first.id, final: rows, at: Date.now(), typed: joinAll(mine.map(m => clean(m.text)).filter(Boolean)) };
+      settled.current = s;
+      return ms.filter(m => !gone.has(m.id)).map(m => m.id === first.id ? { ...m, live: false, t: m.t || stamp(), text: settledText(s) } : m);
+    });
     clearTimeout(free); setBusy(false); busyRef.current = false; setMsgs(settle);
   }
   const shape = talkShape(); const mobile = useMobile(); const hearingYou = state === "listening";   // the voice line is inside a sentence of yours

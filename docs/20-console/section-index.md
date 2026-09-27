@@ -36,9 +36,9 @@ Also here: [The globe](the-globe.md), the small gold globe that floats over ever
 
 ## Notifications and sound cues
 
-The bell in the bar turns on the system's own notifications. Approvals and reminders always
-notify; a reply or a Telegram message notifies only while the console is not the page you are
-looking at.
+The bell in the bar turns on the system's own notifications; a green dot on the bell says they
+are on. Approvals and reminders always notify; a reply or a Telegram message notifies only while
+the console is not the page you are looking at.
 
 Short interface sounds (made with ElevenLabs sound effects, in `troi-console/assets/`) play for a new
 approval, a due reminder, and a Telegram message while you are elsewhere. Turn them off with

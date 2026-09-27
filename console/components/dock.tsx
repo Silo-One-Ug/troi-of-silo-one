@@ -48,7 +48,7 @@ export function Dock({ name }: { name: string }) {
       <span className="h-6 w-px shrink-0 bg-border" />
       <div className="flex shrink-0 items-center gap-1">{PANES.map(([h, l, I]) => item(h, l, I, h === "/approvals" ? pending : h === "/agents" ? (st?.agents || 0) : 0))}</div>
       <span className="h-6 w-px shrink-0 bg-border" />
-      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><Bell className="h-4 w-4" /></button>
+      <div className="flex shrink-0 items-center gap-2 pl-1"><button title={bell ? "Notifications on" : "Notifications off"} aria-pressed={bell} className={cn("transition-colors", bell ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleBell}><span className="relative inline-flex"><Bell className={cn("h-4 w-4", bell && "fill-primary/20")} />{bell && <span aria-hidden className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-background" />}</span></button>
         <div className="hidden lg:block"><UnlockBox /></div><LockButton className="h-9 w-9 lg:hidden" />{/* a tablet has no room for the PIN box in the bar: the lock opens it in a sheet */}
         <ThemeToggle /></div>
     </motion.nav>
