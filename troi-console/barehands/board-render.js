@@ -44,7 +44,16 @@
   };
   const keyOf = (node, path) => str(node.id || node.key || path);
 
-  // ---- inline markdown: **bold**, *italic*, `code`, [text](https://…) (shown, never followed), line breaks
+  // a link on the board (Paul, 2026-09-27: "links are not clickable on the board"): an https address opens in a new tab and the
+  // board stays where it is; anything else is shown as words with the address in the tooltip, never followed
+  function anchor(text, href, withHost) {
+    const h = safeUrl(href);
+    if (!h || !/^https:/i.test(h)) { const s = el("span", "uilink", text || str(href)); s.title = str(href); return s; }
+    const a = el("a", "uilink", text || h); a.href = h; a.target = "_blank"; a.rel = "noopener noreferrer"; a.title = h;
+    const hs = host(h); if (withHost && hs && text) a.appendChild(el("span", "uimuted uihost", " " + hs));
+    return a;
+  }
+  // ---- inline markdown: **bold**, *italic*, `code`, [text](https://…) (a link that opens in a new tab), line breaks
   function inline(text) {
     const frag = document.createDocumentFragment();
     const s = str(text);
@@ -56,7 +65,7 @@
       if (t === "\n") frag.appendChild(el("br"));
       else if (t.startsWith("**")) frag.appendChild(el("b", null, t.slice(2, -2)));
       else if (t.startsWith("`")) frag.appendChild(el("code", "uiinlinecode", t.slice(1, -1)));
-      else if (t.startsWith("[")) { const a = el("span", "uilink", t.slice(1, t.indexOf("]("))); a.title = m[2]; frag.appendChild(a); }
+      else if (t.startsWith("[")) { frag.appendChild(anchor(t.slice(1, t.indexOf("](")), m[2])); }
       else frag.appendChild(el("i", null, t.slice(1, -1)));
       last = m.index + t.length;
     }
@@ -283,7 +292,7 @@
   function badge(n) { return el("span", "uibadge tone-" + tone(n.tone), n.text); }
   function tags(n) { const w = el("div", "uitags"); (Array.isArray(n.items) ? n.items : []).slice(0, 40).forEach(t => w.appendChild(el("span", "uibadge tone-" + tone(typeof t === "object" ? t.tone : n.tone), typeof t === "object" ? t.text : t))); return w; }
   function callout(n) { const d = el("div", "uicallout tone-" + tone(n.tone)); if (n.title) d.appendChild(el("b", null, n.title)); const p = el("div"); p.appendChild(inline(n.text)); d.appendChild(p); return d; }
-  function link(n) { const s = el("span", "uilink", n.text || n.href); const h = safeUrl(n.href); if (h) { s.title = h; const hs = host(h); if (hs && n.text) s.appendChild(el("span", "uimuted uihost", " " + hs)); } return s; }
+  function link(n) { return anchor(n.text, n.href, true); }
   function stat(n) {
     const d = el("div", "uistat" + (n.tone ? " tone-" + tone(n.tone) : "") + (n.boxed ? " boxed" : "")); d.title = [n.label, fmt(n.value) + str(n.unit || ""), n.delta != null && n.delta !== "" ? str(n.delta) : "", n.note].filter(Boolean).join(" · ");
     if (n.label) d.appendChild(el("div", "uilabel", n.label));

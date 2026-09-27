@@ -126,6 +126,25 @@ body { background: radial-gradient(circle, color-mix(in srgb, var(--ink) 7%, tra
 .uiavatar { background: color-mix(in srgb, var(--tone, var(--accent)) 16%, var(--paper-2)); }
 .uiaspect, .uiimgbox, .uimedia, .uiview { border-radius: 12px; }
 
+/* ---- links open in a new tab and look like links */
+a.uilink { color: var(--tone, var(--accent)); cursor: pointer; text-decoration-color: color-mix(in srgb, var(--tone, var(--accent)) 45%, transparent); transition: text-decoration-color .12s; }
+a.uilink:hover { text-decoration-color: var(--tone, var(--accent)); }
+a.uilink .uihost { color: var(--muted); }
+.uilist li > a.uilink:first-child { font-weight: 500; }
+
+/* ---- the boards, each in a colour of its own: the chip in the strip and the card in the hall (--chipcol, set by the app) */
+#boards .chip { color: var(--chipcol, var(--muted)); border-color: color-mix(in srgb, var(--chipcol, var(--line)) 50%, transparent); background: color-mix(in srgb, var(--chipcol, var(--paper-2)) 7%, var(--paper-2)); }
+#boards .chip:hover { color: var(--chipcol, var(--accent)); border-color: var(--chipcol, var(--accent)); }
+#boards .chip.on { color: var(--paper-2); background: var(--chipcol, var(--accent)); border-color: var(--chipcol, var(--accent)); }
+#boards .chip.plus { color: var(--muted); border-color: var(--line); background: color-mix(in srgb, var(--paper-2) 82%, transparent); }
+#boards .chip.arm { color: var(--paper-2); background: var(--bad); border-color: var(--bad); }
+.bcard .bname { color: var(--chipcol, var(--accent)); }
+.bcard.front { border-color: color-mix(in srgb, var(--chipcol, var(--accent)) 55%, var(--line)); box-shadow: 0 26px 60px color-mix(in srgb, var(--ink) 24%, transparent), 0 0 0 1px color-mix(in srgb, var(--chipcol, var(--accent)) 25%, transparent); }
+.bcard.here, .bcard:hover { border-color: color-mix(in srgb, var(--chipcol, var(--accent)) 70%, var(--line)); }
+.bcard .bopen { color: var(--chipcol, var(--accent)); }
+.bcard .mini.ui { background: color-mix(in srgb, var(--chipcol, var(--accent)) 16%, var(--paper)); border-color: color-mix(in srgb, var(--chipcol, var(--accent)) 40%, var(--line)); }
+.bcard.new .bname, .bcard.new .bplus { color: var(--muted); }
+
 /* ---- charts: the palette by class, so the theme colours the marks; a named colour when the tree names one */
 .uicf1 { fill: var(--c1); } .uicf2 { fill: var(--c2); } .uicf3 { fill: var(--c3); } .uicf4 { fill: var(--c4); } .uicf5 { fill: var(--c5); } .uicf6 { fill: var(--c6); } .uicf7 { fill: var(--c7); } .uicf8 { fill: var(--c8); }
 .uics1 { stroke: var(--c1); } .uics2 { stroke: var(--c2); } .uics3 { stroke: var(--c3); } .uics4 { stroke: var(--c4); } .uics5 { stroke: var(--c5); } .uics6 { stroke: var(--c6); } .uics7 { stroke: var(--c7); } .uics8 { stroke: var(--c8); }
