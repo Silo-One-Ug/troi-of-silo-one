@@ -24,6 +24,7 @@
 #   console.sh face-gate on|off         * hands-free only while the owner's face is at the camera (off is protected)
 #   console.sh voice-id off|on|learn    * voice identification (off and learn are protected)
 #   console.sh voice list|kokoro|elevenlabs ["<voice name or id>"]   * which voice speaks (ElevenLabs needs its key)
+#   console.sh theme light|dark|system   the console's theme, kept in the settings: its pages, the floater over the desktop and the phone follow
 #   console.sh mode "<phrase>"          a voice-console phrase, sent once the voice line is idle: "push to talk mode",
 #                                       "go hands free", "start asking again", "stop asking for permission",
 #                                       "switch to the deep model", "back to the fast model", "set effort to low|medium|high|max"
@@ -80,6 +81,7 @@ case "$1" in
   wake)     post /settings "{\"wake_word\":$([ "$2" = on ] && echo true || echo false)}";;
   face-gate) post /settings "{\"face_gate\":$([ "$2" = on ] && echo true || echo false)}";;
   voice-id) post /settings "{\"voice_id\":\"$2\"}";;
+  theme)    case "$2" in light|dark|system) post /settings "{\"theme\":\"$2\"}" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(("the console is " + d.get("theme","")) if d.get("ok") else d.get("error","not set"))';; *) echo "usage: console.sh theme light|dark|system"; exit 2;; esac;;
   mode)     post /say "$(python3 -c 'import json,sys; print(json.dumps({"text": sys.argv[1], "when": "idle"}))' "$2")";;
   voice)
     case "$2" in

@@ -68,6 +68,11 @@ body { background: #02040a; }   /* never a white frame behind a page that is sti
   --primary: 240 70% 70%; --primary-foreground: 222 47% 6%; --accent: 243 40% 18%; --accent-foreground: 243 80% 85%; color: hsl(var(--foreground)); color-scheme: dark; }
 .glass { background: hsl(222 47% 6% / .72); border: 1px solid hsl(var(--border)); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); }
 .glass .hairline { border: 0; border-radius: 0; background: transparent; backdrop-filter: none; }
+/* the desktop floater follows the console's theme (Paul, 2026-09-27: "the floater not being light mode"): on the light
+   console its glass is light, with the light tokens; the ring swaps the native material underneath to match */
+html.float-panel:not(.dark) .glass { --background: 0 0% 100%; --foreground: 222 47% 11%; --surface: 0 0% 98%; --border: 220 13% 86%; --muted: 210 40% 96%; --muted-foreground: 215 16% 47%;
+  --primary: 240 60% 60%; --primary-foreground: 0 0% 100%; --accent: 243 75% 95%; --accent-foreground: 243 60% 40%; color: hsl(var(--foreground)); color-scheme: light;
+  background: hsl(0 0% 100% / .78); }
 html.dark body { background: #02040a; }
 
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
