@@ -48,7 +48,11 @@ STATIC = {"/board-app.js": "application/javascript", "/board-render.js": "applic
 PAGE_PATHS = ("/", "/stage.html", "/board.html", "/index.html")
 
 ARGS = None
-SCENE_FILE = P.DATA / "board" / "scene.json"
+SCENE_FILE = P.DATA / "board" / "scene.json"    # the scene of the board that is up (the main board's is scene.json, the others' boards/<id>.json)
+MAIN_FILE = SCENE_FILE
+BOARDS_FILE = P.DATA / "board" / "boards.json"   # the boards, plural: id, name, when; and which one is current (every page shows that one)
+BOARDS = {"current": "main", "boards": [{"id": "main", "name": "Main", "created": 0.0}]}
+_BV = [1]                                         # the registry's version: a page whose strip is older redraws it
 LOCK = threading.Lock()
 SCENE = {"items": [], "ui": {}, "t": 0}
 SPECS = {}                                        # uid -> {"spec": tree, "v": version}
@@ -189,6 +193,159 @@ def scene_payload():
     d["live"] = age is not None and age < 3.0
     d["age"] = round(age, 1) if age is not None else None
     return d
+
+
+# ---- the boards, plural: one scene file each, one current; a switch flushes the board that was up, loads the next and tells the pages
+def _write_json(path, obj):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp"); tmp.write_text(json.dumps(obj, indent=1), encoding="utf-8"); os.replace(tmp, path)
+
+
+def load_boards():
+    """The registry from disk (made with the main board when there is none); the current board's scene loaded."""
+    global BOARDS, SCENE_FILE
+    try:
+        d = json.loads(BOARDS_FILE.read_text(encoding="utf-8"))
+        if isinstance(d, dict) and isinstance(d.get("boards"), list) and d["boards"]:
+            BOARDS = {"current": str(d.get("current") or "main"), "boards": [b for b in d["boards"] if isinstance(b, dict) and b.get("id")]}
+    except Exception:
+        pass
+    if not any(b["id"] == "main" for b in BOARDS["boards"]):
+        BOARDS["boards"].insert(0, {"id": "main", "name": "Main", "created": time.time()})
+    if not board_by(BOARDS["current"]) or board_by(BOARDS["current"]).get("archived"):
+        BOARDS["current"] = "main"
+    if BOARDS["current"] != "main":
+        SCENE_FILE = scene_file_for(BOARDS["current"]); load()
+    save_boards()
+
+
+def save_boards():
+    try:
+        _write_json(BOARDS_FILE, BOARDS)
+    except OSError as e:
+        print("board: could not save the boards:", e, file=sys.stderr, flush=True)
+
+
+def scene_file_for(bid):
+    return MAIN_FILE if bid == "main" else MAIN_FILE.parent / "boards" / ("%s.json" % bid)
+
+
+def board_by(ref):
+    """A board by id, else by name (case does not matter); None when there is none."""
+    ref = str(ref or "").strip()
+    if not ref:
+        return None
+    for b in BOARDS["boards"]:
+        if b["id"] == ref:
+            return b
+    low = ref.lower()
+    for b in BOARDS["boards"]:
+        if str(b.get("name", "")).strip().lower() == low:
+            return b
+    return None
+
+
+def slug(name):
+    s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:24] or "board"
+    base, n = s, 2
+    while any(b["id"] == s for b in BOARDS["boards"]):
+        s = "%s-%d" % (base, n); n += 1
+    return s
+
+
+def read_scene(bid):
+    """A board's saved scene from disk (the current board's comes from memory)."""
+    if bid == BOARDS["current"]:
+        return scene_payload()
+    try:
+        d = json.loads(scene_file_for(bid).read_text(encoding="utf-8"))
+        items = d.get("items") if isinstance(d, dict) and isinstance(d.get("items"), list) else []
+        return {"items": items, "ui": (d.get("ui") or {}) if isinstance(d, dict) else {}, "t": float(d.get("t") or 0) if isinstance(d, dict) else 0, "live": False, "age": None, "board": board_info(bid)}
+    except Exception:
+        return {"items": [], "ui": {}, "t": 0, "live": False, "age": None, "board": board_info(bid)}
+
+
+def board_info(bid=None):
+    b = board_by(bid or BOARDS["current"]) or {"id": "main", "name": "Main"}
+    return {"id": b["id"], "name": b.get("name") or b["id"]}
+
+
+def board_cmd():
+    return {"a": "board", **board_info()}
+
+
+def boards_cmd():
+    return {"a": "boards", **boards_payload()}
+
+
+def boards_payload():
+    out = []
+    for b in BOARDS["boards"]:
+        n = len(SCENE["items"]) if b["id"] == BOARDS["current"] else len(read_scene(b["id"]).get("items") or [])
+        out.append({"id": b["id"], "name": b.get("name") or b["id"], "archived": bool(b.get("archived")), "items": n, "created": b.get("created", 0)})
+    return {"v": _BV[0], "current": BOARDS["current"], "boards": out}
+
+
+def switch_board(bid):
+    """The board that was up is flushed to its file; the next one's scene comes into memory; the pages are told."""
+    global SCENE, SPECS, SCENE_FILE, _sig
+    b = board_by(bid)
+    if not b:
+        raise ValueError("no board called %r" % bid)
+    if b.get("archived"):
+        b.pop("archived", None); b.pop("archived_at", None)
+    if b["id"] != BOARDS["current"]:
+        flush()
+        with LOCK:
+            SCENE = {"items": [], "ui": {}, "t": 0}; SPECS = {}; _sig = None
+        SCENE_FILE = scene_file_for(b["id"])
+        load()
+        BOARDS["current"] = b["id"]
+    _BV[0] += 1
+    save_boards()
+    _CMDS.append(board_cmd())
+    return b
+
+
+def create_board(name):
+    name = " ".join(str(name or "").split())[:40]
+    if len(name) < 1:
+        raise ValueError("a board needs a name")
+    if board_by(name):
+        raise ValueError("a board called %r exists already" % name)
+    b = {"id": slug(name), "name": name, "created": time.time()}
+    BOARDS["boards"].append(b)
+    switch_board(b["id"])
+    return b
+
+
+def rename_board(ref, name):
+    b = board_by(ref)
+    if not b:
+        raise ValueError("no board called %r" % ref)
+    name = " ".join(str(name or "").split())[:40]
+    if not name:
+        raise ValueError("a board needs a name")
+    other = board_by(name)
+    if other and other is not b:
+        raise ValueError("a board called %r exists already" % name)
+    b["name"] = name; _BV[0] += 1; save_boards()
+    if b["id"] == BOARDS["current"]:
+        _CMDS.append(board_cmd())
+    return b
+
+
+def archive_board(ref):
+    """Put a board away: off the strip, its scene kept on disk; restore brings it back. The main board stays."""
+    b = board_by(ref)
+    if not b:
+        raise ValueError("no board called %r" % ref)
+    if b["id"] == "main":
+        raise ValueError("the main board stays")
+    if b["id"] == BOARDS["current"]:
+        switch_board("main")
+    b["archived"] = True; b["archived_at"] = time.time(); _BV[0] += 1; save_boards()
+    return b
 
 
 # ---- the airlock and the trees
@@ -408,10 +565,23 @@ class Handler(BaseHTTPRequestHandler):
             if root not in target.parents or target.suffix != ".md" or not target.is_file():
                 return self._send(404, b"no such note")
             return self._send(200, target.read_text(encoding="utf-8", errors="replace").encode())
-        if path == "/state":
-            return self._send(200, _STATE, "application/json")
-        if path == "/scene":
-            return self._json(scene_payload())
+        if path == "/state":                                             # the page's last report, with which board it is (board-state.sh reads it)
+            try:
+                d = json.loads(_STATE) if _STATE else {}
+            except ValueError:
+                d = {}
+            if isinstance(d, dict):
+                d["board"] = board_info(); d["boards"] = [b["name"] for b in boards_payload()["boards"] if not b["archived"]]
+            return self._json(d)
+        if path == "/scene":                                             # the current board's scene; ?board=<name|id> reads another's from disk
+            ref = (q.get("board") or [""])[0]
+            b = board_by(ref) if ref else None
+            if b and b["id"] != BOARDS["current"]:
+                return self._json(read_scene(b["id"]))
+            d = scene_payload(); d["board"] = board_info()
+            return self._json(d)
+        if path == "/boards":
+            return self._json(boards_payload())
         if path == "/ui":
             uid = (q.get("id") or [""])[0]
             rec = SPECS.get(uid)
@@ -459,16 +629,68 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._json({"ok": False, "error": str(e)[:200]}, 400)
         if self.path == "/state":
-            _STATE = body
-            snapshot(body)
-            out = _CMDS[:8]
-            del _CMDS[:8]
+            try:
+                st = json.loads(body)
+            except ValueError:
+                st = {}
+            if not isinstance(st, dict):
+                st = {}
+            page_board = str(st.get("board") or "")
+            if page_board and page_board != BOARDS["current"]:            # a page still on another board: its items are not this board's; it catches up first
+                out = [board_cmd()]
+            else:
+                _STATE = body
+                snapshot(body)
+                out = _CMDS[:8]
+                del _CMDS[:8]
+            try:
+                if int(st.get("bv") or 0) != _BV[0]:                       # its strip is older than the registry
+                    out.append(boards_cmd())
+            except (TypeError, ValueError):
+                out.append(boards_cmd())
             return self._json(out)
+        if self.path == "/boards":                                     # the boards, plural: create, switch, rename, archive, restore (the strip and boards.sh)
+            try:
+                d = json.loads(body) if body.strip() else {}
+                a = d.get("a"); ref = d.get("ref") or d.get("id") or d.get("name")
+                if a == "create":
+                    create_board(d.get("name"))
+                elif a in ("switch", "use", "restore"):
+                    switch_board(board_by(ref)["id"] if board_by(ref) else ref)
+                elif a == "rename":
+                    rename_board(ref, d.get("name"))
+                elif a == "archive":
+                    archive_board(ref)
+                else:
+                    raise ValueError("say create, switch, rename, archive or restore")
+                return self._json({"ok": True, **boards_payload()})
+            except (ValueError, TypeError) as e:
+                return self._json({"ok": False, "error": str(e), **boards_payload()}, 400)
         if self.path == "/cmd":
             try:
                 cmd = json.loads(body)
                 if not isinstance(cmd, dict):
                     raise ValueError("a command is a JSON object")
+                if cmd.get("a") == "board":                                # the agent switches boards (and makes one with "create":1)
+                    ref = cmd.get("name") or cmd.get("id")
+                    b = board_by(ref)
+                    if not b and cmd.get("create"):
+                        b = create_board(ref)
+                    elif not b:
+                        raise ValueError("no board called %r (add \"create\":1 to make it)" % ref)
+                    else:
+                        switch_board(b["id"])
+                    return self._json({"ok": True, "board": board_info(b["id"])})
+                target = cmd.pop("board", None)                            # a command for a named board lands there and brings it up
+                if target:
+                    b = board_by(target)
+                    if not b and cmd.get("create"):
+                        b = create_board(target)
+                    elif not b:
+                        raise ValueError("no board called %r" % target)
+                    if b["id"] != BOARDS["current"]:
+                        switch_board(b["id"])
+                cmd.pop("create", None)
                 prepare(cmd)
             except ValueError as e:
                 return self._json({"error": str(e)}, 400)
@@ -514,7 +736,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global ARGS, SCENE_FILE
+    global ARGS, SCENE_FILE, MAIN_FILE, BOARDS_FILE
     ap = argparse.ArgumentParser(description="the board's server")
     ap.add_argument("--port", type=int)
     ap.add_argument("--scene")
@@ -524,7 +746,10 @@ def main():
     ARGS = ap.parse_args()
     if ARGS.scene:
         SCENE_FILE = Path(ARGS.scene).expanduser()
+        BOARDS_FILE = SCENE_FILE.with_name("boards.json")             # a bench keeps its boards beside its scene
+    MAIN_FILE = SCENE_FILE
     load()
+    load_boards()                                                    # the boards, and the one that was up when the server last ran
     for d in ("misc", "models", "research", "ui"):
         try:
             (media_root() / d).mkdir(parents=True, exist_ok=True)

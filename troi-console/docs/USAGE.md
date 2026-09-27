@@ -183,6 +183,7 @@ It is saved as HTML and PDF under `data/blobs/reports/`, the PDF is sent to you 
 | "click the Save button" / "type hello in that field" / "open the View menu and switch to list" | the native hands: the control is found by name in the app's accessibility tree, pressed, and the result read back; risky labels ask for approval. The guarded cursor remains for what has no name |
 | "draw me a…" / "make a picture of…" | a picture, in the Library and on the board |
 | "research …" / "show me what … looks like" | credited pictures on the board while it talks |
+| "new board called X" / "switch to the X board" / "put this on the X board" | the boards, plural: the strip at the top of the board follows, on every screen |
 | "what's in the news" / "what does NTV say about…" | headlines per outlet, Uganda first, read out or on the board |
 | "go hands free" / "stop asking for permission" / "clear the session" | only in your verified voice (or your face), from an unlocked console, or with your approve on Telegram |
 | "open example.com and fill in the form" | the agent's browser |

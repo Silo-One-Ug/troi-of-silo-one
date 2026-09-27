@@ -73,6 +73,17 @@ page reloads or the Mac restarts. `barehands/bin/board-state.sh` prints what is 
 saved scene when the page is closed; `board-state.sh events` lists the last clicks on buttons and
 choices.
 
+## Many boards
+
+The board is one of several: a strip of names at the top left lists them, the one you are looking at
+lit. **+** makes a new one (type a name, Enter); a double-click on a name renames it; the × on any
+board but Main puts it away, kept on disk and restorable. Switching is shared: whichever screen shows
+the board follows the one chosen, the console's Hands view, the phone and the floating conversation
+alike, and each board keeps its own scene file under `data/board`. By voice: "new board called
+Commuza", "switch to the research board", "put this on the money board". The agent's side is
+`boards.sh` (`list`, `new`, `use`, `rename`, `archive`, `restore`), and any of its board commands may
+name the board it is for.
+
 ## The empty board
 
 With nothing up, the board says what it is for and offers a few requests to click; a click sends the
