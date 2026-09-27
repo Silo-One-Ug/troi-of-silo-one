@@ -777,7 +777,17 @@ def main():
     if ARGS.ttl:
         threading.Timer(ARGS.ttl, lambda: (flush(), os._exit(0))).start()
     print("board up: http://127.0.0.1:%d/stage.html   scene: %s%s" % (port, SCENE_FILE, "   (clicks stay off the conversation)" if ARGS.no_relay else ""), flush=True)
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    QuietServer(("127.0.0.1", port), Handler).serve_forever()
+
+
+class QuietServer(ThreadingHTTPServer):
+    """A page that closes its connection a moment before the answer is written is not news: no traceback for it."""
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        if sys.exc_info()[0] in (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            return
+        super().handle_error(request, client_address)
 
 
 if __name__ == "__main__":
