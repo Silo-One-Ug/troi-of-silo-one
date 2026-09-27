@@ -47,3 +47,12 @@ Everything else is open: reading anything under the file roots, moving and renam
 opening and quitting apps, pressing controls by name, driving the browser, writing notes in the
 vault. Where an action is consequential but not destructive (editing project source, committing,
 deploying, changing a server), the agent states the exact change and waits for your word.
+
+## Undo, and why
+
+What the agent did is in a journal, with the way back for each thing. "Undo what you just did"
+puts a moved, renamed or copied file back through the file hands' own undo, takes a tag off, turns
+a watch off, archives a bookmark, and turns an archive or an unpacked folder it made into a Trash
+request for you to approve. An undo never deletes. "What did you do in the last hour" reads the
+journal; "why did you do that" answers with what was said in the conversation around the action,
+never with a reconstruction. Under the hood: `journal.py list`, `undo`, `why`.

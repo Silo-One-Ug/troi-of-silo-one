@@ -26,6 +26,7 @@ cat <<'TXT'
   ../barehands/bin/board-state.sh [events|json|boards]    what is on the board (or the saved scene), which board it is, the last clicks on its buttons
   boards.sh    list · current · new "<name>" · use "<name>" · rename "<name>" "<new>" · archive "<name>" · restore "<name>"   the boards, plural: one scene each, one up, every screen follows
   remind.sh    20m "text" | 15:00 "text" | list | cancel N
+  journal.py   list [--since 4h] [--kind files|workspace|watch|bookmark|request|said] · undo [n] · why [n]   what you did, when, and how each thing is undone; "undo what you just did" and "why did you do that" (what was said around it)
   machine.py   check [--json] · why-slow   the Mac's own health, read-only (disks, memory pressure, load and the hot processes, power and heat, login items, Time Machine); "why is my Mac slow" is why-slow; the pulse looks every 15 min
   triage.py    digest [--since 8h] · quiet on [2h]|off|status · level <kind> "<text>"   what the pulse says, sorted (urgent, action, fyi, ignore); "what did I miss" is the digest; "don't disturb me for two hours" is quiet on 2h
   browse.py    tabs · dupes [--close] · open <https-url> · history <words> [--days 30] · bookmark add <url> [--title "…"] [--tags a,b] | list | find <words> | tag <n> <tags>   my own Chrome as tabs, history and bookmarks (data/bookmarks.json); the owner's browser is never read; --close only at the owner's word

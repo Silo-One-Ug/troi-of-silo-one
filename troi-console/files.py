@@ -303,6 +303,23 @@ def cmd_tags(a):
     print(", ".join(read_tags(p)) or "no tags"); return 0
 
 
+def cmd_untag(a):
+    """Tags taken off again (the undo of `tag`, at the owner's word): the file itself is untouched."""
+    if len(a) < 2:
+        print("usage: files.py untag <path> <tag> [<tag>…]"); return 2
+    p = must_be_inside(a[0])
+    if not p.exists():
+        print(f"no such file or folder: {a[0]}"); return 2
+    have = read_tags(p); gone = [t for t in a[1:] if t in have]
+    tags = [t for t in have if t not in gone]
+    raw = plistlib.dumps(tags, fmt=plistlib.FMT_BINARY)
+    r = subprocess.run(["xattr", "-wx", TAG_ATTR, raw.hex(), str(p)], capture_output=True, text=True)
+    if r.returncode != 0:
+        print("xattr refused: " + (r.stderr.strip() or "unknown")[:200]); return 1
+    log(f"untag {p} - {', '.join(gone) or '(nothing to take off)'}")
+    print(f"tags on {p.name}: {', '.join(tags) or 'none'}"); return 0
+
+
 def kind_of(p):
     e = p.suffix.lower()
     for name, test in KINDS:
@@ -338,9 +355,9 @@ def main(argv):
     a = list(argv)
     if not a or a[0] in ("-h", "--help"):
         print(__doc__.strip()); return 0
-    fn = {"zip": cmd_zip, "unzip": cmd_unzip, "size": cmd_size, "dupes": cmd_dupes, "recent": cmd_recent, "tag": cmd_tag, "tags": cmd_tags, "plan": cmd_plan}.get(a[0])
+    fn = {"zip": cmd_zip, "unzip": cmd_unzip, "size": cmd_size, "dupes": cmd_dupes, "recent": cmd_recent, "tag": cmd_tag, "tags": cmd_tags, "untag": cmd_untag, "plan": cmd_plan}.get(a[0])
     if not fn:
-        print("files.py zip|unzip|size|dupes|recent|tag|tags|plan   (--help for the shapes)"); return 2
+        print("files.py zip|unzip|size|dupes|recent|tag|tags|untag|plan   (--help for the shapes)"); return 2
     return fn(a[1:])
 
 
