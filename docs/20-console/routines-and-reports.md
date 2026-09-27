@@ -16,6 +16,7 @@ Everything that runs on a clock, with its last run:
 | The server watch | every 15 minutes, read-only over SSH |
 | The Grafana watch | every minute, the alert rules' state at your Grafana (`data/grafana.json`, the token in the Keychain): what began firing and what resolved |
 | The calendar | a heads-up 15 minutes before an event |
+| The Mac itself | every 15 minutes, read-only: the startup disk, memory pressure, a process hot for two rounds, the battery, the heat; only what is new is said |
 | The vault backup | 23:30 nightly: the vault, then the record |
 | Housekeeping | 03:00: logs and old captures |
 | Session compaction | 03:30: the shared session is compacted while the voice line is idle |

@@ -15,6 +15,8 @@ com.troi-of-silo-one.pulse) that speaks to the agent through the voice line's ty
                 is the Keychain item `grafana`); what began firing and what resolved is told, a storm as one line
                 (all of these go to Telegram instead when the voice line is down)
   calendar      a heads-up 15 minutes before each event in the Mac's Calendar (agenda.py)
+  the Mac       every 15 minutes, machine.py reads the Mac's own health (the startup disk, memory pressure, a process hot
+                for two rounds, the battery, the heat); only what is new is said, through the triage
   morning brief at "brief_time" (default 08:00), once a day, only if the voice line is up; the agent runs
                 its Morning Brief job
   day's report  at "report_time" (default 18:30), report.py builds the end-of-day report
@@ -24,6 +26,7 @@ Stdlib only. Never deletes anything but its own fired reminders.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -235,6 +238,32 @@ def check_servers(state):
         phone="Servers: " + ("NEW: " + "; ".join(new) if new else "") + (" RESOLVED: " + "; ".join(fixed) if fixed else ""))
 
 
+MACHINE_EVERY = 900         # the Mac itself: every 15 minutes, read-only (machine.py); only what is new is said, a disk warning at most every six hours
+
+
+def check_machine(state):
+    """The Mac's own health, through the triage: the startup disk, memory pressure, a process hot for two rounds, the battery, the heat."""
+    try:
+        import machine as MC
+        d = MC.check()
+        found = MC.issues(d, state.get("machine_prev"))
+    except Exception as e:
+        log(f"[pulse]  machine: check failed ({e!r})"); return
+    state["machine_prev"] = {"hot": {"by_cpu": d.get("hot", {}).get("by_cpu", [])[:6]}}
+    told = state.setdefault("machine_told", {})
+    now = time.time()
+    for lvl, text in found:
+        key = re.sub(r"[\d.]+", "#", text)                          # the same warning with other numbers is the same warning
+        if now - float(told.get(key) or 0) < 6 * 3600:
+            continue
+        told[key] = now
+        for k in [k for k in told if now - float(told[k]) > 86400]:
+            del told[k]
+        log(f"[pulse]  machine: {lvl}: {text}")
+        say("machine", f"(the Mac itself: {text}. Tell the owner in one sentence; if it is the disk or a hot process, look first (machine.py why-slow, files.py size), "
+            f"then propose what to do; nothing is removed or quit without their word.)", phone=f"This Mac: {text}", level=lvl)
+
+
 def check_calendar(state):
     """Events starting within 16 minutes, announced once each."""
     try:
@@ -308,7 +337,7 @@ def check_brief(state):
 def main():
     state = jload(STATE, {})
     _T.bind(tell, log)
-    last_gh = 0.0
+    last_gh = 0.0; last_mc = time.time() - MACHINE_EVERY + 120     # the first look at the Mac two minutes in, once the rest has settled
     last_srv = last_cal = last_gf = 0.0
     while True:
         try:
@@ -324,6 +353,8 @@ def main():
                     last_cal = time.time(); check_calendar(state)
                 if time.time() - last_gf > GRAFANA_EVERY:
                     last_gf = time.time(); check_grafana(state)
+                if time.time() - last_mc > MACHINE_EVERY:
+                    last_mc = time.time(); check_machine(state)
                 check_brief(state)
                 check_report(state)
                 check_nightly(state)
