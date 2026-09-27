@@ -18,6 +18,7 @@ to the owner, no action.
   watches.py add battery --below 20 "remind me to plug in"
   watches.py add app Spotify --when opens "turn the sounds off"                 opens | quits | both
   watches.py add wifi "say which network we are on"
+  watches.py add device AirPods --when connects "route the sound to them"     a Bluetooth device coming or going (once a minute)
   watches.py list | on <id> | off <id> | test <id> | when "<phrase>"
 
 The schedule words: every N minutes|hours · every hour · every day|morning|evening|night|afternoon|noon [at HH:MM|8am|8:30pm]
@@ -45,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import db as _DB  # noqa: E402
 
 DOC = _DB.doc("watches")
-KINDS = ("time", "folder", "file", "process", "url", "disk", "power", "battery", "app", "wifi")
+KINDS = ("time", "folder", "file", "process", "url", "disk", "power", "battery", "app", "wifi", "device")
 DEFAULT_GAP = 60            # seconds between two fires of one watch
 DAILY_CAP = 30              # fires a day, then quiet until midnight
 PENDING_GRACE = 1800        # a fire that waited for the agent to be free is dropped after this long
@@ -405,8 +406,33 @@ def _wifi(spec, seen):
     return (True, f"the Wi-Fi is {ssid} now (was {prev})")
 
 
+def _device(spec, seen, now):
+    """A Bluetooth device coming or going (system_profiler, asked once a minute at most)."""
+    if now - seen.get("checked", 0) < 60:
+        return (False, "")
+    seen["checked"] = now
+    try:
+        out = subprocess.run(["system_profiler", "SPBluetoothDataType", "-json"], capture_output=True, text=True, timeout=30).stdout
+        d = (json.loads(out).get("SPBluetoothDataType") or [{}])[0]
+        names = {n.lower() for e in (d.get("device_connected") or []) for n in (e.keys() if isinstance(e, dict) else [])}
+    except Exception:
+        return (False, "")
+    want = str(spec.get("name", "")).lower(); when = spec.get("when", "both")
+    here = any(want in n for n in names)
+    prev = seen.get("here"); seen["here"] = here
+    if prev is None:
+        return (False, "")
+    if here and not prev and when in ("connects", "both"):
+        return (True, f"{spec.get('name')} connected")
+    if prev and not here and when in ("disconnects", "both"):
+        return (True, f"{spec.get('name')} disconnected")
+    return (False, "")
+
+
 def evaluate(w, seen, now):
     k = w.get("kind"); spec = w.get("spec") or {}
+    if k == "device":
+        return _device(spec, seen, now)
     if k == "time":
         return _time_due(spec, seen, now)
     if k == "folder":
@@ -578,6 +604,11 @@ def cmd_add(a):
         if not a:
             print('usage: watches.py add battery --below 20 "<what to do>"'); return 2
         spec = {"below": int(below)}; note = f"battery under {below}%"; do = " ".join(a)
+    elif kind == "device":
+        when = _opt(a, "--when", "both")
+        if len(a) < 2:
+            print('usage: watches.py add device <name> [--when connects|disconnects|both] "<what to do>"'); return 2
+        spec = {"name": a[0], "when": when if when in ("connects", "disconnects", "both") else "both"}; note = f"{a[0]} {when} (Bluetooth)"; do = " ".join(a[1:])
     else:  # wifi
         if not a:
             print('usage: watches.py add wifi "<what to do>"'); return 2

@@ -39,6 +39,23 @@ The Routines page lists them with a switch; a watch is switched off, never remov
 cooldown and a daily cap, a burst of new files comes as one line, and a one-off ("in twenty
 minutes", "at nine tomorrow") turns itself off after firing. Under the hood: `watches.py`.
 
+### Your time at the Mac
+
+"What have I actually been working on this week": the pulse notes the app in front every thirty
+seconds (its name only, never a window title or an address, and nothing while the Mac is idle), and
+the agent reads it back by day or by week: the hours at the Mac, by kind (coding, browsing,
+meetings, talking, writing, music) and by app, the stretches of twenty-five minutes or more in one
+app, the number of switches. `usage_tracking: false` in the settings stops the sampling. The record
+keeps ninety days.
+
+### What repeats
+
+From that record, the agent's own lines and the file hands' log, the agent can say what repeats and
+what could be set up once: the same apps first up most mornings (a workspace), the same request
+asked three times or more (a workspace step, or a time watch when the asks fall in one hour of the
+day), the same file work on the same folder (a folder watch). It proposes, with the exact command;
+nothing is set up until you say so, and a suggestion once raised waits a fortnight.
+
 ### Triage and quiet hours
 
 What the pulse has to say is sorted before it is said. **Urgent** (a server down or unreachable, a

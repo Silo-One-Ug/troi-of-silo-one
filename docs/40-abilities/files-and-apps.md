@@ -48,6 +48,15 @@ line to say. Each step reports, and one failing does not stop the rest. "Start m
 my work setup", "add opening Slack to my work setup" are the words; `workspace.py` is the tool, and
 `--dry` says what a workspace would do without doing it.
 
+## Devices
+
+"What's connected", "is the sound going to my AirPods", "play through the speakers", "what's the
+battery on my AirPods": the agent sees the displays, the sound devices and which are the defaults
+for output and input, the Bluetooth devices with their batteries when they tell them, the USB
+devices and the printers. It routes the sound only at your word, and "my AirPods are connected but
+there's no sound" gets the diagnosis first (where the sound goes, what it could go to), then the
+switch when you say so. A Bluetooth device coming or going can be a watch.
+
 ## Removing anything
 
 "Delete X", "trash X", "get rid of it": the agent files a request (`fs.sh trash <path> "why"`) and
