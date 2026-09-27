@@ -116,7 +116,7 @@ async function main() {
       } catch (e) {}
       busy = false; lastShot = Date.now();
     }
-    await sleep(60);
+    await sleep(fresh(WATCH, 6) ? 60 : 300);                      // quick while the Browser page watches; a slow walk otherwise (the battery's share)
   }
 }
 (async () => {                                                        // for as long as the agent runs: reconnect whenever the browser comes back

@@ -22,6 +22,7 @@ your approval on Telegram when the console is locked.
 | Voice | **Kokoro** / **ElevenLabs**, and which of your ElevenLabs voices |
 | Speech | **Aloud** / **Text only**: with Text only the agent answers on the page and nothing is spoken, so no ElevenLabs credit is used |
 | Mood | **Off** or a soundscape from the Mac while you work (Focus, Calm, Café, Forest, Night, Storm, Fire, Hum, and your own), with its volume; a mood's loop is made once with ElevenLabs |
+| Power | **Auto** / **Full** / **Saver**: how much of the battery the page may spend; Auto follows the battery (this device only) |
 | Your phone | **This Mac only** / **Tailscale** / **This network**: where the agent answers from Troi's next start (widening it is protected) |
 
 ## Permissions and the model
@@ -108,3 +109,20 @@ The first time you pick a mood the agent has ElevenLabs make its 30-second seaml
 nothing. It dips while the agent speaks and comes back after. By voice: "play rain sounds",
 "something calm", "sounds off". Your own moods: `sounds.py add <mood> "<what it sounds like>"`.
 Music itself stays with Apple Music ("play some jazz").
+
+## Power
+
+The page spends battery in two places: the planet (a WebGL scene drawn at every screen refresh) and
+the polls of the agent's server (one feed of `/state` for the whole page, paced by what is
+happening: brisk while the agent speaks or works, a walk when idle, a stroll when the tab is hidden;
+the transcript the same). **Power** picks how much of it the page may spend:
+
+- **Auto** (the default): Saver while the device is discharging, Full when it is plugged in or when
+  the browser cannot say (Chrome knows; Safari does not; the ring tells its own pane).
+- **Full**: the planet at the screen's rate, with its glow.
+- **Saver**: the planet at a few frames a second, one pixel per point, no glow, and the server asked
+  less often when nothing is happening.
+
+A hidden tab draws nothing at all, in every mode. The setting is this device's (the browser's
+storage). The ring's globe follows the Mac's power on its own: fewer frames at idle, fewer still on
+battery, the full rate while the agent speaks or works.

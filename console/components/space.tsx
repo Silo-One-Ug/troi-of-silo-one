@@ -8,6 +8,7 @@ import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import gsap from "gsap";
 import * as THREE from "three";
+import { usePower } from "@/lib/power";
 
 export type SpaceState = "off" | "idle" | "listening" | "thinking" | "working" | "speaking";
 const SUN = new THREE.Vector3(-0.55, 0.42, -0.72).normalize();       // behind and above: a lit crescent and a bright limb
@@ -164,23 +165,31 @@ function Rig({ view }: { view: string }) {
 }
 
 function Ready({ onReady }: { onReady: () => void }) { useEffect(() => { onReady(); }, [onReady]); return null; }
+// the saver's clock: in the saver power mode the scene is drawn on demand, a few times a second, instead of at every screen refresh
+function SlowTick({ fps }: { fps: number }) { const invalidate = useThree(s => s.invalidate); useEffect(() => { const t = setInterval(() => invalidate(), 1000 / fps); return () => clearInterval(t); }, [invalidate, fps]); return null; }
 
 export function Space({ state = "idle", view = "default", active = true, lite = false }: { state?: SpaceState; view?: string; active?: boolean; lite?: boolean }) {
   const [ready, setReady] = useState(false); const done = useCallback(() => setReady(true), []);
-  // lite (a phone): one pixel per point, no post-processing, fewer stars: the same scene at a fraction of the battery
+  // lite (a phone), and the saver power mode (on battery, or the owner's word in Modes): one pixel per point, no post-processing,
+  // fewer stars, and in saver a few frames a second; a hidden tab draws nothing at all
+  const { effective } = usePower(); const [hidden, setHidden] = useState(false);
+  useEffect(() => { const h = () => setHidden(document.visibilityState === "hidden"); h(); document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h); }, []);
+  const saver = effective === "saver", cheap = lite || saver;
+  const loop: "always" | "demand" | "never" = !active || hidden ? "never" : saver ? "demand" : "always";
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 bg-black transition-opacity duration-700 ease-out" style={{ opacity: ready && active ? 1 : 0 }}>{/* fades in once the planet is loaded: never a half-built frame */}
-      <Canvas frameloop={active ? "always" : "never"} camera={{ position: [0.3, 0.1, 8], fov: 38, near: 0.1, far: 1000 }} dpr={lite ? 1 : [1, 2]} gl={{ antialias: !lite, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0, outputColorSpace: THREE.SRGBColorSpace, powerPreference: lite ? "low-power" : "high-performance" }}>
+      <Canvas key={cheap ? "cheap" : "rich"} frameloop={loop} camera={{ position: [0.3, 0.1, 8], fov: 38, near: 0.1, far: 1000 }} dpr={cheap ? 1 : [1, 2]} gl={{ antialias: !cheap, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0, outputColorSpace: THREE.SRGBColorSpace, powerPreference: cheap ? "low-power" : "high-performance" }}>
+        {loop === "demand" && <SlowTick fps={8} />}
         <color attach="background" args={["#000"]} />
         <ambientLight intensity={0.03} />
         <directionalLight position={SUN.clone().multiplyScalar(50)} intensity={3.2} color="#fff6ea" />
         <hemisphereLight args={["#1a2a44", "#0a1a33", 0.25]} />
         <Suspense fallback={null}><Sky /><Earth state={state} /><Ready onReady={done} /></Suspense>
-        <Stars count={lite ? 1800 : 5200} />
+        <Stars count={cheap ? 1800 : 5200} />
         <SunGlare />
         <Ship state={state} />
         <Rig view={view} />
-        {!lite && <EffectComposer multisampling={4}><Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur /><Noise opacity={0.02} /><Vignette eskil={false} offset={0.25} darkness={0.75} /></EffectComposer>}
+        {!cheap && <EffectComposer multisampling={4}><Bloom intensity={0.45} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur /><Noise opacity={0.02} /><Vignette eskil={false} offset={0.25} darkness={0.75} /></EffectComposer>}
       </Canvas>
     </div>
   );

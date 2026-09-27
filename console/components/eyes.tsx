@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Camera, Hand, Monitor, ScanFace } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { eget, emit, epost, img, rememberUnlock, type Config, type State } from "@/lib/edge";
+import { eget, emit, epost, img, rememberUnlock, subscribeState, type Config, type State } from "@/lib/edge";
 import { useAgentName } from "@/lib/name";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ export function Eyes() {
   const fallback = useAgentName();
   const [c, setC] = useState<Config | null>(null); const [st, setSt] = useState<State | null>(null); const [shot, setShot] = useState(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(""); const [hands, setHands] = useState(false); const [tick, setTick] = useState(0);
   useEffect(() => { try { setHands(localStorage.getItem("silo.hands") === "1"); } catch {} eget("/config").then(setC).catch(() => setMsg("The agent is not answering.")); }, []);
-  useEffect(() => { let stop = false; const t = async () => { if (stop) return; try { setSt(await eget("/state")); setTick(x => x + 1); } catch {} setTimeout(t, 900); }; t(); return () => { stop = true; }; }, []);
+  useEffect(() => subscribeState(d => { if (d) { setSt(d); setTick(x => x + 1); } }), []);   // the page's one poll of /state, paced by what is happening
   const look = async (what: "camera" | "screen") => { setBusy(what); setMsg(what === "camera" ? "Looking…" : "Taking the screen…"); try { const d = await epost("/look", { what }); if (d.ok) { setShot(d.path); setMsg(""); } else setMsg(d.error || "Nothing came back."); } finally { setBusy(""); } };
   const eyes = async (v: string) => { const d = await epost("/settings", { eyes: v }); if (d.pending) setMsg("Protected: waiting for your approval (Telegram, or unlock with your PIN: the lock in the bar)."); else if (d.ok) { setC(x => x ? { ...x, eyes: v } : x); setMsg(v === "off" ? "Camera off." : "Eyes: " + v + "."); } };
   const toggleHands = () => { const v = !hands; setHands(v); try { localStorage.setItem("silo.hands", v ? "1" : "0"); } catch {} emit("hands", v); setMsg(v ? "Hands on: the board's camera and the galaxies track your hands." : "Hands off."); };

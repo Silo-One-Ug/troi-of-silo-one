@@ -60,6 +60,9 @@ let state="off",level=0,t0=performance.now(),spin=0,ringSpin=0,lastT=t0;
 const GOLD=[255,200,90], PALE=[255,240,196], DEEP=[188,130,26];
 const ACC={off:[140,120,90],idle:[255,200,90],listening:[255,160,80],thinking:[255,225,140],working:[255,190,110],speaking:[170,255,190]};
 function setState(s,l){state=s in ACC?s:"idle";level=l||0;document.getElementById("s").textContent=state}
+var power="full", lastDraw=0;                          // the frames follow the state and the power source: a globe breathing at idle needs no sixty a second
+function setPower(p){power=p==="saver"?"saver":"full"}
+function fpsNow(){const busy=state==="speaking"||state==="listening"||state==="thinking"||state==="working";return power==="saver"?(busy?24:state==="off"?2:8):(busy?60:state==="off"?4:20)}
 function setBadge(n){const b=document.getElementById("b");b.style.display=n>0?"block":"none";b.textContent=n}
 const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`, mix=(a,b,t)=>[0,1,2].map(i=>Math.round(a[i]+(b[i]-a[i])*t));
 const AX=23.4*Math.PI/180;            // the axis leans like the Earth's
@@ -94,8 +97,10 @@ function orbit(Rr,cx,cy,front,pulse,off){
     if((z>=0)===front){ const r=front?4.5:3; const g=ctx.createRadialGradient(px,py,0,px,py,r); g.addColorStop(0,rgba(PALE,off?.3:1)); g.addColorStop(.5,rgba(GOLD,off?.2:.8)); g.addColorStop(1,rgba(GOLD,0)); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(px,py,r,0,7); ctx.fill(); } }
 }
 function frame(t){
+  requestAnimationFrame(frame);
+  if(t-lastDraw<1000/fpsNow()-1) return; lastDraw=t;
   ctx.setTransform(D,0,0,D,0,0); ctx.clearRect(0,0,S,S);
-  const c=ACC[state], cx=S/2, cy=S/2-3, ph=(t-t0)/1000, dt=Math.min(.1,(t-lastT)/1000); lastT=t;
+  const c=ACC[state], cx=S/2, cy=S/2-3, ph=(t-t0)/1000, dt=Math.min(.3,(t-lastT)/1000); lastT=t;
   const off=state==="off";
   const breath=state==="idle"?.5+.5*Math.sin(ph*1.6):off?.15:1;
   const pulse=state==="speaking"?Math.min(1,level*3):state==="listening"?.6+.4*Math.sin(ph*6):state==="thinking"?.5+.5*Math.sin(ph*3):0;
@@ -121,7 +126,6 @@ function frame(t){
   if(state==="thinking"||state==="working"){ const sw=ctx.createConicGradient(ph*2.4,cx,cy); sw.addColorStop(0,rgba(c,0)); sw.addColorStop(.22,rgba(c,.28)); sw.addColorStop(.23,rgba(c,0)); ctx.fillStyle=sw; ctx.beginPath(); ctx.arc(cx,cy,R*1.25,0,7); ctx.arc(cx,cy,R*1.05,0,7,true); ctx.fill(); }
   if(state==="listening"){ ctx.strokeStyle=rgba(c,.85); ctx.lineWidth=1.5; ctx.setLineDash([3,5]); ctx.beginPath(); ctx.arc(cx,cy,R*1.22+Math.sin(ph*6)*2,0,7); ctx.stroke(); ctx.setLineDash([]); }
   if(state==="speaking"){ ctx.strokeStyle=rgba(c,.45+.5*pulse); ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,R*1.15+pulse*5,0,7); ctx.stroke(); }
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 </script></body></html>"""
@@ -380,9 +384,29 @@ class App(NSObject):
             self.floater = Floater()
         except Exception as e:
             self.floater = None; print("[ring] no conversation panel:", e, file=sys.stderr)
-        self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.15, self, "tick:", None, True)
+        self.timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.2, self, "tick:", None, True)
+
+    def check_power(self):
+        """On battery the globe and the pane draw fewer frames: pmset says which side of the cord we are on (asked every 30 s)."""
+        import subprocess
+        try:
+            out = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5).stdout
+            mode = "saver" if "Battery Power" in out else "full"
+        except Exception:
+            mode = "full"
+        self.power = mode
+        self.web.evaluateJavaScript_completionHandler_(f"setPower({json.dumps(mode)})", None)
+        # the pane is a WebKit view, which has no Battery API: the ring tells its page (window.__setBattery in the console's lib/power)
+        if self.floater is not None and self.floater.win.isVisible():
+            try:
+                self.floater.web.evaluateJavaScript_completionHandler_(f"window.__setBattery&&window.__setBattery({'true' if mode == 'saver' else 'false'})", None)
+            except Exception:
+                pass
 
     def tick_(self, timer):
+        n = getattr(self, "ticks", 0) + 1; self.ticks = n
+        if n % 150 == 1:
+            self.check_power()
         try:
             st = STATE.read_text().strip() if FIFO.exists() else "off"
         except Exception:

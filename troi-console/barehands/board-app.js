@@ -544,8 +544,8 @@
       tw: t.w != null ? +t.w.toFixed(4) : undefined, th: t.h != null ? +t.h.toFixed(4) : undefined, ui: t.type === "ui" ? 1 : undefined, uid: t.uid, uv: t.uv, us, ua: t.aspect || undefined, ub: t.hidebar,
       sy, pres: presented === t ? 1 : undefined, g: 0, op: 1 };
   }
-  let dirtyFlag = true;
-  function dirty() { dirtyFlag = true; emptyEl.hidden = shelfShown() || tiles.some(t => t.el.isConnected && !t.el.classList.contains("leave")); fitStage(); }
+  let dirtyFlag = true, touched = Date.now();
+  function dirty() { dirtyFlag = true; touched = Date.now(); emptyEl.hidden = shelfShown() || tiles.some(t => t.el.isConnected && !t.el.classList.contains("leave")); fitStage(); }
   async function beat() {
     if (switching) return;                                          // between two boards nothing of this page is anyone's scene
     const items = tiles.filter(t => t.el.isConnected && !t.el.classList.contains("leave")).map(snapshotOf);
@@ -623,7 +623,14 @@
     buildEmpty();
     await restore();
     dirty();
-    setInterval(beat, 300); beat();
+    // the heartbeat's pace follows the moment: brisk for a few seconds after anything changed or while a tile is in hand,
+    // a slow walk when the board just sits there, slower still when the tab is hidden; back at once when it shows again
+    (async function beatLoop() {
+      await beat();
+      const hidden = document.visibilityState === "hidden", busy = Date.now() - touched < 4000 || !!document.querySelector(".tile.dragging, .tile.resizing");
+      setTimeout(beatLoop, hidden ? 3000 : busy ? 300 : 1000);
+    })();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { touched = Date.now(); beat(); } });
   })();
 
   window.__board = { tiles: () => tiles, tidy, present, unpresent, applyCmds, autoPlace, layoutTile, narrow, board: () => BOARD, boards: () => BOARDS };
