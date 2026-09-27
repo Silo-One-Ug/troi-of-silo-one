@@ -28,6 +28,9 @@ they took.
   down to each agent. When the row wraps, every further row has a bus of its own, fed by a rail down
   the left of the chart, so no agent is ever left hanging. An agent can send agents too: its own
   delegations hang under it on a short rail of their own, three levels deep, each with its card.
+- **Sent back to work.** An agent the brain sends a further message to, after it has reported, is at
+  work again: the chart rings it, its card says "back at work" with the time, and it settles when
+  its next report comes.
 - **The brain's own line.** The top node shows the brain's state and the tool in its hands, as the
   bar does.
 - **Archiving.** A finished agent can be archived off the chart: the × on its node, or **Archive
